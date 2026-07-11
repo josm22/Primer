@@ -315,7 +315,7 @@
     30%,70%{filter:drop-shadow(0 0 10px var(--activar));}
   }
 
-  .pain-note{margin-top:12px;}
+  .pain-note{margin-top:12px; display:none;}
   .pain-note label{
     display:block; font-family:'IBM Plex Mono', monospace; font-size:9px;
     text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin-bottom:6px;
@@ -343,6 +343,45 @@
   .ex-rank-bar{flex:0 0 80px; height:6px; background:var(--line); border-radius:3px; overflow:hidden;}
   .ex-rank-fill{height:100%; background:var(--activar); border-radius:3px;}
   .ex-rank-pct{font-family:'IBM Plex Mono', monospace; font-size:10px; width:28px; text-align:right;}
+
+  .compare-box{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:22px;
+  }
+  .compare-box h3{font-family:'Fraunces', serif; font-size:15px; margin:0 0 12px;}
+  .compare-cols{display:flex; gap:8px;}
+  .compare-col{
+    flex:1; text-align:center; padding:10px 6px; border-radius:10px;
+    background:var(--paper); border:1px solid var(--line);
+  }
+  .compare-col .cmp-label{
+    font-family:'IBM Plex Mono', monospace; font-size:8px;
+    text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);
+    margin-bottom:6px; line-height:1.3;
+  }
+  .compare-col .cmp-val{
+    font-family:'Fraunces', serif; font-weight:700; font-size:18px; line-height:1.1;
+  }
+  .compare-col .cmp-sub{font-size:10px; color:var(--ink-soft); margin-top:4px;}
+  .compare-col.good .cmp-val{color:var(--activar);}
+  .compare-col.warn .cmp-val{color:var(--liberar);}
+
+  .month-grid{
+    display:flex; flex-wrap:wrap; gap:4px; margin:12px 0 6px;
+  }
+  .month-dot{
+    width:calc((100% - 24px) / 7); max-width:36px; aspect-ratio:1;
+    border-radius:6px; background:var(--line);
+  }
+  .month-dot.l1{background:var(--liberar-soft); border:1px solid var(--liberar);}
+  .month-dot.l2{background:var(--reeducar-soft); border:1px solid var(--reeducar);}
+  .month-dot.l3{background:var(--activar-soft); border:1px solid var(--activar);}
+
+  .share-week-btn{
+    width:100%; margin-top:10px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    padding:10px; border-radius:100px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); cursor:pointer; min-height:40px;
+  }
 
   .pause-toast-close{
     background:none; border:none; color:var(--paper); opacity:0.7;
@@ -1056,6 +1095,17 @@
         <option value="35" selected>Cada 35 minutos</option>
         <option value="40">Cada 40 minutos</option>
       </select>
+      <div class="setting-row" id="morningRow">
+        <span>Recordatorio matutino<small>Notificación para empezar el día con la rutina</small></span>
+        <div class="toggle-switch" id="morningToggle" role="switch" aria-checked="false"></div>
+      </div>
+      <select class="setting-select" id="morningHour" hidden>
+        <option value="7">A las 7:00</option>
+        <option value="8">A las 8:00</option>
+        <option value="9" selected>A las 9:00</option>
+        <option value="10">A las 10:00</option>
+        <option value="11">A las 11:00</option>
+      </select>
       <div class="data-actions">
         <button type="button" id="exportDataBtn">Exportar datos</button>
         <button type="button" id="importDataBtn">Importar backup</button>
@@ -1182,6 +1232,11 @@
       </div>
     </div>
 
+    <div class="compare-box" id="compareBox">
+      <h3>Comparativa 3 semanas</h3>
+      <div class="compare-cols" id="compareCols"></div>
+    </div>
+
     <div class="insight-box" id="weeklyInsight">
       <h3>Esta semana</h3>
       <div class="insight-line"><span>Días con rutina</span><span class="insight-val" id="insightDays">—</span></div>
@@ -1189,6 +1244,7 @@
       <div class="insight-line"><span>Dolor medio</span><span class="insight-val" id="insightPain">—</span></div>
       <div class="week-heatmap" id="weekHeatmap"></div>
       <p class="insight-narrative" id="insightNarrative"></p>
+      <button type="button" class="share-week-btn" id="shareWeekBtn">Compartir resumen semanal</button>
     </div>
 
     <div class="ex-ranking" id="exRanking">
@@ -1200,7 +1256,11 @@
       <div class="section-title" style="font-size:15px;margin-bottom:10px;">Por fase (7 días)</div>
     </div>
 
-    <div class="section-title">Últimos 14 días</div>
+    <div class="section-title">Últimos 30 días</div>
+    <div class="section-sub">Adherencia diaria (más oscuro = más ejercicios)</div>
+    <div class="month-grid" id="monthGrid"></div>
+
+    <div class="section-title" style="margin-top:24px;">Últimos 14 días</div>
     <div class="section-sub">% de ejercicios completados cada día</div>
     <div class="history-grid" id="historyGrid"></div>
 
@@ -1357,6 +1417,7 @@ const ACHIEVEMENTS = [
   {id:'streak7', icon:'🔥', name:'7 días', desc:'Racha de 7 días'},
   {id:'streak14', icon:'💪', name:'14 días', desc:'Racha de 14 días'},
   {id:'streak30', icon:'🏆', name:'30 días', desc:'Racha de 30 días'},
+  {id:'month_star', icon:'⭐', name:'Mes constante', desc:'20 días con rutina en 30'},
   {id:'full_day', icon:'✨', name:'Día perfecto', desc:'9/9 ejercicios en un día'},
   {id:'phase_day', icon:'🎯', name:'Fase 100%', desc:'Tu fase completa en un día'},
   {id:'full_week', icon:'📅', name:'Semana top', desc:'7/7 días con rutina'},
@@ -1507,8 +1568,8 @@ const CELEBRATION_MSGS = {
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}, badgesCollapsed:false};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}, badgesCollapsed:false}; }
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false}; }
 }
 
 function saveSettings(s){
@@ -1517,6 +1578,7 @@ function saveSettings(s){
 
 let appSettings = loadSettings();
 let reminderTimer = null;
+let morningCheckTimer = null;
 
 const RING_LEN = 326.7;
 const timerState = {interval:null, remaining:0, total:0, paused:false, onComplete:null, color:'var(--liberar)'};
@@ -2509,6 +2571,78 @@ function buildWeekNarrative(weekDays, avgPct, painDiff){
   return 'Sin rutina esta semana. Un solo ejercicio hoy ya suma.';
 }
 
+async function statsForPeriod(start, end){
+  let days = 0, pctSum = 0, painSum = 0, painN = 0;
+  for(let i=start;i<=end;i++){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done||{}).filter(Boolean).length;
+    pctSum += (done/EXERCISES.length)*100;
+    if(done >= 3) days++;
+    if(log.pain != null){ painSum += log.pain; painN++; }
+  }
+  const len = end - start + 1;
+  return {
+    days, len,
+    avgPct: Math.round(pctSum/len),
+    painAvg: painN ? (painSum/painN).toFixed(1) : null,
+  };
+}
+
+async function renderCompareBox(){
+  const periods = [
+    {label:'Esta semana', start:0, end:6},
+    {label:'Sem. pasada', start:7, end:13},
+    {label:'Hace 2 sem.', start:14, end:20},
+  ];
+  const stats = await Promise.all(periods.map(p=>statsForPeriod(p.start, p.end)));
+  document.getElementById('compareCols').innerHTML = periods.map((p,i)=>{
+    const s = stats[i];
+    const cls = s.days >= 5 ? 'good' : s.days <= 2 ? 'warn' : '';
+    const pain = s.painAvg ? s.painAvg+'/10' : '—';
+    return '<div class="compare-col '+cls+'">'
+      +'<div class="cmp-label">'+p.label+'</div>'
+      +'<div class="cmp-val">'+s.days+'/'+s.len+'</div>'
+      +'<div class="cmp-sub">'+s.avgPct+'% · dolor '+pain+'</div></div>';
+  }).join('');
+}
+
+async function renderMonthGrid(){
+  const el = document.getElementById('monthGrid');
+  let html = '';
+  for(let i=29;i>=0;i--){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done||{}).filter(Boolean).length;
+    const pct = Math.round((done/EXERCISES.length)*100);
+    const lvl = done >= 3 ? (pct >= 80 ? 'l3' : 'l2') : (done > 0 ? 'l1' : '');
+    const title = dateKey(i)+': '+done+'/9';
+    html += '<div class="month-dot '+lvl+'" title="'+title+'"></div>';
+  }
+  el.innerHTML = html;
+}
+
+async function buildWeekShare(){
+  let weekDays = 0, weekPctSum = 0, painSum = 0, painN = 0;
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done||{}).filter(Boolean).length;
+    weekPctSum += (done/EXERCISES.length)*100;
+    if(done >= 3) weekDays++;
+    if(log.pain != null){ painSum += log.pain; painN++; }
+  }
+  const lines = ['Resumen cervical — semana actual', ''];
+  if(appSettings.userPhase){
+    const p = PHASES[appSettings.userPhase];
+    lines.push('Fase: '+p.name);
+  }
+  lines.push('Días con rutina: '+weekDays+'/7');
+  lines.push('Media ejercicios: '+Math.round(weekPctSum/7)+'%');
+  if(painN) lines.push('Dolor medio: '+(painSum/painN).toFixed(1)+'/10');
+  const streak = parseInt(document.getElementById('statStreak').textContent, 10) || 0;
+  if(streak) lines.push('Racha actual: '+streak+' días');
+  lines.push('', '— App Cuello (cuaderno personal)');
+  return lines.join('\n');
+}
+
 async function renderWeekHeatmap(){
   const el = document.getElementById('weekHeatmap');
   const labels = ['D','L','M','X','J','V','S'];
@@ -2908,6 +3042,13 @@ async function checkAchievements(){
   if(streak >= 14) tryUnlock('streak14');
   if(streak >= 30) tryUnlock('streak30');
 
+  let monthDays = 0;
+  for(let i=0;i<30;i++){
+    const log = await loadLog(dateKey(i));
+    if(Object.values(log.done||{}).filter(Boolean).length >= 3) monthDays++;
+  }
+  if(monthDays >= 20) tryUnlock('month_star');
+
   const doneToday = Object.values(currentLog.done).filter(Boolean).length;
   if(doneToday >= EXERCISES.length) tryUnlock('full_day');
   if(appSettings.userPhase){
@@ -3030,6 +3171,62 @@ function syncReminderToSW(){
   navigator.serviceWorker?.ready?.then((reg)=>post(reg.active)).catch(()=>{});
 }
 
+function syncMorningToSW(){
+  const cfg = {
+    type:'MORNING_CONFIG',
+    enabled: !!(appSettings.morningReminder && Notification.permission === 'granted'),
+    hour: appSettings.morningHour ?? 9,
+    minute: 0,
+  };
+  const post = (worker)=>{
+    if(worker) worker.postMessage(cfg);
+  };
+  if(navigator.serviceWorker?.controller) post(navigator.serviceWorker.controller);
+  navigator.serviceWorker?.ready?.then((reg)=>post(reg.active)).catch(()=>{});
+}
+
+function triggerMorningReminder(){
+  vibrate([60, 30, 80]);
+  if(Notification.permission === 'granted'){
+    try{
+      const n = new Notification('Rutina de cuello — Cuello', {
+        body: '¿Cómo está el cuello hoy? Registra el dolor y haz los ejercicios de tu fase.',
+        icon: 'icon.svg',
+        tag: 'cervical-morning',
+      });
+      n.onclick = ()=>{ window.focus(); n.close(); };
+    }catch(e){}
+  }
+}
+
+function checkMorningReminder(){
+  if(!appSettings.morningReminder) return;
+  const key = 'cervical:morning:'+todayKey();
+  if(sessionStorage.getItem(key)) return;
+  const h = new Date().getHours();
+  if(h === (appSettings.morningHour ?? 9)){
+    sessionStorage.setItem(key, '1');
+    triggerMorningReminder();
+  }
+}
+
+function scheduleMorningCheck(){
+  clearInterval(morningCheckTimer);
+  syncMorningToSW();
+  if(!appSettings.morningReminder) return;
+  morningCheckTimer = setInterval(checkMorningReminder, 60000);
+  checkMorningReminder();
+}
+
+function updateMorningUI(){
+  const toggle = document.getElementById('morningToggle');
+  const select = document.getElementById('morningHour');
+  toggle.classList.toggle('on', appSettings.morningReminder);
+  toggle.setAttribute('aria-checked', appSettings.morningReminder);
+  select.hidden = !appSettings.morningReminder;
+  select.value = String(appSettings.morningHour ?? 9);
+}
+
 async function renderLibrary(){
   const key = todayKey();
   const log = await loadLog(key);
@@ -3117,8 +3314,10 @@ async function renderProgreso(){
 
   document.getElementById('insightNarrative').textContent =
     buildWeekNarrative(weekDays, avgPct, painDiff);
+  await renderCompareBox();
   await renderWeekHeatmap();
   await renderExRanking();
+  await renderMonthGrid();
 
   await renderPhaseStats();
   await renderPhysioReport();
@@ -3225,14 +3424,52 @@ document.getElementById('reminderRow').addEventListener('click', async ()=>{
   }
   appSettings.reminders = !appSettings.reminders;
   saveSettings(appSettings);
-  updateReminderUI();
-  scheduleReminder();
+      updateReminderUI();
+      updateMorningUI();
+      scheduleReminder();
+      scheduleMorningCheck();
 });
 
 document.getElementById('reminderInterval').addEventListener('change', (e)=>{
   appSettings.reminderMin = parseInt(e.target.value, 10);
   saveSettings(appSettings);
   scheduleReminder();
+});
+
+document.getElementById('morningRow').addEventListener('click', async ()=>{
+  if(!appSettings.morningReminder && Notification.permission === 'default'){
+    const perm = await Notification.requestPermission();
+    if(perm === 'denied'){
+      alert('Sin permiso de notificaciones. El recordatorio matutino no funcionará.');
+    }
+  }
+  appSettings.morningReminder = !appSettings.morningReminder;
+  saveSettings(appSettings);
+  updateMorningUI();
+  scheduleMorningCheck();
+});
+
+document.getElementById('morningHour').addEventListener('change', (e)=>{
+  appSettings.morningHour = parseInt(e.target.value, 10);
+  saveSettings(appSettings);
+  scheduleMorningCheck();
+});
+
+document.getElementById('shareWeekBtn').addEventListener('click', async ()=>{
+  const text = await buildWeekShare();
+  if(navigator.share){
+    try{
+      await navigator.share({title:'Resumen cervical', text});
+    }catch(e){}
+  } else {
+    try{
+      await navigator.clipboard.writeText(text);
+      vibrate(40);
+      alert('Resumen copiado al portapapeles.');
+    }catch(e){
+      alert('No se pudo compartir.');
+    }
+  }
 });
 
 document.getElementById('pauseToastDone').addEventListener('click', async ()=>{
@@ -3272,9 +3509,11 @@ document.getElementById('installDismiss').addEventListener('click', ()=>{
 
 applyTheme(appSettings.dark);
 updateReminderUI();
+updateMorningUI();
 updatePhaseLabels();
 updateBadgesCollapse();
 scheduleReminder();
+scheduleMorningCheck();
 renderHoy();
 if(!appSettings.userPhase) showPhasePicker();
 else updateMapaMuscles();
@@ -3285,10 +3524,12 @@ if('serviceWorker' in navigator){
   });
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{
     syncReminderToSW();
+    syncMorningToSW();
   });
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js').then(()=>{
       syncReminderToSW();
+      syncMorningToSW();
     }).catch(()=>{});
   });
 }

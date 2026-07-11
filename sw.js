@@ -1,4 +1,4 @@
-const CACHE = 'cervical-v3';
+const CACHE = 'cervical-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,30 @@ const ASSETS = [
 ];
 
 let reminderTimer = null;
+let morningTimer = null;
+
+function scheduleMorning(cfg) {
+  if (morningTimer) {
+    clearTimeout(morningTimer);
+    morningTimer = null;
+  }
+  if (!cfg.enabled) return;
+  const hour = cfg.hour ?? 8;
+  const minute = cfg.minute ?? 0;
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  morningTimer = setTimeout(() => {
+    self.registration.showNotification('Rutina de cuello — Cuello', {
+      body: '¿Cómo está el cuello hoy? Registra el dolor y haz los ejercicios de tu fase.',
+      icon: './icon.svg',
+      tag: 'cervical-morning',
+      vibrate: [80, 40, 80],
+    });
+    scheduleMorning(cfg);
+  }, next - now);
+}
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -23,7 +47,12 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== 'REMINDER_CONFIG') return;
+  if (!e.data) return;
+  if (e.data.type === 'MORNING_CONFIG') {
+    scheduleMorning(e.data);
+    return;
+  }
+  if (e.data.type !== 'REMINDER_CONFIG') return;
   if (reminderTimer) {
     clearInterval(reminderTimer);
     reminderTimer = null;
