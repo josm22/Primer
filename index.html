@@ -172,6 +172,55 @@
     color:var(--ink); margin-bottom:2px;
   }
 
+  .pause-fab{
+    position:fixed; right:16px;
+    bottom:calc(var(--nav-h) + var(--safe-b) + 16px);
+    z-index:140; width:56px; height:56px; border-radius:50%;
+    background:var(--reeducar); color:var(--paper); border:none;
+    box-shadow:0 4px 20px rgba(0,0,0,0.22); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; transition:transform .15s ease, opacity .2s ease;
+  }
+  .pause-fab:active{transform:scale(0.94);}
+  .pause-fab.hidden{opacity:0; pointer-events:none; transform:scale(0.8);}
+
+  .daily-tip{
+    background:var(--paper2); border-left:4px solid var(--reeducar);
+    border-radius:8px; padding:12px 14px; margin-bottom:18px;
+    font-size:13px; color:var(--ink-soft); line-height:1.55;
+  }
+  .daily-tip strong{
+    display:block; font-family:'IBM Plex Mono', monospace;
+    font-size:9px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--reeducar); margin-bottom:4px;
+  }
+
+  .qp-steps{display:flex; gap:6px; justify-content:center; margin-bottom:16px;}
+  .qp-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--line);
+    transition:background .2s ease, transform .2s ease;
+  }
+  .qp-dot.done{background:var(--activar);}
+  .qp-dot.active{background:var(--reeducar); transform:scale(1.3);}
+  .qp-progress{
+    font-family:'IBM Plex Mono', monospace; font-size:10px;
+    color:var(--ink-soft); margin-bottom:8px;
+  }
+
+  .badges-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .badges-head h3{margin:0;}
+  .badges-count{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+  }
+
+  .pause-toast-close{
+    background:none; border:none; color:var(--paper); opacity:0.7;
+    font-size:20px; line-height:1; padding:4px 8px; cursor:pointer; flex:0 0 auto;
+  }
+
   /* ---------- SECTIONS ---------- */
   .section{display:none; animation:rise .28s ease;}
   .section.active{display:block;}
@@ -702,7 +751,7 @@
     background:var(--paper2); border:1px solid var(--line); border-radius:12px;
     padding:14px 16px; margin-bottom:18px;
   }
-  .badges-block h3{font-family:'Fraunces', serif; font-size:15px; margin:0 0 10px;}
+  .badges-block h3{font-family:'Fraunces', serif; font-size:15px;}
   .badges-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch;}
   .badge{
     flex:0 0 auto; text-align:center; width:72px; padding:8px 4px;
@@ -775,8 +824,13 @@
 
     <div class="week-mini" id="weekMini" hidden></div>
 
+    <div class="daily-tip" id="dailyTip" hidden></div>
+
     <div class="badges-block" id="badgesBlock">
-      <h3>Logros</h3>
+      <div class="badges-head">
+        <h3>Logros</h3>
+        <span class="badges-count" id="badgesCount">0/0</span>
+      </div>
       <div class="badges-row" id="badgesRow"></div>
     </div>
 
@@ -1048,12 +1102,15 @@
   </button>
 </nav>
 
+<button type="button" class="pause-fab" id="pauseFab" aria-label="Pausa activa rápida" title="Pausa activa">⏸</button>
+
 <div class="pause-toast" id="pauseToast" role="alert">
   <div class="pause-toast-text">
     <strong>Pausa activa</strong>
     5 chin tucks + hombros atrás + mirar lejos
   </div>
   <button type="button" id="pauseToastDone">Hecho</button>
+  <button type="button" class="pause-toast-close" id="pauseToastClose" aria-label="Cerrar">×</button>
 </div>
 
 <div class="badge-toast" id="badgeToast" role="status" aria-live="polite">
@@ -1061,6 +1118,27 @@
   <div class="badge-toast-text">
     <strong id="badgeToastTitle">Logro desbloqueado</strong>
     <span id="badgeToastDesc"></span>
+  </div>
+</div>
+
+<!-- QUICK PAUSE OVERLAY -->
+<div class="overlay" id="quickPauseOverlay" aria-hidden="true">
+  <div class="timer-sheet">
+    <div class="qp-progress" id="qpProgress">Paso 1 de 3</div>
+    <div class="qp-steps" id="qpSteps"></div>
+    <div class="timer-ring-wrap">
+      <svg viewBox="0 0 120 120">
+        <circle class="timer-ring-bg" cx="60" cy="60" r="52"/>
+        <circle class="timer-ring-fg" id="qpRing" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="timer-count" id="qpCount">0</div>
+    </div>
+    <div class="timer-ex-name" id="qpTitle"></div>
+    <div class="timer-ex-phase" id="qpDesc"></div>
+    <div class="timer-btns">
+      <button type="button" id="qpSkip">Saltar paso</button>
+      <button type="button" class="primary" id="qpCancel">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -1123,7 +1201,40 @@ const ACHIEVEMENTS = [
   {id:'full_week', icon:'📅', name:'Semana top', desc:'7/7 días con rutina'},
   {id:'pain_down', icon:'📉', name:'Dolor baja', desc:'Dolor semanal a la baja'},
   {id:'phase_up', icon:'🚀', name:'Nueva fase', desc:'Avanzaste a la siguiente fase'},
+  {id:'routine_done', icon:'🏁', name:'Rutina guiada', desc:'Completaste la rutina paso a paso'},
+  {id:'map_explorer', icon:'🗺️', name:'Explorador', desc:'Consultaste el mapa muscular'},
+  {id:'pause_master', icon:'⏸️', name:'Pausas pro', desc:'6 pausas activas en un día'},
 ];
+
+const PAUSE_STEPS = [
+  {title:'Chin tucks', desc:'5 repeticiones lentas · mentón hacia atrás sin bajar barbilla', seconds:12},
+  {title:'Hombros atrás', desc:'Omóplatos abajo y pecho abierto · 3 respiraciones', seconds:10},
+  {title:'Mirar lejos', desc:'Enfoca un punto a +6 m · relaja la vista', seconds:18},
+];
+
+const DAILY_TIPS = {
+  general:[
+    'La pantalla a la altura de los ojos reduce la tensión en suboccipitales.',
+    'Una almohada muy alta empuja la cabeza hacia delante toda la noche.',
+    'El dolor no es el enemigo: es una señal de que algo lleva tiempo sobrecargado.',
+    'Mejor 5 minutos a diario que una hora el domingo.',
+  ],
+  liberar:[
+    'En Liberar, busca tensión suave — nunca dolor agudo al estirar.',
+    'El calor antes del automasaje ayuda al trapecio superior a soltar.',
+    'Si la cefalea sube por la tarde, prioriza suboccipitales y ECOM.',
+  ],
+  activar:[
+    'El chin tuck es el gesto base: practícalo antes de levantar peso.',
+    'Si los hombros suben en el remo, baja la banda o las repeticiones.',
+    'La calidad del movimiento importa más que el número de series.',
+  ],
+  reeducar:[
+    'Subir el portátil 10 cm puede cambiar tu postura en minutos.',
+    'Apoya los antebrazos en la mesa: el cuello deja de sostener los brazos.',
+    'Programa la pausa antes de concentrarte: es más fácil que recordarla después.',
+  ],
+};
 
 const PHASES = {
   liberar: {
@@ -1237,6 +1348,7 @@ let reminderTimer = null;
 
 const RING_LEN = 326.7;
 const timerState = {interval:null, remaining:0, total:0, paused:false, onComplete:null, color:'var(--liberar)'};
+const qpState = {interval:null, step:0, remaining:0, total:0};
 
 function vibrate(pattern){
   try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
@@ -1246,11 +1358,20 @@ function openOverlay(id){
   document.getElementById(id).classList.add('show');
   document.getElementById(id).setAttribute('aria-hidden','false');
   document.body.classList.add('overlay-open');
+  updateFabVisibility();
 }
 function closeOverlay(id){
   document.getElementById(id).classList.remove('show');
   document.getElementById(id).setAttribute('aria-hidden','true');
   if(!document.querySelector('.overlay.show')) document.body.classList.remove('overlay-open');
+  updateFabVisibility();
+}
+
+function updateFabVisibility(){
+  const fab = document.getElementById('pauseFab');
+  if(!fab) return;
+  const hide = document.body.classList.contains('overlay-open') || routineActive;
+  fab.classList.toggle('hidden', hide);
 }
 
 function updateTimerRing(){
@@ -1304,6 +1425,99 @@ document.getElementById('timerPause').addEventListener('click', ()=>{
 });
 document.getElementById('timerCancel').addEventListener('click', closeTimerOverlay);
 document.getElementById('closeCelebration').addEventListener('click', ()=> closeOverlay('celebrationOverlay'));
+
+function getDailyTip(){
+  const pool = appSettings.userPhase
+    ? [...(DAILY_TIPS[appSettings.userPhase]||[]), ...DAILY_TIPS.general]
+    : DAILY_TIPS.general;
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const day = Math.floor((Date.now() - start) / 86400000);
+  return pool[day % pool.length];
+}
+
+function renderDailyTip(){
+  const el = document.getElementById('dailyTip');
+  el.hidden = false;
+  el.innerHTML = '<strong>Consejo del día</strong>' + getDailyTip();
+}
+
+function stopQuickPause(){
+  if(qpState.interval){ clearInterval(qpState.interval); qpState.interval = null; }
+}
+
+function closeQuickPause(){
+  stopQuickPause();
+  closeOverlay('quickPauseOverlay');
+}
+
+function renderQpSteps(){
+  const wrap = document.getElementById('qpSteps');
+  wrap.innerHTML = PAUSE_STEPS.map((_,i)=>{
+    const cls = i < qpState.step ? 'done' : i === qpState.step ? 'active' : '';
+    return '<div class="qp-dot '+cls+'"></div>';
+  }).join('');
+  document.getElementById('qpProgress').textContent = 'Paso ' + (qpState.step + 1) + ' de ' + PAUSE_STEPS.length;
+}
+
+function updateQpRing(){
+  const pct = qpState.total ? (qpState.remaining / qpState.total) : 0;
+  document.getElementById('qpRing').style.strokeDashoffset = RING_LEN * (1 - pct);
+  document.getElementById('qpRing').style.stroke = 'var(--reeducar)';
+  document.getElementById('qpCount').textContent = qpState.remaining;
+}
+
+function startQpStep(){
+  stopQuickPause();
+  if(qpState.step >= PAUSE_STEPS.length){
+    closeQuickPause();
+    recordPauseDone();
+    return;
+  }
+  const step = PAUSE_STEPS[qpState.step];
+  qpState.total = step.seconds;
+  qpState.remaining = step.seconds;
+  document.getElementById('qpTitle').textContent = step.title;
+  document.getElementById('qpDesc').textContent = step.desc;
+  renderQpSteps();
+  updateQpRing();
+  qpState.interval = setInterval(()=>{
+    qpState.remaining -= 1;
+    updateQpRing();
+    if(qpState.remaining <= 0){
+      stopQuickPause();
+      vibrate(50);
+      qpState.step++;
+      startQpStep();
+    }
+  }, 1000);
+}
+
+function openQuickPause(){
+  qpState.step = 0;
+  openOverlay('quickPauseOverlay');
+  startQpStep();
+}
+
+async function recordPauseDone(){
+  const key = todayKey();
+  const log = await loadLog(key);
+  const ex = EXERCISES.find(e=>e.id==='e9');
+  log.counters[ex.id] = (log.counters[ex.id]||0) + 1;
+  log.done[ex.id] = log.counters[ex.id] >= ex.target;
+  await saveLog(key, log);
+  currentLog = log;
+  renderHoy();
+  updateTension();
+  vibrate(60);
+}
+
+document.getElementById('pauseFab').addEventListener('click', openQuickPause);
+document.getElementById('qpCancel').addEventListener('click', closeQuickPause);
+document.getElementById('qpSkip').addEventListener('click', ()=>{
+  stopQuickPause();
+  qpState.step++;
+  startQpStep();
+});
 
 function showCelebration(){
   const key = 'celebrated:' + todayKey();
@@ -1449,6 +1663,10 @@ async function navigateToExercise(exId){
 function showInfo(id){
   const d = MUSCLE_DATA[id];
   if(!d) return;
+  if(unlockBadge('map_explorer')){
+    renderBadges();
+    enqueueBadgeToast('map_explorer');
+  }
   const panel = document.getElementById('info-panel');
   document.getElementById('info-role').textContent = d.role === 'tight' ? 'Tenso / sobrecargado' : 'Débil / inhibido';
   document.getElementById('info-role').className = 'role ' + d.role;
@@ -1982,6 +2200,11 @@ function renderRoutineStep(){
 function advanceRoutine(){
   routineStep++;
   if(routineStep >= routineIds.length){
+    const allDone = routineIds.every(id=>currentLog.done[id]);
+    if(allDone && unlockBadge('routine_done')){
+      renderBadges();
+      enqueueBadgeToast('routine_done');
+    }
     endRoutine();
     return;
   }
@@ -1995,6 +2218,7 @@ function endRoutine(){
   routineStep = 0;
   document.getElementById('routineFlow').classList.remove('active');
   document.getElementById('checklistHoy').style.display = '';
+  updateFabVisibility();
 }
 
 document.getElementById('startRoutine').addEventListener('click', ()=>{
@@ -2002,6 +2226,7 @@ document.getElementById('startRoutine').addEventListener('click', ()=>{
   if(!routineIds.length) return;
   routineActive = true;
   routineStep = 0;
+  updateFabVisibility();
   renderRoutineStep();
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 });
@@ -2053,6 +2278,7 @@ async function renderHoy(){
   renderPainUI();
   updateTension();
   renderNextUp();
+  renderDailyTip();
   await renderWeekMini();
   await checkAchievements();
   if(routineActive && routineIds.length) renderRoutineStep();
@@ -2183,6 +2409,8 @@ function unlockBadge(id){
 function renderBadges(){
   const row = document.getElementById('badgesRow');
   const badges = appSettings.badges || {};
+  const unlocked = Object.keys(badges).length;
+  document.getElementById('badgesCount').textContent = unlocked + '/' + ACHIEVEMENTS.length;
   row.innerHTML = ACHIEVEMENTS.map(a=>{
     const on = !!badges[a.id];
     return '<div class="badge'+(on?' unlocked':'')+'" title="'+a.desc+'">'
@@ -2262,6 +2490,9 @@ async function checkAchievements(){
     if(log.pain != null){ prevPain += log.pain; prevN++; }
   }
   if(weekN && prevN && weekPain/weekN < prevPain/prevN - 0.3) tryUnlock('pain_down');
+
+  const pauseCount = currentLog.counters?.e9 || 0;
+  if(pauseCount >= 6) tryUnlock('pause_master');
 
   renderBadges();
   if(unlocked.length){
@@ -2547,16 +2778,11 @@ document.getElementById('reminderInterval').addEventListener('change', (e)=>{
 
 document.getElementById('pauseToastDone').addEventListener('click', async ()=>{
   document.getElementById('pauseToast').classList.remove('show');
-  const key = todayKey();
-  const log = await loadLog(key);
-  const ex = EXERCISES.find(e=>e.id==='e9');
-  log.counters[ex.id] = (log.counters[ex.id]||0) + 1;
-  log.done[ex.id] = log.counters[ex.id] >= ex.target;
-  await saveLog(key, log);
-  currentLog = log;
-  renderHoy();
-  updateTension();
-  vibrate(60);
+  await recordPauseDone();
+});
+
+document.getElementById('pauseToastClose').addEventListener('click', ()=>{
+  document.getElementById('pauseToast').classList.remove('show');
 });
 
 applyTheme(appSettings.dark);
@@ -2582,6 +2808,7 @@ if('serviceWorker' in navigator){
 }
 
 renderBadges();
+updateFabVisibility();
 </script>
 </body>
 </html>
