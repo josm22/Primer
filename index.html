@@ -3,9 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#f2ede2">
+<meta name="theme-color" content="#f2ede2" id="metaTheme">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cuello">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Cuello — mapa y cuaderno</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
@@ -30,6 +34,29 @@
     --nav-h:64px;
     --safe-b:env(safe-area-inset-bottom, 0px);
     --safe-t:env(safe-area-inset-top, 0px);
+    --nav-bg:rgba(242,237,226,0.92);
+    --dot-color:rgba(32,36,31,0.05);
+  }
+
+  html[data-theme="dark"]{
+    --paper:#1a1d18;
+    --paper2:#242820;
+    --ink:#e8e4dc;
+    --ink-soft:#a8a49a;
+    --line:#3d4038;
+    --tight:#c45a48;
+    --tight-soft:#3d2824;
+    --weak:#5a8fa8;
+    --weak-soft:#243038;
+    --liberar:#c45a48;
+    --liberar-soft:#3d2824;
+    --activar:#4a9a9e;
+    --activar-soft:#243230;
+    --reeducar:#b8943a;
+    --reeducar-soft:#302a1a;
+    --accent:#b8943a;
+    --nav-bg:rgba(26,29,24,0.94);
+    --dot-opacity:0.08;
   }
 
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -37,7 +64,7 @@
   body{
     margin:0;
     background:var(--paper);
-    background-image:radial-gradient(circle at 1px 1px, rgba(32,36,31,0.05) 1px, transparent 0);
+    background-image:radial-gradient(circle at 1px 1px, rgba(32,36,31,var(--dot-opacity)) 1px, transparent 0);
     background-size:22px 22px;
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
@@ -74,6 +101,61 @@
   .tension-pill .lab{
     font-family:'IBM Plex Mono', monospace; font-size:8px; color:var(--ink-soft);
     text-transform:uppercase; letter-spacing:0.06em;
+  }
+
+  .topbar-actions{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+  .icon-btn{
+    width:40px; height:40px; border-radius:10px; border:1px solid var(--line);
+    background:var(--paper2); color:var(--ink-soft); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    transition:color .15s ease, background .15s ease;
+  }
+  .icon-btn svg{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+  .icon-btn.active{color:var(--ink); background:var(--paper);}
+
+  /* ---------- SETTINGS ---------- */
+  .settings-block{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin-bottom:18px;
+  }
+  .settings-block h3{font-family:'Fraunces', serif; font-size:16px; margin:0 0 12px;}
+  .setting-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 0; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .setting-row:last-child{border-bottom:none; padding-bottom:0;}
+  .setting-row span{font-size:14px;}
+  .setting-row small{display:block; font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .toggle-switch{
+    width:48px; height:28px; border-radius:100px; background:var(--line);
+    position:relative; flex:0 0 auto; transition:background .2s ease;
+  }
+  .toggle-switch.on{background:var(--activar);}
+  .toggle-switch::after{
+    content:''; position:absolute; top:3px; left:3px; width:22px; height:22px;
+    border-radius:50%; background:var(--paper); transition:transform .2s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle-switch.on::after{transform:translateX(20px);}
+  .setting-select{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; padding:8px 12px;
+    border-radius:8px; border:1px solid var(--line); background:var(--paper);
+    color:var(--ink); margin-top:8px; width:100%;
+  }
+
+  .pause-toast{
+    position:fixed; left:16px; right:16px; bottom:calc(var(--nav-h) + var(--safe-b) + 12px);
+    z-index:150; background:var(--ink); color:var(--paper); border-radius:14px;
+    padding:14px 16px; display:none; align-items:center; justify-content:space-between;
+    gap:12px; box-shadow:0 8px 32px rgba(0,0,0,0.25); animation:rise .3s ease;
+  }
+  .pause-toast.show{display:flex;}
+  .pause-toast-text{flex:1; font-size:13px; line-height:1.4;}
+  .pause-toast-text strong{display:block; font-family:'Fraunces', serif; font-size:15px; margin-bottom:2px;}
+  .pause-toast button{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; padding:8px 12px;
+    border-radius:100px; border:none; background:var(--activar); color:var(--paper);
+    cursor:pointer; white-space:nowrap;
   }
 
   /* ---------- SECTIONS ---------- */
@@ -364,7 +446,7 @@
   /* ---------- BOTTOM NAV ---------- */
   .bottom-nav{
     position:fixed; left:0; right:0; bottom:0; z-index:100;
-    background:rgba(242,237,226,0.92); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    background:var(--nav-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     border-top:1px solid var(--line);
     padding:6px 8px calc(6px + var(--safe-b));
     display:flex; justify-content:space-around; gap:2px;
@@ -465,16 +547,22 @@
       <div class="eyebrow">Cuello · mapa + cuaderno</div>
       <h1>El puente <em>colgante</em></h1>
     </div>
-    <div class="tension-pill" title="Progreso de hoy">
-      <svg viewBox="0 0 36 22">
-        <circle cx="18" cy="6" r="5" fill="#e7ded0" stroke="var(--ink)" stroke-width="1"/>
-        <path id="cableL" d="M 16 10 Q 8 15 5 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path id="cableR" d="M 20 10 Q 28 15 31 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <line x1="4" y1="20" x2="32" y2="20" stroke="var(--ink)" stroke-width="1.5"/>
-      </svg>
-      <div>
-        <div class="val" id="tensionValue">0%</div>
-        <div class="lab">hoy</div>
+    <div class="topbar-actions">
+      <button type="button" class="icon-btn" id="themeToggle" aria-label="Modo noche">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      <div class="tension-pill" title="Progreso de hoy">
+        <svg viewBox="0 0 36 22">
+          <circle cx="18" cy="6" r="5" fill="#e7ded0" stroke="var(--ink)" stroke-width="1"/>
+          <path id="cableL" d="M 16 10 Q 8 15 5 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path id="cableR" d="M 20 10 Q 28 15 31 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <line x1="4" y1="20" x2="32" y2="20" stroke="var(--ink)" stroke-width="1.5"/>
+        </svg>
+        <div>
+          <div class="val" id="tensionValue">0%</div>
+          <div class="lab">hoy</div>
+        </div>
       </div>
     </div>
   </div>
@@ -531,6 +619,20 @@
     </div>
 
     <div id="checklistHoy"></div>
+
+    <div class="settings-block">
+      <h3>Ajustes</h3>
+      <div class="setting-row" id="reminderRow">
+        <span>Recordar pausas<small>Cada 30–40 min mientras la app está abierta</small></span>
+        <div class="toggle-switch" id="reminderToggle" role="switch" aria-checked="false"></div>
+      </div>
+      <select class="setting-select" id="reminderInterval" hidden>
+        <option value="30">Cada 30 minutos</option>
+        <option value="35" selected>Cada 35 minutos</option>
+        <option value="40">Cada 40 minutos</option>
+      </select>
+    </div>
+
     <button class="reset-link" id="resetDay">Reiniciar el día de hoy</button>
   </section>
 
@@ -677,6 +779,14 @@
     <span>Datos</span>
   </button>
 </nav>
+
+<div class="pause-toast" id="pauseToast" role="alert">
+  <div class="pause-toast-text">
+    <strong>Pausa activa</strong>
+    5 chin tucks + hombros atrás + mirar lejos
+  </div>
+  <button type="button" id="pauseToastDone">Hecho</button>
+</div>
 
 <!-- TIMER OVERLAY -->
 <div class="overlay" id="timerOverlay" aria-hidden="true">
@@ -1491,6 +1601,112 @@ document.getElementById('resetDay').addEventListener('click', async ()=>{
 });
 
 renderHoy();
+
+/* ========== THEME ========== */
+const SETTINGS_KEY = 'cervical:settings';
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35}; }
+}
+
+function saveSettings(s){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }catch(e){}
+}
+
+let appSettings = loadSettings();
+let reminderTimer = null;
+
+function applyTheme(dark){
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.getElementById('metaTheme').content = dark ? '#1a1d18' : '#f2ede2';
+  document.getElementById('iconMoon').style.display = dark ? 'none' : 'block';
+  document.getElementById('iconSun').style.display = dark ? 'block' : 'none';
+  document.getElementById('themeToggle').classList.toggle('active', dark);
+}
+
+function triggerPauseReminder(){
+  vibrate([80, 40, 120]);
+  const toast = document.getElementById('pauseToast');
+  toast.classList.add('show');
+  if(Notification.permission === 'granted'){
+    try{
+      const n = new Notification('Pausa activa — Cuello', {
+        body: '5 chin tucks + hombros atrás + mirar un punto lejano (30 seg)',
+        icon: 'icon.svg',
+        tag: 'cervical-pause',
+      });
+      n.onclick = ()=>{ window.focus(); n.close(); };
+    }catch(e){}
+  }
+}
+
+function scheduleReminder(){
+  clearInterval(reminderTimer);
+  if(!appSettings.reminders) return;
+  const ms = (appSettings.reminderMin || 35) * 60 * 1000;
+  reminderTimer = setInterval(triggerPauseReminder, ms);
+}
+
+function updateReminderUI(){
+  const toggle = document.getElementById('reminderToggle');
+  const select = document.getElementById('reminderInterval');
+  toggle.classList.toggle('on', appSettings.reminders);
+  toggle.setAttribute('aria-checked', appSettings.reminders);
+  select.hidden = !appSettings.reminders;
+  select.value = String(appSettings.reminderMin || 35);
+}
+
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  appSettings.dark = !appSettings.dark;
+  saveSettings(appSettings);
+  applyTheme(appSettings.dark);
+});
+
+document.getElementById('reminderRow').addEventListener('click', async ()=>{
+  if(!appSettings.reminders && Notification.permission === 'default'){
+    const perm = await Notification.requestPermission();
+    if(perm === 'denied'){
+      alert('Sin permiso de notificaciones. El recordatorio solo funcionará como aviso en pantalla.');
+    }
+  }
+  appSettings.reminders = !appSettings.reminders;
+  saveSettings(appSettings);
+  updateReminderUI();
+  scheduleReminder();
+});
+
+document.getElementById('reminderInterval').addEventListener('change', (e)=>{
+  appSettings.reminderMin = parseInt(e.target.value, 10);
+  saveSettings(appSettings);
+  scheduleReminder();
+});
+
+document.getElementById('pauseToastDone').addEventListener('click', async ()=>{
+  document.getElementById('pauseToast').classList.remove('show');
+  const key = todayKey();
+  const log = await loadLog(key);
+  const ex = EXERCISES.find(e=>e.id==='e9');
+  log.counters[ex.id] = (log.counters[ex.id]||0) + 1;
+  log.done[ex.id] = log.counters[ex.id] >= ex.target;
+  await saveLog(key, log);
+  currentLog = log;
+  renderHoy();
+  updateTension();
+  vibrate(60);
+});
+
+applyTheme(appSettings.dark);
+updateReminderUI();
+scheduleReminder();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
