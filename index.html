@@ -173,16 +173,60 @@
   }
 
   .pause-fab{
-    position:fixed; right:16px;
-    bottom:calc(var(--nav-h) + var(--safe-b) + 16px);
-    z-index:140; width:56px; height:56px; border-radius:50%;
+    width:56px; height:56px; border-radius:50%;
     background:var(--reeducar); color:var(--paper); border:none;
     box-shadow:0 4px 20px rgba(0,0,0,0.22); cursor:pointer;
     display:flex; align-items:center; justify-content:center;
     font-size:22px; transition:transform .15s ease, opacity .2s ease;
   }
   .pause-fab:active{transform:scale(0.94);}
-  .pause-fab.hidden{opacity:0; pointer-events:none; transform:scale(0.8);}
+  .fab-group{
+    position:fixed; right:16px;
+    bottom:calc(var(--nav-h) + var(--safe-b) + 16px);
+    z-index:140; display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .fab-group.hidden{opacity:0; pointer-events:none; transform:scale(0.9);}
+  .fab-mini{
+    width:48px; height:48px; border-radius:50%;
+    background:var(--activar); color:var(--paper); border:none;
+    box-shadow:0 4px 16px rgba(0,0,0,0.2); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; transition:transform .15s ease;
+  }
+  .fab-mini:active{transform:scale(0.94);}
+
+  .tour-sheet{
+    background:var(--paper); border-radius:20px; padding:28px 22px;
+    width:100%; max-width:360px; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  }
+  .tour-dots{display:flex; gap:6px; justify-content:center; margin-bottom:16px;}
+  .tour-dot{width:8px; height:8px; border-radius:50%; background:var(--line);}
+  .tour-dot.active{background:var(--activar); transform:scale(1.2);}
+  .tour-sheet h2{font-family:'Fraunces', serif; font-size:22px; margin:0 0 10px;}
+  .tour-sheet p{font-size:14px; color:var(--ink-soft); line-height:1.55; margin:0 0 20px;}
+  .tour-btns{display:flex; gap:10px;}
+  .tour-btns button{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    padding:14px; border-radius:100px; border:1px solid var(--ink);
+    background:transparent; color:var(--ink); cursor:pointer; min-height:48px;
+  }
+  .tour-btns button.primary{background:var(--ink); color:var(--paper);}
+
+  .picker-skip{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    background:none; border:none; cursor:pointer; padding:10px 0 0;
+    width:100%; text-align:center; opacity:0.85;
+  }
+
+  .chin-toast{
+    position:fixed; left:16px; right:16px; bottom:calc(var(--nav-h) + var(--safe-b) + 80px);
+    z-index:150; background:var(--activar); color:var(--paper); border-radius:12px;
+    padding:12px 16px; font-size:13px; text-align:center; display:none;
+    box-shadow:0 6px 24px rgba(0,0,0,0.2); animation:rise .3s ease;
+  }
+  .chin-toast.show{display:block;}
 
   .daily-tip{
     background:var(--paper2); border-left:4px solid var(--reeducar);
@@ -1273,6 +1317,19 @@
   <footer>Educación cervical — no sustituye valoración profesional.<br>Datos guardados solo en este dispositivo.</footer>
 </div>
 
+<!-- TOUR -->
+<div class="overlay" id="tourOverlay" aria-hidden="true">
+  <div class="tour-sheet">
+    <div class="tour-dots" id="tourDots"></div>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div class="tour-btns">
+      <button type="button" id="tourSkipBtn">Saltar</button>
+      <button type="button" class="primary" id="tourNextBtn">Siguiente</button>
+    </div>
+  </div>
+</div>
+
 <!-- PHASE PICKER -->
 <div class="overlay phase-overlay" id="phaseOverlay" aria-hidden="true">
   <div class="picker-sheet">
@@ -1293,6 +1350,7 @@
       </button>
     </div>
     <button type="button" class="picker-help" id="showQuizBtn">No lo sé, ayúdame a elegir</button>
+    <button type="button" class="picker-skip" id="skipPhaseBtn">Explorar sin elegir fase</button>
     <div class="quiz-block" id="quizBlock">
       <p class="quiz-q">¿Qué te describe mejor ahora?</p>
       <button type="button" class="quiz-opt" data-phase="liberar">Tengo molestias o dolor frecuente en nuca, trapecios o sien.</button>
@@ -1322,7 +1380,12 @@
   </button>
 </nav>
 
-<button type="button" class="pause-fab" id="pauseFab" aria-label="Pausa activa rápida" title="Pausa activa">⏸</button>
+<div class="fab-group" id="fabGroup">
+  <button type="button" class="fab-mini" id="chinFab" aria-label="Chin tuck rápido" title="Chin tuck · 3 reps">🎯</button>
+  <button type="button" class="pause-fab" id="pauseFab" aria-label="Pausa activa rápida" title="Pausa activa">⏸</button>
+</div>
+
+<div class="chin-toast" id="chinToast" role="status">+3 chin tucks registrados</div>
 
 <div class="pause-toast" id="pauseToast" role="alert">
   <div class="pause-toast-text">
@@ -1426,6 +1489,14 @@ const ACHIEVEMENTS = [
   {id:'routine_done', icon:'🏁', name:'Rutina guiada', desc:'Completaste la rutina paso a paso'},
   {id:'map_explorer', icon:'🗺️', name:'Explorador', desc:'Consultaste el mapa muscular'},
   {id:'pause_master', icon:'⏸️', name:'Pausas pro', desc:'6 pausas activas en un día'},
+  {id:'chin_fan', icon:'💎', name:'Chin tuck del día', desc:'Chin tuck completo en un día'},
+];
+
+const TOUR_STEPS = [
+  {title:'Bienvenido', text:'Esta app combina mapa muscular, rutina diaria y seguimiento del dolor. Todo se guarda en tu dispositivo.'},
+  {title:'Pestaña Hoy', text:'Registra el dolor, haz la rutina guiada y revisa tu progreso. Puedes elegir tu fase para enfocar los ejercicios.'},
+  {title:'Botones flotantes', text:'⏸ Pausa activa guiada (~40 s). 🎯 Chin tuck rápido: 3 repeticiones con temporizador de 5 s.'},
+  {title:'Mapa y Datos', text:'En Mapa exploras qué músculos están tensos o débiles. En Datos ves gráficos, informe para el fisio y logros.'},
 ];
 
 const PAUSE_STEPS = [
@@ -1568,8 +1639,8 @@ const CELEBRATION_MSGS = {
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false}; }
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false}; }
 }
 
 function saveSettings(s){
@@ -1602,10 +1673,10 @@ function closeOverlay(id){
 }
 
 function updateFabVisibility(){
-  const fab = document.getElementById('pauseFab');
-  if(!fab) return;
+  const group = document.getElementById('fabGroup');
+  if(!group) return;
   const hide = document.body.classList.contains('overlay-open') || routineActive;
-  fab.classList.toggle('hidden', hide);
+  group.classList.toggle('hidden', hide);
 }
 
 function updateTimerRing(){
@@ -1746,6 +1817,81 @@ async function recordPauseDone(){
 }
 
 document.getElementById('pauseFab').addEventListener('click', openQuickPause);
+
+let chinExpressRep = 0;
+
+function runChinExpressRep(){
+  startTimerOverlay(
+    {name:'Chin tuck · rep '+(chinExpressRep+1)+'/3', phase:'activar', seconds:5},
+    async ()=>{
+      chinExpressRep++;
+      if(chinExpressRep < 3) runChinExpressRep();
+      else await finishChinExpress();
+    }
+  );
+}
+
+function openChinExpress(){
+  chinExpressRep = 0;
+  runChinExpressRep();
+}
+
+async function finishChinExpress(){
+  const key = todayKey();
+  const log = await loadLog(key);
+  const ex = EXERCISES.find(e=>e.id==='e5');
+  log.counters[ex.id] = (log.counters[ex.id]||0) + 3;
+  const info = repCounterInfo(ex, log.counters[ex.id]);
+  log.done[ex.id] = info.done;
+  await saveLog(key, log);
+  currentLog = log;
+  renderHoy();
+  updateTension();
+  await checkAchievements();
+  vibrate([50, 30, 80, 30, 120]);
+  const toast = document.getElementById('chinToast');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 2200);
+}
+
+document.getElementById('chinFab').addEventListener('click', openChinExpress);
+
+let tourStep = 0;
+
+function renderTourStep(){
+  const step = TOUR_STEPS[tourStep];
+  document.getElementById('tourTitle').textContent = step.title;
+  document.getElementById('tourText').textContent = step.text;
+  document.getElementById('tourDots').innerHTML = TOUR_STEPS.map((_,i)=>
+    '<div class="tour-dot'+(i===tourStep?' active':'')+'"></div>'
+  ).join('');
+  document.getElementById('tourNextBtn').textContent =
+    tourStep >= TOUR_STEPS.length - 1 ? 'Empezar' : 'Siguiente';
+}
+
+function showTour(){
+  tourStep = 0;
+  renderTourStep();
+  openOverlay('tourOverlay');
+}
+
+function finishTour(){
+  appSettings.tourDone = true;
+  saveSettings(appSettings);
+  closeOverlay('tourOverlay');
+}
+
+function maybeShowTour(){
+  if(!appSettings.tourDone) showTour();
+}
+
+document.getElementById('tourNextBtn').addEventListener('click', ()=>{
+  if(tourStep >= TOUR_STEPS.length - 1) finishTour();
+  else { tourStep++; renderTourStep(); }
+});
+
+document.getElementById('tourSkipBtn').addEventListener('click', finishTour);
+
 document.getElementById('qpCancel').addEventListener('click', closeQuickPause);
 document.getElementById('qpSkip').addEventListener('click', ()=>{
   stopQuickPause();
@@ -2462,6 +2608,12 @@ function selectPhase(phaseId){
   if(prev && newIdx > prevIdx && unlockBadge('phase_up')){
     enqueueBadgeToast('phase_up');
   }
+  maybeShowTour();
+}
+
+function skipPhasePicker(){
+  closeOverlay('phaseOverlay');
+  maybeShowTour();
 }
 
 function updatePhaseLabels(){
@@ -2487,6 +2639,7 @@ document.getElementById('showQuizBtn').addEventListener('click', ()=>{
   document.getElementById('quizBlock').classList.toggle('show');
 });
 document.getElementById('changePhaseBtn').addEventListener('click', showPhasePicker);
+document.getElementById('skipPhaseBtn').addEventListener('click', skipPhasePicker);
 
 /* ========== ROUTINE FLOW ========== */
 function saveRoutineSnap(){
@@ -2544,17 +2697,27 @@ function resumeRoutine(){
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function renderGreeting(){
+async function renderGreeting(){
   const h = new Date().getHours();
   const greet = h < 12 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
   const list = getRoutineList();
   const doneInList = list.filter(e=>currentLog.done[e.id]).length;
   const pct = list.length ? Math.round((doneInList/list.length)*100) : 0;
+  let monthDays = 0;
+  for(let i=0;i<30;i++){
+    const log = await loadLog(dateKey(i));
+    if(Object.values(log.done||{}).filter(Boolean).length >= 3) monthDays++;
+  }
   let sub;
   if(pct === 100) sub = 'Objetivo de hoy cumplido. El cuello agradece la constancia.';
   else if(pct > 0) sub = 'Llevas ' + pct + '% de tu fase. ¿Seguimos?';
   else if(appSettings.userPhase) sub = PHASES[appSettings.userPhase].focus;
   else sub = 'Elige tu fase o empieza la rutina cuando quieras.';
+  if(monthDays >= 3) sub += ' · ' + monthDays + ' días activos este mes';
+  const chinCount = currentLog.counters?.e5 || 0;
+  if(chinCount > 0 && !currentLog.done?.e5){
+    sub += ' · Chin tuck: ' + chinCount + '/30 reps';
+  }
   document.getElementById('greetingCard').innerHTML =
     '<div class="greet-title">'+greet+'</div><p class="greet-sub">'+sub+'</p>';
 }
@@ -2811,7 +2974,7 @@ async function renderHoy(){
 
   await renderPhaseFocus();
 
-  renderGreeting();
+  await renderGreeting();
   renderResumeChip();
 
   const container = document.getElementById('checklistHoy');
@@ -3048,6 +3211,7 @@ async function checkAchievements(){
     if(Object.values(log.done||{}).filter(Boolean).length >= 3) monthDays++;
   }
   if(monthDays >= 20) tryUnlock('month_star');
+  if(currentLog.done?.e5) tryUnlock('chin_fan');
 
   const doneToday = Object.values(currentLog.done).filter(Boolean).length;
   if(doneToday >= EXERCISES.length) tryUnlock('full_day');
