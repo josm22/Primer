@@ -274,6 +274,42 @@
     font-family:'Fraunces', serif; font-weight:700; font-size:18px; margin:0 0 4px;
   }
   .greeting-card .greet-sub{font-size:13px; color:var(--ink-soft); line-height:1.5; margin:0;}
+  .greet-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px;}
+  .greet-streak{
+    flex:0 0 auto; font-family:'IBM Plex Mono', monospace; font-size:9px;
+    padding:5px 8px; border-radius:100px; background:var(--liberar-soft);
+    color:var(--liberar); white-space:nowrap;
+  }
+  .greet-progress{height:5px; background:var(--line); border-radius:3px; margin-top:10px; overflow:hidden;}
+  .greet-progress-fill{height:100%; background:var(--activar); border-radius:3px; transition:width .3s ease;}
+
+  .offline-banner{
+    background:var(--reeducar-soft); border:1px solid var(--reeducar); border-radius:10px;
+    padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--ink-soft); text-align:center;
+  }
+  .offline-banner[hidden]{display:none;}
+
+  .pain-trend{font-weight:500;}
+  .pain-trend.good{color:var(--activar);}
+  .pain-trend.warn{color:var(--liberar);}
+
+  .guia-search{
+    width:100%; font-family:'IBM Plex Sans', sans-serif; font-size:14px;
+    padding:12px 14px; border-radius:12px; border:1px solid var(--line);
+    background:var(--paper2); color:var(--ink); margin-bottom:16px;
+  }
+  .guia-search::placeholder{color:var(--ink-soft); opacity:0.7;}
+
+  .ergo-progress{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--reeducar);
+    margin-bottom:8px;
+  }
+  .ergo-item{
+    display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:13px;
+    color:var(--ink-soft); line-height:1.55;
+  }
+  .ergo-item input{flex:0 0 auto; margin-top:3px; accent-color:var(--reeducar);}
+  .ergo-item input:checked+span{color:var(--ink); text-decoration:line-through; opacity:0.75;}
 
   .resume-chip{
     display:flex; align-items:center; gap:10px; background:var(--activar-soft);
@@ -993,6 +1029,71 @@
   }
   .report-actions button.secondary{background:transparent; color:var(--ink);}
 
+  .share-week-btn{
+    width:100%; margin-top:10px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    padding:10px; border-radius:100px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); cursor:pointer; min-height:40px;
+  }
+
+  .quick-actions{
+    display:flex; gap:8px; margin-bottom:18px; overflow-x:auto;
+    -webkit-overflow-scrolling:touch; padding-bottom:2px;
+  }
+  .quick-action{
+    flex:1; min-width:88px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    padding:12px 10px; border-radius:12px; border:1px solid var(--line);
+    background:var(--paper2); color:var(--ink); cursor:pointer; text-align:center;
+    line-height:1.35; min-height:48px;
+  }
+  .quick-action span{display:block; font-size:16px; margin-bottom:4px;}
+
+  .pain-sparkline{
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+  }
+  .pain-sparkline-label{
+    font-family:'IBM Plex Mono', monospace; font-size:9px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .pain-spark-bars{display:flex; gap:4px; align-items:flex-end; height:36px;}
+  .pain-spark-bar{flex:1; border-radius:4px 4px 0 0; background:var(--line); min-height:3px; transition:height .2s ease;}
+  .pain-spark-bar.has{ background:var(--liberar); }
+  .pain-spark-bar.low{ background:var(--activar); }
+  .pain-spark-days{display:flex; gap:4px; margin-top:4px;}
+  .pain-spark-days span{
+    flex:1; text-align:center; font-family:'IBM Plex Mono', monospace;
+    font-size:7px; color:var(--ink-soft);
+  }
+
+  .ergo-card{
+    background:var(--reeducar-soft); border:1px solid var(--reeducar);
+    border-radius:12px; padding:14px 16px; margin-bottom:18px;
+  }
+  .ergo-card strong{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:9px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--reeducar); margin-bottom:8px;
+  }
+  .ergo-card ul{margin:0; padding-left:18px; font-size:13px; color:var(--ink-soft); line-height:1.55;}
+
+  .ex-week-track{
+    display:flex; gap:3px; margin-top:8px;
+  }
+  .ex-week-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--line);
+  }
+  .ex-week-dot.on{ background:var(--phase-color, var(--activar)); }
+
+  .week-goal-bar{
+    height:6px; background:var(--line); border-radius:3px; margin-top:8px; overflow:hidden;
+  }
+  .week-goal-fill{height:100%; background:var(--activar); border-radius:3px; transition:width .3s ease;}
+
+  .settings-btn{
+    width:100%; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); cursor:pointer; margin-top:8px;
+  }
+
   @media(min-width:640px){
     body{padding-left:24px; padding-right:24px;}
     .brand h1{font-size:26px;}
@@ -1003,6 +1104,8 @@
 </head>
 <body>
 <div class="wrap">
+
+  <div class="offline-banner" id="offlineBanner" hidden>Sin conexión — tus datos siguen guardándose en este dispositivo</div>
 
   <div class="install-banner" id="installBanner" hidden>
     <p><strong>Instalar app</strong><br>Acceso rápido, recordatorios en segundo plano y sin barra del navegador.</p>
@@ -1038,6 +1141,14 @@
   <!-- HOY -->
   <section class="section active" id="sec-hoy">
     <div class="greeting-card" id="greetingCard"></div>
+
+    <div class="quick-actions" id="quickActions">
+      <button type="button" class="quick-action" data-action="routine"><span>▶</span>Rutina</button>
+      <button type="button" class="quick-action" data-action="mapa"><span>🗺</span>Mapa</button>
+      <button type="button" class="quick-action" data-action="chin"><span>🎯</span>Chin tuck</button>
+      <button type="button" class="quick-action" data-action="datos"><span>📊</span>Datos</button>
+    </div>
+
     <div id="phaseFocus"></div>
 
     <div class="week-mini" id="weekMini" hidden></div>
@@ -1096,6 +1207,17 @@
         <label for="painNote">Nota de hoy (opcional)</label>
         <input type="text" id="painNote" maxlength="120" placeholder="Ej. duele más al mirar abajo">
       </div>
+      <div class="pain-sparkline" id="painSparkline" hidden>
+        <div class="pain-sparkline-label" id="painSparkLabel">Dolor · últimos 7 días</div>
+        <div class="pain-spark-bars" id="painSparkBars"></div>
+        <div class="pain-spark-days" id="painSparkDays"></div>
+      </div>
+    </div>
+
+    <div class="ergo-card" id="ergoCard" hidden>
+      <strong>Checklist de escritorio</strong>
+      <div class="ergo-progress" id="ergoProgress"></div>
+      <ul id="ergoList"></ul>
     </div>
 
     <div class="routine-cta" id="routineCta">
@@ -1150,6 +1272,21 @@
         <option value="10">A las 10:00</option>
         <option value="11">A las 11:00</option>
       </select>
+      <div class="setting-row" id="autoThemeRow">
+        <span>Modo según sistema<small>Sigue la preferencia claro/oscuro del dispositivo</small></span>
+        <div class="toggle-switch" id="autoThemeToggle" role="switch" aria-checked="false"></div>
+      </div>
+      <div class="setting-row" id="weekGoalRow">
+        <span>Meta semanal<small>Días con rutina que te propones</small></span>
+      </div>
+      <select class="setting-select" id="weekGoalSelect">
+        <option value="3">3 días</option>
+        <option value="4">4 días</option>
+        <option value="5" selected>5 días</option>
+        <option value="6">6 días</option>
+        <option value="7">7 días</option>
+      </select>
+      <button type="button" class="settings-btn" id="replayTourBtn">Ver tour de la app otra vez</button>
       <div class="data-actions">
         <button type="button" id="exportDataBtn">Exportar datos</button>
         <button type="button" id="importDataBtn">Importar backup</button>
@@ -1247,6 +1384,7 @@
   <!-- GUÍA -->
   <section class="section" id="sec-guia">
     <div id="guiaLead"></div>
+    <input type="search" class="guia-search" id="guiaSearch" placeholder="Buscar ejercicio…" enterkeyhint="search" autocomplete="off">
     <div id="libraryFull"></div>
 
     <div class="plan-card" style="margin-top:24px;">
@@ -1499,6 +1637,14 @@ const TOUR_STEPS = [
   {title:'Mapa y Datos', text:'En Mapa exploras qué músculos están tensos o débiles. En Datos ves gráficos, informe para el fisio y logros.'},
 ];
 
+const ERGO_CHECKLIST = [
+  'Pantalla con el borde superior a la altura de los ojos',
+  'Portátil elevado o monitor externo (no mirar hacia abajo)',
+  'Antebrazos apoyados en la mesa cuando sea posible',
+  'Pausa activa cada 30–40 min (botón ⏸ flotante)',
+  'Chin tuck de recordatorio 2–3 veces por hora',
+];
+
 const PAUSE_STEPS = [
   {title:'Chin tucks', desc:'5 repeticiones lentas · mentón hacia atrás sin bajar barbilla', seconds:12},
   {title:'Hombros atrás', desc:'Omóplatos abajo y pecho abierto · 3 respiraciones', seconds:10},
@@ -1639,8 +1785,8 @@ const CELEBRATION_MSGS = {
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false}; }
+    return raw ? JSON.parse(raw) : {dark:false, autoTheme:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, weekGoal:5, ergoDone:{}, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false};
+  }catch(e){ return {dark:false, autoTheme:false, reminders:false, reminderMin:35, morningReminder:false, morningHour:9, weekGoal:5, ergoDone:{}, userPhase:null, badges:{}, badgesCollapsed:false, tourDone:false}; }
 }
 
 function saveSettings(s){
@@ -1650,6 +1796,21 @@ function saveSettings(s){
 let appSettings = loadSettings();
 let reminderTimer = null;
 let morningCheckTimer = null;
+let weekLogsCache = null;
+let guiaFilter = '';
+
+function getEffectiveDark(){
+  if(appSettings.autoTheme){
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return !!appSettings.dark;
+}
+
+async function loadWeekLogs(){
+  const logs = [];
+  for(let i=0;i<7;i++) logs.push(await loadLog(dateKey(i)));
+  return logs;
+}
 
 const RING_LEN = 326.7;
 const timerState = {interval:null, remaining:0, total:0, paused:false, onComplete:null, color:'var(--liberar)'};
@@ -1932,17 +2093,40 @@ function showCelebration(){
   openOverlay('celebrationOverlay');
 }
 
+function switchSection(secId){
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sec === secId);
+  });
+  document.querySelectorAll('.section').forEach(s=>{
+    s.classList.toggle('active', s.id === 'sec-'+secId);
+  });
+  if(secId === 'guia') renderLibrary();
+  if(secId === 'progreso') renderProgreso();
+  if(secId === 'mapa'){ updateMapaLead(); renderMapaChips(); }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.querySelectorAll('.quick-action').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    vibrate(20);
+    const action = btn.dataset.action;
+    if(action === 'routine'){
+      switchSection('hoy');
+      const start = document.getElementById('startRoutine');
+      if(!start.disabled) start.click();
+      else document.getElementById('routineCta').scrollIntoView({behavior:'smooth'});
+      return;
+    }
+    if(action === 'chin'){ openChinExpress(); return; }
+    if(action === 'mapa'){ switchSection('mapa'); return; }
+    if(action === 'datos'){ switchSection('progreso'); return; }
+  });
+});
+
 /* ========== NAV ========== */
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('sec-'+btn.dataset.sec).classList.add('active');
-    if(btn.dataset.sec === 'guia') renderLibrary();
-    if(btn.dataset.sec === 'progreso') renderProgreso();
-    if(btn.dataset.sec === 'mapa'){ updateMapaLead(); renderMapaChips(); }
-    window.scrollTo({top:0, behavior:'smooth'});
+    switchSection(btn.dataset.sec);
   });
 });
 
@@ -2140,29 +2324,111 @@ async function renderAdvanceBanner(){
     +'</div></div>';
 }
 
+async function renderPainSparkline(){
+  const wrap = document.getElementById('painSparkline');
+  const bars = document.getElementById('painSparkBars');
+  const days = document.getElementById('painSparkDays');
+  const label = document.getElementById('painSparkLabel');
+  const labels = ['D','L','M','X','J','V','S'];
+  let hasAny = false;
+  let html = '';
+  let dayHtml = '';
+  let weekPain = 0, weekN = 0, prevPain = 0, prevN = 0;
+  for(let i=6;i>=0;i--){
+    const log = weekLogsCache ? weekLogsCache[i] : await loadLog(dateKey(i));
+    const pain = log.pain;
+    if(pain != null) hasAny = true;
+    const h = pain != null ? Math.max(12, pain * 10) : 3;
+    const cls = pain == null ? '' : pain <= 3 ? 'low has' : 'has';
+    html += '<div class="pain-spark-bar '+cls+'" style="height:'+h+'%" title="'+(pain ?? '—')+'/10"></div>';
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dayHtml += '<span>'+labels[d.getDay()]+'</span>';
+  }
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    if(log.pain != null){ weekPain += log.pain; weekN++; }
+  }
+  for(let i=7;i<14;i++){
+    const log = await loadLog(dateKey(i));
+    if(log.pain != null){ prevPain += log.pain; prevN++; }
+  }
+  let trendHtml = '';
+  if(weekN && prevN){
+    const diff = weekPain/weekN - prevPain/prevN;
+    if(diff <= -0.3) trendHtml = ' <span class="pain-trend good">↓ mejor</span>';
+    else if(diff >= 0.3) trendHtml = ' <span class="pain-trend warn">↑ más</span>';
+    else trendHtml = ' <span class="pain-trend">→ estable</span>';
+  }
+  label.innerHTML = 'Dolor · últimos 7 días' + trendHtml;
+  wrap.hidden = !hasAny;
+  bars.innerHTML = html;
+  days.innerHTML = dayHtml;
+}
+
+function renderErgoCard(){
+  const card = document.getElementById('ergoCard');
+  if(appSettings.userPhase !== 'reeducar'){
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  const done = appSettings.ergoDone || {};
+  const checked = ERGO_CHECKLIST.filter((_,i)=>done[i]).length;
+  document.getElementById('ergoProgress').textContent = checked + ' de ' + ERGO_CHECKLIST.length + ' puntos revisados';
+  const list = document.getElementById('ergoList');
+  list.innerHTML = ERGO_CHECKLIST.map((s,i)=>
+    '<li><label class="ergo-item"><input type="checkbox" data-ergo="'+i+'"'+(done[i]?' checked':'')+'><span>'+s+'</span></label></li>'
+  ).join('');
+  list.querySelectorAll('input').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      if(!appSettings.ergoDone) appSettings.ergoDone = {};
+      appSettings.ergoDone[cb.dataset.ergo] = cb.checked;
+      saveSettings(appSettings);
+      renderErgoCard();
+    });
+  });
+}
+
+function renderWeekGoalBar(weekDays){
+  const goal = appSettings.weekGoal || 5;
+  const el = document.getElementById('weekMini');
+  if(el.hidden) return;
+  const pct = Math.min(100, Math.round((weekDays/goal)*100));
+  const existing = el.querySelector('.week-goal-bar');
+  if(existing) existing.remove();
+  const bar = document.createElement('div');
+  bar.className = 'week-goal-bar';
+  bar.innerHTML = '<div class="week-goal-fill" style="width:'+pct+'%"></div>';
+  bar.title = 'Meta: '+goal+' días/semana';
+  el.appendChild(bar);
+}
+
 async function renderWeekMini(){
   const el = document.getElementById('weekMini');
   let days = 0, painSum = 0, painN = 0;
   for(let i=0;i<7;i++){
-    const log = await loadLog(dateKey(i));
+    const log = weekLogsCache ? weekLogsCache[i] : await loadLog(dateKey(i));
     const done = Object.values(log.done).filter(Boolean).length;
     if(done >= 3) days++;
     if(log.pain !== null && log.pain !== undefined){ painSum += log.pain; painN++; }
   }
+  const goal = appSettings.weekGoal || 5;
   if(days === 0 && !painN){ el.hidden = true; return; }
   el.hidden = false;
-  let text = 'Esta semana: <strong>'+days+'/7</strong> días con rutina';
+  let text = 'Esta semana: <strong>'+days+'/'+goal+'</strong> días (meta semanal)';
   if(painN) text += ' · dolor medio <strong>'+(painSum/painN).toFixed(1)+'</strong>';
   if(appSettings.userPhase){
     const phaseEx = getPhaseExercises(appSettings.userPhase);
     let phaseDoneDays = 0;
     for(let i=0;i<7;i++){
-      const log = await loadLog(dateKey(i));
+      const log = weekLogsCache ? weekLogsCache[i] : await loadLog(dateKey(i));
       if(phaseEx.every(e=>log.done[e.id])) phaseDoneDays++;
     }
     if(phaseDoneDays) text += ' · <strong>'+phaseDoneDays+'</strong> días con tu fase completa';
   }
   el.innerHTML = text;
+  renderWeekGoalBar(days);
 }
 
 async function navigateToExercise(exId){
@@ -2358,6 +2624,18 @@ function renderCard(ex, log, ctx){
   const detail = document.createElement('div');
   detail.className = 'ex-detail';
   detail.textContent = ex.detail;
+
+  if(weekLogsCache){
+    const track = document.createElement('div');
+    track.className = 'ex-week-track';
+    track.title = 'Últimos 7 días';
+    for(let j=6;j>=0;j--){
+      const dot = document.createElement('div');
+      dot.className = 'ex-week-dot' + (weekLogsCache[j].done?.[ex.id] ? ' on' : '');
+      track.appendChild(dot);
+    }
+    detail.appendChild(track);
+  }
 
   const controls = document.createElement('div');
   controls.className = 'ex-controls';
@@ -2703,6 +2981,7 @@ async function renderGreeting(){
   const list = getRoutineList();
   const doneInList = list.filter(e=>currentLog.done[e.id]).length;
   const pct = list.length ? Math.round((doneInList/list.length)*100) : 0;
+  const streak = await calcStreak();
   let monthDays = 0;
   for(let i=0;i<30;i++){
     const log = await loadLog(dateKey(i));
@@ -2718,8 +2997,11 @@ async function renderGreeting(){
   if(chinCount > 0 && !currentLog.done?.e5){
     sub += ' · Chin tuck: ' + chinCount + '/30 reps';
   }
+  const streakHtml = streak >= 2 ? '<span class="greet-streak">🔥 '+streak+' días</span>' : '';
   document.getElementById('greetingCard').innerHTML =
-    '<div class="greet-title">'+greet+'</div><p class="greet-sub">'+sub+'</p>';
+    '<div class="greet-top"><div class="greet-title">'+greet+'</div>'+streakHtml+'</div>'
+    +'<p class="greet-sub">'+sub+'</p>'
+    +'<div class="greet-progress" title="'+doneInList+'/'+list.length+' hoy"><div class="greet-progress-fill" style="width:'+pct+'%"></div></div>';
 }
 
 function updateBadgesCollapse(){
@@ -2727,9 +3009,10 @@ function updateBadgesCollapse(){
 }
 
 function buildWeekNarrative(weekDays, avgPct, painDiff){
+  const goal = appSettings.weekGoal || 5;
   if(painDiff !== null && painDiff <= -0.5) return 'El dolor medio bajó respecto a la semana pasada. Vas en buena dirección.';
-  if(weekDays >= 6) return 'Excelente semana. La constancia es lo que cambia el cuello a medio plazo.';
-  if(weekDays >= 4) return 'Buen ritmo con ' + avgPct + '% de media. Intenta sumar un día más antes del domingo.';
+  if(weekDays >= goal) return 'Meta semanal cumplida ('+goal+' días). La constancia es lo que cambia el cuello a medio plazo.';
+  if(weekDays >= Math.ceil(goal * 0.8)) return 'Buen ritmo con ' + avgPct + '% de media. Te faltan ' + (goal - weekDays) + ' día' + (goal - weekDays === 1 ? '' : 's') + ' para la meta.';
   if(weekDays >= 1) return 'Has empezado — los días que faltan cuentan más que la perfección.';
   return 'Sin rutina esta semana. Un solo ejercicio hoy ya suma.';
 }
@@ -2966,6 +3249,7 @@ document.getElementById('resumeRoutineBtn').addEventListener('click', resumeRout
 async function renderHoy(){
   const key = todayKey();
   currentLog = await loadLog(key);
+  weekLogsCache = await loadWeekLogs();
   const ctx = {key, rerender: renderHoy};
 
   const phaseOrder = appSettings.userPhase
@@ -3011,6 +3295,8 @@ async function renderHoy(){
   });
 
   renderPainUI();
+  renderErgoCard();
+  await renderPainSparkline();
   updateTension();
   renderNextUp();
   renderDailyTip();
@@ -3101,6 +3387,7 @@ async function importAllData(file){
       appSettings = {...appSettings, ...data.settings};
       saveSettings(appSettings);
       applyTheme(appSettings.dark);
+      updateAutoThemeUI();
       updateReminderUI();
       updatePhaseLabels();
       scheduleReminder();
@@ -3125,13 +3412,18 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
   e.target.value = '';
 });
 
-async function renderStreak(){
+async function calcStreak(){
   let streak = 0;
   for(let i=0;i<60;i++){
     const log = await loadLog(dateKey(i));
     const doneCount = Object.values(log.done).filter(Boolean).length;
     if(doneCount>=3) streak++; else break;
   }
+  return streak;
+}
+
+async function renderStreak(){
+  const streak = await calcStreak();
   document.getElementById('statStreak').textContent = streak;
   return streak;
 }
@@ -3151,10 +3443,21 @@ function renderBadges(){
   document.getElementById('badgesCount').textContent = unlocked + '/' + ACHIEVEMENTS.length;
   row.innerHTML = ACHIEVEMENTS.map(a=>{
     const on = !!badges[a.id];
-    return '<div class="badge'+(on?' unlocked':'')+'" title="'+a.desc+'">'
+    return '<div class="badge'+(on?' unlocked':'')+'" data-badge="'+a.id+'" title="'+a.desc+'">'
       +'<div class="badge-icon">'+a.icon+'</div>'
       +'<div class="badge-name">'+a.name+'</div></div>';
   }).join('');
+  row.querySelectorAll('.badge.unlocked').forEach(el=>{
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', ()=>{
+      const id = el.dataset.badge;
+      const a = ACHIEVEMENTS.find(x=>x.id===id);
+      const ts = badges[id];
+      const when = ts ? new Date(ts).toLocaleDateString('es') : '';
+      enqueueBadgeToast(id);
+      if(when) document.getElementById('badgeToastDesc').textContent = a.desc + ' · ' + when;
+    });
+  });
 }
 
 const badgeToastQueue = [];
@@ -3396,6 +3699,7 @@ async function renderLibrary(){
   const log = await loadLog(key);
   const ctx = {key, rerender: renderLibrary};
   const leadEl = document.getElementById('guiaLead');
+  const q = guiaFilter.trim().toLowerCase();
   if(appSettings.userPhase){
     const p = PHASES[appSettings.userPhase];
     leadEl.innerHTML = '<div class="guia-phase-lead" style="--phase-color:'+p.color+'">'
@@ -3410,20 +3714,31 @@ async function renderLibrary(){
     : PHASE_ORDER;
   phaseOrder.forEach(phaseId=>{
     const phase = PHASES[phaseId];
+    const exercises = EXERCISES.filter(e=>{
+      if(e.phase !== phaseId) return false;
+      if(!q) return true;
+      return (e.name+e.detail+e.phase).toLowerCase().includes(q);
+    });
+    if(!exercises.length) return;
     const isCurrent = appSettings.userPhase === phaseId;
     const head = document.createElement('div');
     head.className = 'phase-head' + (isCurrent ? ' is-current' : (appSettings.userPhase ? ' is-muted' : ''));
     head.style.setProperty('--phase-color', phase.color);
     head.innerHTML = `<span class="phase-dot" style="background:${phase.color}"></span><span class="phase-name">${phase.name}</span><span class="phase-tag">${phase.tag}</span>`;
     container.appendChild(head);
-    const descEl = document.createElement('p');
-    descEl.className = 'phase-desc';
-    descEl.textContent = phase.desc;
-    container.appendChild(descEl);
-    EXERCISES.filter(e=>e.phase===phaseId).forEach(ex=>{
+    if(!q){
+      const descEl = document.createElement('p');
+      descEl.className = 'phase-desc';
+      descEl.textContent = phase.desc;
+      container.appendChild(descEl);
+    }
+    exercises.forEach(ex=>{
       container.appendChild(renderCard(ex, log, ctx));
     });
   });
+  if(q && !container.children.length){
+    container.innerHTML = '<p class="lead" style="opacity:0.8">Ningún ejercicio coincide con «'+guiaFilter.trim()+'».</p>';
+  }
 }
 
 async function renderProgreso(){
@@ -3448,8 +3763,9 @@ async function renderProgreso(){
   }
 
   const avgPct = Math.round(weekPctSum / 7);
-  document.getElementById('insightDays').textContent = weekDays + '/7';
-  document.getElementById('insightDays').className = 'insight-val' + (weekDays>=5 ? ' good' : weekDays>=3 ? '' : ' warn');
+  const goal = appSettings.weekGoal || 5;
+  document.getElementById('insightDays').textContent = weekDays + '/' + goal;
+  document.getElementById('insightDays').className = 'insight-val' + (weekDays>=goal ? ' good' : weekDays>=Math.ceil(goal/2) ? '' : ' warn');
   document.getElementById('insightPct').textContent = avgPct + '%';
 
   const painEl = document.getElementById('insightPain');
@@ -3531,11 +3847,19 @@ document.getElementById('resetDay').addEventListener('click', async ()=>{
 });
 
 function applyTheme(dark){
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  document.getElementById('metaTheme').content = dark ? '#1a1d18' : '#f2ede2';
-  document.getElementById('iconMoon').style.display = dark ? 'none' : 'block';
-  document.getElementById('iconSun').style.display = dark ? 'block' : 'none';
-  document.getElementById('themeToggle').classList.toggle('active', dark);
+  const isDark = appSettings.autoTheme ? getEffectiveDark() : dark;
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  document.getElementById('metaTheme').content = isDark ? '#1a1d18' : '#f2ede2';
+  document.getElementById('iconMoon').style.display = isDark ? 'none' : 'block';
+  document.getElementById('iconSun').style.display = isDark ? 'block' : 'none';
+  document.getElementById('themeToggle').classList.toggle('active', isDark);
+}
+
+function updateAutoThemeUI(){
+  const toggle = document.getElementById('autoThemeToggle');
+  toggle.classList.toggle('on', appSettings.autoTheme);
+  toggle.setAttribute('aria-checked', appSettings.autoTheme);
+  document.getElementById('weekGoalSelect').value = String(appSettings.weekGoal || 5);
 }
 
 function triggerPauseReminder(opts){
@@ -3574,9 +3898,46 @@ function updateReminderUI(){
 }
 
 document.getElementById('themeToggle').addEventListener('click', ()=>{
-  appSettings.dark = !appSettings.dark;
+  appSettings.autoTheme = false;
+  appSettings.dark = !getEffectiveDark();
   saveSettings(appSettings);
   applyTheme(appSettings.dark);
+  updateAutoThemeUI();
+});
+
+document.getElementById('autoThemeRow').addEventListener('click', ()=>{
+  appSettings.autoTheme = !appSettings.autoTheme;
+  saveSettings(appSettings);
+  updateAutoThemeUI();
+  applyTheme(appSettings.dark);
+});
+
+document.getElementById('weekGoalSelect').addEventListener('change', (e)=>{
+  appSettings.weekGoal = parseInt(e.target.value, 10);
+  saveSettings(appSettings);
+  renderWeekMini();
+});
+
+document.getElementById('replayTourBtn').addEventListener('click', ()=>{
+  tourStep = 0;
+  renderTourStep();
+  openOverlay('tourOverlay');
+});
+
+document.getElementById('guiaSearch').addEventListener('input', (e)=>{
+  guiaFilter = e.target.value;
+  renderLibrary();
+});
+
+function updateOfflineBanner(){
+  document.getElementById('offlineBanner').hidden = navigator.onLine;
+}
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+updateOfflineBanner();
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+  if(appSettings.autoTheme) applyTheme(appSettings.dark);
 });
 
 document.getElementById('reminderRow').addEventListener('click', async ()=>{
@@ -3674,6 +4035,7 @@ document.getElementById('installDismiss').addEventListener('click', ()=>{
 applyTheme(appSettings.dark);
 updateReminderUI();
 updateMorningUI();
+updateAutoThemeUI();
 updatePhaseLabels();
 updateBadgesCollapse();
 scheduleReminder();
