@@ -209,12 +209,79 @@
 
   .badges-head{
     display:flex; align-items:baseline; justify-content:space-between;
-    margin-bottom:10px;
+    margin-bottom:10px; cursor:pointer; user-select:none;
   }
   .badges-head h3{margin:0;}
   .badges-count{
     font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
   }
+  .badges-block.collapsed .badges-row{display:none;}
+  .badges-head::after{
+    content:'▾'; font-size:10px; color:var(--ink-soft); margin-left:6px;
+    transition:transform .2s ease;
+  }
+  .badges-block.collapsed .badges-head::after{transform:rotate(-90deg);}
+
+  .greeting-card{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:18px;
+  }
+  .greeting-card .greet-title{
+    font-family:'Fraunces', serif; font-weight:700; font-size:18px; margin:0 0 4px;
+  }
+  .greeting-card .greet-sub{font-size:13px; color:var(--ink-soft); line-height:1.5; margin:0;}
+
+  .resume-chip{
+    display:flex; align-items:center; gap:10px; background:var(--activar-soft);
+    border:1px solid var(--activar); border-radius:12px; padding:12px 14px; margin-bottom:14px;
+  }
+  .resume-chip[hidden]{display:none;}
+  .resume-chip span{flex:1; font-size:13px; color:var(--ink-soft); line-height:1.4;}
+  .resume-chip button{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; padding:10px 14px;
+    border-radius:100px; border:none; background:var(--activar); color:var(--paper);
+    cursor:pointer; white-space:nowrap; min-height:40px;
+  }
+
+  .routine-next{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    margin:-8px 0 16px; padding:8px 12px; background:var(--paper2);
+    border-radius:8px; border:1px dashed var(--line);
+  }
+
+  .week-heatmap{
+    display:flex; gap:6px; margin:12px 0 4px; justify-content:space-between;
+  }
+  .heat-cell{
+    flex:1; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:8px;
+    color:var(--ink-soft);
+  }
+  .heat-dot{
+    width:100%; aspect-ratio:1; max-width:36px; margin:0 auto 4px;
+    border-radius:8px; background:var(--line); transition:background .2s ease;
+  }
+  .heat-dot.l1{background:var(--liberar-soft); border:1px solid var(--liberar);}
+  .heat-dot.l2{background:var(--reeducar-soft); border:1px solid var(--reeducar);}
+  .heat-dot.l3{background:var(--activar-soft); border:1px solid var(--activar);}
+
+  .insight-narrative{
+    font-size:13px; color:var(--ink-soft); line-height:1.55; margin-top:12px;
+    padding-top:12px; border-top:1px solid var(--line);
+  }
+
+  .install-banner{
+    background:var(--ink); color:var(--paper); border-radius:12px;
+    padding:12px 14px; margin-bottom:18px; display:flex; align-items:center;
+    gap:12px; animation:rise .28s ease;
+  }
+  .install-banner[hidden]{display:none;}
+  .install-banner p{flex:1; margin:0; font-size:12.5px; line-height:1.45;}
+  .install-banner button{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; padding:8px 12px;
+    border-radius:100px; border:none; cursor:pointer; min-height:36px;
+  }
+  .install-banner .install-go{background:var(--activar); color:var(--paper);}
+  .install-banner .install-no{background:transparent; color:var(--paper); opacity:0.7;}
 
   .pause-toast-close{
     background:none; border:none; color:var(--paper); opacity:0.7;
@@ -793,6 +860,12 @@
 <body>
 <div class="wrap">
 
+  <div class="install-banner" id="installBanner" hidden>
+    <p><strong>Instalar app</strong><br>Acceso rápido, recordatorios en segundo plano y sin barra del navegador.</p>
+    <button type="button" class="install-go" id="installGo">Instalar</button>
+    <button type="button" class="install-no" id="installDismiss" aria-label="Cerrar">×</button>
+  </div>
+
   <div class="topbar">
     <div class="brand">
       <div class="eyebrow">Cuello · mapa + cuaderno</div>
@@ -820,6 +893,7 @@
 
   <!-- HOY -->
   <section class="section active" id="sec-hoy">
+    <div class="greeting-card" id="greetingCard"></div>
     <div id="phaseFocus"></div>
 
     <div class="week-mini" id="weekMini" hidden></div>
@@ -827,7 +901,7 @@
     <div class="daily-tip" id="dailyTip" hidden></div>
 
     <div class="badges-block" id="badgesBlock">
-      <div class="badges-head">
+      <div class="badges-head" id="badgesHead">
         <h3>Logros</h3>
         <span class="badges-count" id="badgesCount">0/0</span>
       </div>
@@ -870,6 +944,10 @@
     </div>
 
     <div class="routine-cta" id="routineCta">
+      <div class="resume-chip" id="resumeRoutine" hidden>
+        <span id="resumeRoutineText">Tienes una rutina a medias</span>
+        <button type="button" id="resumeRoutineBtn">Continuar</button>
+      </div>
       <button type="button" class="routine-start" id="startRoutine">Empezar rutina</button>
       <span class="routine-hint" id="routineHint">9 ejercicios · sigue el orden</span>
     </div>
@@ -885,6 +963,7 @@
       <div class="routine-phase" id="routinePhase"></div>
       <h3 class="routine-name" id="routineName"></h3>
       <p class="routine-detail" id="routineDetail"></p>
+      <div class="routine-next" id="routineNext" hidden></div>
       <div class="routine-actions" id="routineActions"></div>
     </div>
 
@@ -1034,6 +1113,8 @@
       <div class="insight-line"><span>Días con rutina</span><span class="insight-val" id="insightDays">—</span></div>
       <div class="insight-line"><span>Media ejercicios</span><span class="insight-val" id="insightPct">—</span></div>
       <div class="insight-line"><span>Dolor medio</span><span class="insight-val" id="insightPain">—</span></div>
+      <div class="week-heatmap" id="weekHeatmap"></div>
+      <p class="insight-narrative" id="insightNarrative"></p>
     </div>
 
     <div class="phase-stats" id="phaseStats">
@@ -1171,8 +1252,8 @@
       <path id="celCableR" d="M 44 16 Q 58 28 66 44" stroke="var(--activar)" stroke-width="3" fill="none" stroke-linecap="round"/>
       <line x1="10" y1="44" x2="70" y2="44" stroke="var(--ink)" stroke-width="2"/>
     </svg>
-    <h2>¡Puente aflojado!</h2>
-    <p>Rutina completa. Los cables se relajan — el cuello lo notará mañana.</p>
+    <h2 id="celebrationTitle">¡Puente aflojado!</h2>
+    <p id="celebrationText">Rutina completa. Los cables se relajan — el cuello lo notará mañana.</p>
     <button type="button" id="closeCelebration">Genial</button>
   </div>
 </div>
@@ -1196,6 +1277,7 @@ const ACHIEVEMENTS = [
   {id:'first', icon:'🌱', name:'Primer paso', desc:'Primer ejercicio completado'},
   {id:'streak7', icon:'🔥', name:'7 días', desc:'Racha de 7 días'},
   {id:'streak14', icon:'💪', name:'14 días', desc:'Racha de 14 días'},
+  {id:'streak30', icon:'🏆', name:'30 días', desc:'Racha de 30 días'},
   {id:'full_day', icon:'✨', name:'Día perfecto', desc:'9/9 ejercicios en un día'},
   {id:'phase_day', icon:'🎯', name:'Fase 100%', desc:'Tu fase completa en un día'},
   {id:'full_week', icon:'📅', name:'Semana top', desc:'7/7 días con rutina'},
@@ -1331,12 +1413,23 @@ let routineStep = 0;
 let routineActive = false;
 
 const SETTINGS_KEY = 'cervical:settings';
+const ROUTINE_SNAP_KEY = 'cervical:routine-snap';
+const INSTALL_DISMISS_KEY = 'cervical:install-dismiss';
+let deferredInstallPrompt = null;
+
+const CELEBRATION_MSGS = {
+  liberar: {title:'¡Soltaste carga!', body:'Liberar al 100% hoy. Repite mañana: el sistema nervioso aprende con constancia.'},
+  activar: {title:'¡Músculos despiertos!', body:'Activar completo. La fuerza de resistencia se consolida día a día.'},
+  reeducar: {title:'¡Entorno bajo control!', body:'Reeducar al 100%. Las pausas activas son las que sostienen el resto.'},
+  all: {title:'¡Puente aflojado!', body:'Los 9 ejercicios hechos. Los cables se relajan — el cuello lo notará mañana.'},
+  phase: {title:'¡Fase del día lista!', body:'Todos los ejercicios de tu fase completados. Buen trabajo.'},
+};
 
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}}; }
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}, badgesCollapsed:false};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}, badgesCollapsed:false}; }
 }
 
 function saveSettings(s){
@@ -1523,6 +1616,18 @@ function showCelebration(){
   const key = 'celebrated:' + todayKey();
   if(sessionStorage.getItem(key)) return;
   sessionStorage.setItem(key, '1');
+
+  const doneCount = Object.values(currentLog.done).filter(Boolean).length;
+  const fullDay = doneCount >= EXERCISES.length;
+  let msg = CELEBRATION_MSGS.all;
+  if(!fullDay && appSettings.userPhase && CELEBRATION_MSGS[appSettings.userPhase]){
+    msg = CELEBRATION_MSGS[appSettings.userPhase];
+  } else if(!fullDay){
+    msg = CELEBRATION_MSGS.phase;
+  }
+  document.getElementById('celebrationTitle').textContent = msg.title;
+  document.getElementById('celebrationText').textContent = msg.body;
+
   const box = document.getElementById('confettiBox');
   box.innerHTML = '';
   const colors = ['#a3402f','#2f6b6e','#8a6b1f','#cfdfe6','#e8cdc3'];
@@ -2107,6 +2212,104 @@ document.getElementById('showQuizBtn').addEventListener('click', ()=>{
 document.getElementById('changePhaseBtn').addEventListener('click', showPhasePicker);
 
 /* ========== ROUTINE FLOW ========== */
+function saveRoutineSnap(){
+  if(routineStep < routineIds.length && routineIds.length){
+    sessionStorage.setItem(ROUTINE_SNAP_KEY, JSON.stringify({
+      day: todayKey(), ids: routineIds, step: routineStep,
+    }));
+  }
+}
+
+function clearRoutineSnap(){
+  sessionStorage.removeItem(ROUTINE_SNAP_KEY);
+}
+
+function loadRoutineSnap(){
+  try{
+    const raw = sessionStorage.getItem(ROUTINE_SNAP_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(s.day !== todayKey() || !s.ids?.length){ clearRoutineSnap(); return null; }
+    return s;
+  }catch(e){ return null; }
+}
+
+function renderResumeChip(){
+  const snap = loadRoutineSnap();
+  const chip = document.getElementById('resumeRoutine');
+  if(!snap || routineActive){
+    chip.hidden = true;
+    return;
+  }
+  const ex = exerciseById(snap.ids[snap.step]);
+  chip.hidden = false;
+  document.getElementById('resumeRoutineText').textContent =
+    'Rutina a medias · ejercicio ' + (snap.step + 1) + ' de ' + snap.ids.length;
+  document.getElementById('resumeRoutineBtn').textContent = ex ? 'Continuar' : 'Continuar';
+}
+
+function resumeRoutine(){
+  const snap = loadRoutineSnap();
+  if(!snap) return;
+  routineIds = snap.ids;
+  routineStep = snap.step;
+  while(routineStep < routineIds.length && currentLog.done[routineIds[routineStep]]){
+    routineStep++;
+  }
+  if(routineStep >= routineIds.length){
+    clearRoutineSnap();
+    renderResumeChip();
+    return;
+  }
+  routineActive = true;
+  updateFabVisibility();
+  renderRoutineStep();
+  document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function renderGreeting(){
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const list = getRoutineList();
+  const doneInList = list.filter(e=>currentLog.done[e.id]).length;
+  const pct = list.length ? Math.round((doneInList/list.length)*100) : 0;
+  let sub;
+  if(pct === 100) sub = 'Objetivo de hoy cumplido. El cuello agradece la constancia.';
+  else if(pct > 0) sub = 'Llevas ' + pct + '% de tu fase. ¿Seguimos?';
+  else if(appSettings.userPhase) sub = PHASES[appSettings.userPhase].focus;
+  else sub = 'Elige tu fase o empieza la rutina cuando quieras.';
+  document.getElementById('greetingCard').innerHTML =
+    '<div class="greet-title">'+greet+'</div><p class="greet-sub">'+sub+'</p>';
+}
+
+function updateBadgesCollapse(){
+  document.getElementById('badgesBlock').classList.toggle('collapsed', !!appSettings.badgesCollapsed);
+}
+
+function buildWeekNarrative(weekDays, avgPct, painDiff){
+  if(painDiff !== null && painDiff <= -0.5) return 'El dolor medio bajó respecto a la semana pasada. Vas en buena dirección.';
+  if(weekDays >= 6) return 'Excelente semana. La constancia es lo que cambia el cuello a medio plazo.';
+  if(weekDays >= 4) return 'Buen ritmo con ' + avgPct + '% de media. Intenta sumar un día más antes del domingo.';
+  if(weekDays >= 1) return 'Has empezado — los días que faltan cuentan más que la perfección.';
+  return 'Sin rutina esta semana. Un solo ejercicio hoy ya suma.';
+}
+
+async function renderWeekHeatmap(){
+  const el = document.getElementById('weekHeatmap');
+  const labels = ['D','L','M','X','J','V','S'];
+  let html = '';
+  for(let i=6;i>=0;i--){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done).filter(Boolean).length;
+    const pct = Math.round((done/EXERCISES.length)*100);
+    const lvl = done >= 3 ? (pct >= 80 ? 'l3' : 'l2') : (done > 0 ? 'l1' : '');
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    html += '<div class="heat-cell"><div class="heat-dot '+lvl+'"></div>'+labels[d.getDay()]+'</div>';
+  }
+  el.innerHTML = html;
+}
+
 function buildRoutineQueue(){
   return getRoutineList().filter(e=>!currentLog.done[e.id]).map(e=>e.id);
 }
@@ -2116,7 +2319,7 @@ function renderRoutineStep(){
   if(!routineActive || routineStep >= routineIds.length){
     flow.classList.remove('active');
     document.getElementById('checklistHoy').style.display = '';
-    if(routineActive) endRoutine();
+    if(routineActive) endRoutine(false);
     return;
   }
 
@@ -2134,6 +2337,15 @@ function renderRoutineStep(){
   document.getElementById('routinePhase').style.color = phase.color;
   document.getElementById('routineName').textContent = ex.name;
   document.getElementById('routineDetail').textContent = ex.detail;
+
+  const nextEl = document.getElementById('routineNext');
+  if(routineStep + 1 < routineIds.length){
+    const nextEx = exerciseById(routineIds[routineStep + 1]);
+    nextEl.hidden = false;
+    nextEl.textContent = 'Después: ' + nextEx.name;
+  } else {
+    nextEl.hidden = true;
+  }
 
   const actions = document.getElementById('routineActions');
   actions.innerHTML = '';
@@ -2193,7 +2405,9 @@ function renderRoutineStep(){
   const exit = document.createElement('button');
   exit.className = 'routine-btn ghost';
   exit.textContent = 'Salir';
-  exit.addEventListener('click', endRoutine);
+  exit.addEventListener('click', ()=>{
+    endRoutine(true);
+  });
   actions.appendChild(exit);
 }
 
@@ -2205,23 +2419,27 @@ function advanceRoutine(){
       renderBadges();
       enqueueBadgeToast('routine_done');
     }
-    endRoutine();
+    endRoutine(false);
     return;
   }
   renderRoutineStep();
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function endRoutine(){
+function endRoutine(pause){
+  if(pause) saveRoutineSnap();
+  else clearRoutineSnap();
   routineActive = false;
   routineIds = [];
   routineStep = 0;
   document.getElementById('routineFlow').classList.remove('active');
   document.getElementById('checklistHoy').style.display = '';
   updateFabVisibility();
+  renderResumeChip();
 }
 
 document.getElementById('startRoutine').addEventListener('click', ()=>{
+  clearRoutineSnap();
   routineIds = buildRoutineQueue();
   if(!routineIds.length) return;
   routineActive = true;
@@ -2230,6 +2448,8 @@ document.getElementById('startRoutine').addEventListener('click', ()=>{
   renderRoutineStep();
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 });
+
+document.getElementById('resumeRoutineBtn').addEventListener('click', resumeRoutine);
 
 async function renderHoy(){
   const key = todayKey();
@@ -2241,6 +2461,9 @@ async function renderHoy(){
     : PHASE_ORDER;
 
   await renderPhaseFocus();
+
+  renderGreeting();
+  renderResumeChip();
 
   const container = document.getElementById('checklistHoy');
   container.innerHTML = '';
@@ -2465,6 +2688,7 @@ async function checkAchievements(){
   const streak = await renderStreak();
   if(streak >= 7) tryUnlock('streak7');
   if(streak >= 14) tryUnlock('streak14');
+  if(streak >= 30) tryUnlock('streak30');
 
   const doneToday = Object.values(currentLog.done).filter(Boolean).length;
   if(doneToday >= EXERCISES.length) tryUnlock('full_day');
@@ -2640,12 +2864,14 @@ async function renderProgreso(){
   document.getElementById('insightPct').textContent = avgPct + '%';
 
   const painEl = document.getElementById('insightPain');
+  let painDiff = null;
   if(weekPainN){
     const avg = (weekPainSum/weekPainN).toFixed(1);
     let painText = avg + '/10';
     if(prevPainN){
       const prevAvg = prevPainSum/prevPainN;
       const diff = (weekPainSum/weekPainN) - prevAvg;
+      painDiff = diff;
       if(Math.abs(diff) >= 0.3){
         painText += diff < 0 ? ' ↓' : ' ↑';
         painEl.className = 'insight-val ' + (diff < 0 ? 'good' : 'warn');
@@ -2660,6 +2886,10 @@ async function renderProgreso(){
     painEl.textContent = 'Sin datos';
     painEl.className = 'insight-val';
   }
+
+  document.getElementById('insightNarrative').textContent =
+    buildWeekNarrative(weekDays, avgPct, painDiff);
+  await renderWeekHeatmap();
 
   await renderPhaseStats();
   await renderPhysioReport();
@@ -2785,9 +3015,36 @@ document.getElementById('pauseToastClose').addEventListener('click', ()=>{
   document.getElementById('pauseToast').classList.remove('show');
 });
 
+document.getElementById('badgesHead').addEventListener('click', ()=>{
+  appSettings.badgesCollapsed = !appSettings.badgesCollapsed;
+  saveSettings(appSettings);
+  updateBadgesCollapse();
+});
+
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(localStorage.getItem(INSTALL_DISMISS_KEY)) return;
+  document.getElementById('installBanner').hidden = false;
+});
+
+document.getElementById('installGo').addEventListener('click', async ()=>{
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('installBanner').hidden = true;
+});
+
+document.getElementById('installDismiss').addEventListener('click', ()=>{
+  localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+  document.getElementById('installBanner').hidden = true;
+});
+
 applyTheme(appSettings.dark);
 updateReminderUI();
 updatePhaseLabels();
+updateBadgesCollapse();
 scheduleReminder();
 renderHoy();
 if(!appSettings.userPhase) showPhasePicker();
