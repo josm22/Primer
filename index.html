@@ -3680,6 +3680,7 @@ scheduleReminder();
 scheduleMorningCheck();
 renderHoy();
 if(!appSettings.userPhase) showPhasePicker();
+else if(!appSettings.tourDone) showTour();
 else updateMapaMuscles();
 
 if('serviceWorker' in navigator){
