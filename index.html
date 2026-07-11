@@ -158,6 +158,20 @@
     cursor:pointer; white-space:nowrap;
   }
 
+  .badge-toast{
+    position:fixed; left:16px; right:16px; bottom:calc(var(--nav-h) + var(--safe-b) + 12px);
+    z-index:151; background:var(--paper2); color:var(--ink); border:2px solid var(--activar);
+    border-radius:14px; padding:12px 14px; display:none; align-items:center; gap:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.18); animation:rise .3s ease;
+  }
+  .badge-toast.show{display:flex;}
+  .badge-toast-icon{font-size:28px; line-height:1;}
+  .badge-toast-text{flex:1; font-size:12px; line-height:1.4; color:var(--ink-soft);}
+  .badge-toast-text strong{
+    display:block; font-family:'Fraunces', serif; font-size:15px;
+    color:var(--ink); margin-bottom:2px;
+  }
+
   /* ---------- SECTIONS ---------- */
   .section{display:none; animation:rise .28s ease;}
   .section.active{display:block;}
@@ -684,6 +698,41 @@
   }
   #importFile{display:none;}
 
+  .badges-block{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:18px;
+  }
+  .badges-block h3{font-family:'Fraunces', serif; font-size:15px; margin:0 0 10px;}
+  .badges-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch;}
+  .badge{
+    flex:0 0 auto; text-align:center; width:72px; padding:8px 4px;
+    border-radius:10px; border:1px solid var(--line); background:var(--paper);
+    opacity:0.4; filter:grayscale(1); transition:opacity .2s ease, filter .2s ease;
+  }
+  .badge.unlocked{opacity:1; filter:none; border-color:var(--activar);}
+  .badge .badge-icon{font-size:22px; line-height:1; margin-bottom:4px;}
+  .badge .badge-name{font-family:'IBM Plex Mono', monospace; font-size:8px; letter-spacing:0.03em; color:var(--ink-soft); line-height:1.2;}
+
+  .report-box{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin-bottom:22px;
+  }
+  .report-box h3{font-family:'Fraunces', serif; font-size:16px; margin:0 0 8px;}
+  .report-box p{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; line-height:1.5;}
+  .report-preview{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; line-height:1.6;
+    background:var(--paper); border:1px solid var(--line); border-radius:8px;
+    padding:12px; max-height:160px; overflow-y:auto; white-space:pre-wrap;
+    color:var(--ink-soft); margin-bottom:12px;
+  }
+  .report-actions{display:flex; gap:8px;}
+  .report-actions button{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    padding:12px; border-radius:100px; border:1px solid var(--ink);
+    background:var(--ink); color:var(--paper); cursor:pointer; min-height:44px;
+  }
+  .report-actions button.secondary{background:transparent; color:var(--ink);}
+
   @media(min-width:640px){
     body{padding-left:24px; padding-right:24px;}
     .brand h1{font-size:26px;}
@@ -725,6 +774,11 @@
     <div id="phaseFocus"></div>
 
     <div class="week-mini" id="weekMini" hidden></div>
+
+    <div class="badges-block" id="badgesBlock">
+      <h3>Logros</h3>
+      <div class="badges-row" id="badgesRow"></div>
+    </div>
 
     <div class="stats">
       <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab" id="statDoneLabel">Hecho</div></div>
@@ -789,7 +843,7 @@
         <button type="button" class="setting-select" id="changePhaseBtn" style="width:auto;margin:0;">Cambiar</button>
       </div>
       <div class="setting-row" id="reminderRow">
-        <span>Recordar pausas<small>Cada 30–40 min mientras la app está abierta</small></span>
+        <span>Recordar pausas<small>En pantalla y notificación (mejor con app instalada)</small></span>
         <div class="toggle-switch" id="reminderToggle" role="switch" aria-checked="false"></div>
       </div>
       <select class="setting-select" id="reminderInterval" hidden>
@@ -911,6 +965,16 @@
 
   <!-- PROGRESO -->
   <section class="section" id="sec-progreso">
+    <div class="report-box">
+      <h3>Informe para el fisio</h3>
+      <p>Resumen de 14 días para compartir en la consulta.</p>
+      <div class="report-preview" id="reportPreview">Cargando…</div>
+      <div class="report-actions">
+        <button type="button" id="copyReportBtn">Copiar</button>
+        <button type="button" class="secondary" id="shareReportBtn">Compartir</button>
+      </div>
+    </div>
+
     <div class="insight-box" id="weeklyInsight">
       <h3>Esta semana</h3>
       <div class="insight-line"><span>Días con rutina</span><span class="insight-val" id="insightDays">—</span></div>
@@ -992,6 +1056,14 @@
   <button type="button" id="pauseToastDone">Hecho</button>
 </div>
 
+<div class="badge-toast" id="badgeToast" role="status" aria-live="polite">
+  <div class="badge-toast-icon" id="badgeToastIcon"></div>
+  <div class="badge-toast-text">
+    <strong id="badgeToastTitle">Logro desbloqueado</strong>
+    <span id="badgeToastDesc"></span>
+  </div>
+</div>
+
 <!-- TIMER OVERLAY -->
 <div class="overlay" id="timerOverlay" aria-hidden="true">
   <div class="timer-sheet">
@@ -1041,6 +1113,17 @@ const MUSCLE_DATA = {
 };
 
 const PHASE_ORDER = ['liberar','activar','reeducar'];
+
+const ACHIEVEMENTS = [
+  {id:'first', icon:'🌱', name:'Primer paso', desc:'Primer ejercicio completado'},
+  {id:'streak7', icon:'🔥', name:'7 días', desc:'Racha de 7 días'},
+  {id:'streak14', icon:'💪', name:'14 días', desc:'Racha de 14 días'},
+  {id:'full_day', icon:'✨', name:'Día perfecto', desc:'9/9 ejercicios en un día'},
+  {id:'phase_day', icon:'🎯', name:'Fase 100%', desc:'Tu fase completa en un día'},
+  {id:'full_week', icon:'📅', name:'Semana top', desc:'7/7 días con rutina'},
+  {id:'pain_down', icon:'📉', name:'Dolor baja', desc:'Dolor semanal a la baja'},
+  {id:'phase_up', icon:'🚀', name:'Nueva fase', desc:'Avanzaste a la siguiente fase'},
+];
 
 const PHASES = {
   liberar: {
@@ -1141,8 +1224,8 @@ const SETTINGS_KEY = 'cervical:settings';
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null}; }
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null, badges:{}}; }
 }
 
 function saveSettings(s){
@@ -1481,6 +1564,7 @@ function appendRepControls(ex, log, ctx, parent, btnClass){
       );
     });
     parent.appendChild(holdBtn);
+    return;
   }
 
   const btn = document.createElement('button');
@@ -1762,6 +1846,9 @@ function showPhasePicker(){
 }
 
 function selectPhase(phaseId){
+  const prev = appSettings.userPhase;
+  const prevIdx = prev ? PHASE_ORDER.indexOf(prev) : -1;
+  const newIdx = PHASE_ORDER.indexOf(phaseId);
   appSettings.userPhase = phaseId;
   saveSettings(appSettings);
   sessionStorage.removeItem('advance-dismiss:'+phaseId);
@@ -1772,6 +1859,9 @@ function selectPhase(phaseId){
   updateTension();
   updateMapaMuscles();
   vibrate(50);
+  if(prev && newIdx > prevIdx && unlockBadge('phase_up')){
+    enqueueBadgeToast('phase_up');
+  }
 }
 
 function updatePhaseLabels(){
@@ -1964,8 +2054,8 @@ async function renderHoy(){
   updateTension();
   renderNextUp();
   await renderWeekMini();
+  await checkAchievements();
   if(routineActive && routineIds.length) renderRoutineStep();
-  await renderStreak();
 }
 
 function renderNextUp(){
@@ -2079,6 +2169,182 @@ async function renderStreak(){
     if(doneCount>=3) streak++; else break;
   }
   document.getElementById('statStreak').textContent = streak;
+  return streak;
+}
+
+function unlockBadge(id){
+  if(!appSettings.badges) appSettings.badges = {};
+  if(appSettings.badges[id]) return false;
+  appSettings.badges[id] = Date.now();
+  saveSettings(appSettings);
+  return true;
+}
+
+function renderBadges(){
+  const row = document.getElementById('badgesRow');
+  const badges = appSettings.badges || {};
+  row.innerHTML = ACHIEVEMENTS.map(a=>{
+    const on = !!badges[a.id];
+    return '<div class="badge'+(on?' unlocked':'')+'" title="'+a.desc+'">'
+      +'<div class="badge-icon">'+a.icon+'</div>'
+      +'<div class="badge-name">'+a.name+'</div></div>';
+  }).join('');
+}
+
+const badgeToastQueue = [];
+let badgeToastShowing = false;
+
+function enqueueBadgeToast(id){
+  badgeToastQueue.push(id);
+  pumpBadgeToast();
+}
+
+function pumpBadgeToast(){
+  if(badgeToastShowing || !badgeToastQueue.length) return;
+  badgeToastShowing = true;
+  const id = badgeToastQueue.shift();
+  const a = ACHIEVEMENTS.find(x=>x.id===id);
+  if(!a){
+    badgeToastShowing = false;
+    pumpBadgeToast();
+    return;
+  }
+  const toast = document.getElementById('badgeToast');
+  document.getElementById('badgeToastIcon').textContent = a.icon;
+  document.getElementById('badgeToastTitle').textContent = 'Logro: '+a.name;
+  document.getElementById('badgeToastDesc').textContent = a.desc;
+  toast.classList.add('show');
+  setTimeout(()=>{
+    toast.classList.remove('show');
+    badgeToastShowing = false;
+    pumpBadgeToast();
+  }, 2800);
+}
+
+async function checkAchievements(){
+  const unlocked = [];
+  const tryUnlock = (id)=>{
+    if(unlockBadge(id)) unlocked.push(id);
+  };
+
+  for(let i=0;i<90;i++){
+    const log = await loadLog(dateKey(i));
+    if(Object.values(log.done||{}).some(Boolean)){
+      tryUnlock('first');
+      break;
+    }
+  }
+  const streak = await renderStreak();
+  if(streak >= 7) tryUnlock('streak7');
+  if(streak >= 14) tryUnlock('streak14');
+
+  const doneToday = Object.values(currentLog.done).filter(Boolean).length;
+  if(doneToday >= EXERCISES.length) tryUnlock('full_day');
+  if(appSettings.userPhase){
+    const phaseEx = getPhaseExercises(appSettings.userPhase);
+    if(phaseEx.every(e=>currentLog.done[e.id])) tryUnlock('phase_day');
+  }
+
+  let weekDays = 0;
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    if(Object.values(log.done||{}).filter(Boolean).length >= 3) weekDays++;
+  }
+  if(weekDays >= 7) tryUnlock('full_week');
+
+  let weekPain = 0, weekN = 0, prevPain = 0, prevN = 0;
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    if(log.pain != null){ weekPain += log.pain; weekN++; }
+  }
+  for(let i=7;i<14;i++){
+    const log = await loadLog(dateKey(i));
+    if(log.pain != null){ prevPain += log.pain; prevN++; }
+  }
+  if(weekN && prevN && weekPain/weekN < prevPain/prevN - 0.3) tryUnlock('pain_down');
+
+  renderBadges();
+  if(unlocked.length){
+    vibrate([60, 40, 80]);
+    unlocked.forEach(id=>enqueueBadgeToast(id));
+  }
+}
+
+async function buildPhysioReport(){
+  const lines = ['INFORME CERVICAL — últimos 14 días', 'Generado: '+todayKey(), ''];
+  if(appSettings.userPhase){
+    const p = PHASES[appSettings.userPhase];
+    lines.push('Fase actual: '+p.tag+' '+p.name);
+  }
+  let totalDays = 0, painSum = 0, painN = 0;
+  const dayLines = [];
+  for(let i=13;i>=0;i--){
+    const k = dateKey(i);
+    const log = await loadLog(k);
+    const done = Object.values(log.done||{}).filter(Boolean).length;
+    const pct = Math.round((done/EXERCISES.length)*100);
+    if(done >= 3) totalDays++;
+    const pain = log.pain != null ? log.pain : '—';
+    if(log.pain != null){ painSum += log.pain; painN++; }
+    dayLines.push(k+': '+done+'/9 ('+pct+'%) · dolor '+pain);
+  }
+  lines.push('Días con rutina (≥3 ej.): '+totalDays+'/14');
+  if(painN) lines.push('Dolor medio: '+(painSum/painN).toFixed(1)+'/10');
+  lines.push('');
+  for(const id of PHASE_ORDER){
+    const exs = getPhaseExercises(id);
+    let sum = 0;
+    for(let i=0;i<14;i++){
+      const log = await loadLog(dateKey(i));
+      sum += exs.filter(e=>log.done[e.id]).length / exs.length;
+    }
+    lines.push(PHASES[id].name+': '+Math.round((sum/14)*100)+'% completado (media 14 días)');
+  }
+  lines.push('', 'Detalle diario:', ...dayLines);
+  lines.push('', '— Generado con app Cuello (cuaderno personal, no sustituye valoración clínica)');
+  return lines.join('\n');
+}
+
+let reportText = '';
+
+async function renderPhysioReport(){
+  reportText = await buildPhysioReport();
+  document.getElementById('reportPreview').textContent = reportText;
+}
+
+document.getElementById('copyReportBtn').addEventListener('click', async ()=>{
+  if(!reportText) reportText = await buildPhysioReport();
+  try{
+    await navigator.clipboard.writeText(reportText);
+    vibrate(40);
+    alert('Informe copiado al portapapeles.');
+  }catch(e){
+    alert('No se pudo copiar. Selecciona el texto manualmente.');
+  }
+});
+
+document.getElementById('shareReportBtn').addEventListener('click', async ()=>{
+  if(!reportText) reportText = await buildPhysioReport();
+  if(navigator.share){
+    try{
+      await navigator.share({title:'Informe cervical', text:reportText});
+    }catch(e){}
+  } else {
+    document.getElementById('copyReportBtn').click();
+  }
+});
+
+function syncReminderToSW(){
+  const cfg = {
+    type:'REMINDER_CONFIG',
+    enabled: !!(appSettings.reminders && Notification.permission === 'granted'),
+    minutes: appSettings.reminderMin || 35,
+  };
+  const post = (worker)=>{
+    if(worker) worker.postMessage(cfg);
+  };
+  if(navigator.serviceWorker?.controller) post(navigator.serviceWorker.controller);
+  navigator.serviceWorker?.ready?.then((reg)=>post(reg.active)).catch(()=>{});
 }
 
 async function renderLibrary(){
@@ -2165,6 +2431,7 @@ async function renderProgreso(){
   }
 
   await renderPhaseStats();
+  await renderPhysioReport();
 
   const grid = document.getElementById('historyGrid');
   const painGrid = document.getElementById('painHistoryGrid');
@@ -2218,11 +2485,12 @@ function applyTheme(dark){
   document.getElementById('themeToggle').classList.toggle('active', dark);
 }
 
-function triggerPauseReminder(){
+function triggerPauseReminder(opts){
+  const notify = !!(opts && opts.notify);
   vibrate([80, 40, 120]);
   const toast = document.getElementById('pauseToast');
   toast.classList.add('show');
-  if(Notification.permission === 'granted'){
+  if(notify && Notification.permission === 'granted'){
     try{
       const n = new Notification('Pausa activa — Cuello', {
         body: '5 chin tucks + hombros atrás + mirar un punto lejano (30 seg)',
@@ -2236,9 +2504,11 @@ function triggerPauseReminder(){
 
 function scheduleReminder(){
   clearInterval(reminderTimer);
+  syncReminderToSW();
   if(!appSettings.reminders) return;
+  if(Notification.permission === 'granted') return;
   const ms = (appSettings.reminderMin || 35) * 60 * 1000;
-  reminderTimer = setInterval(triggerPauseReminder, ms);
+  reminderTimer = setInterval(()=>triggerPauseReminder({notify:false}), ms);
 }
 
 function updateReminderUI(){
@@ -2298,10 +2568,20 @@ if(!appSettings.userPhase) showPhasePicker();
 else updateMapaMuscles();
 
 if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', (e)=>{
+    if(e.data?.type === 'PAUSE_REMINDER') triggerPauseReminder();
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    syncReminderToSW();
+  });
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js').then(()=>{
+      syncReminderToSW();
+    }).catch(()=>{});
   });
 }
+
+renderBadges();
 </script>
 </body>
 </html>
