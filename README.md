@@ -29,4 +29,6 @@ Luego visita http://localhost:8080
 
 ## Despliegue
 
-GitHub Pages despliega automáticamente al hacer push a `main` (workflow `.github/workflows/pages.yml`).
+GitHub Pages despliegue automáticamente al hacer push a `main` (workflow `.github/workflows/pages.yml`).
+
+**Primera vez:** en el repo de GitHub ve a **Settings → Pages → Build and deployment → Source: GitHub Actions**. Si el entorno `github-pages` tiene reglas de protección, permite despliegues desde la rama `main`.
