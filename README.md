@@ -1,3 +1,32 @@
-# Primer
+# Cuello — mapa y cuaderno
 
-Welcome to this project repository!
+App móvil para seguimiento cervical: diagrama anatómico interactivo, rutina por fases (Liberar → Activar → Reeducar), registro de dolor y progreso diario.
+
+## Demo en vivo
+
+**https://josm22.github.io/Primer/**
+
+Instálala como PWA desde el navegador (móvil o escritorio) para recordatorios y uso offline.
+
+## Contenido
+
+- **Hoy** — rutina guiada, escala de dolor, logros, chin tuck y pausas activas
+- **Mapa** — músculos tensos/débiles con enlace a ejercicios
+- **Guía** — 9 ejercicios en 3 fases
+- **Datos** — gráficos, informe para el fisio, exportar/importar backup
+
+Los datos se guardan solo en el dispositivo (`localStorage`).
+
+## Desarrollo local
+
+Abre `index.html` con un servidor estático (necesario para el service worker):
+
+```bash
+python3 -m http.server 8080
+```
+
+Luego visita http://localhost:8080
+
+## Despliegue
+
+GitHub Pages despliega automáticamente al hacer push a `main` (workflow `.github/workflows/pages.yml`).
