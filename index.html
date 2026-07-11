@@ -607,6 +607,53 @@
   }
   .phase-exercises.collapsed{display:none;}
 
+  .phase-journey{
+    display:flex; align-items:center; gap:4px; margin-bottom:14px;
+    padding-bottom:14px; border-bottom:1px dashed var(--line);
+  }
+  .journey-step{
+    flex:1; text-align:center; font-family:'IBM Plex Mono', monospace;
+    font-size:8px; letter-spacing:0.03em; text-transform:uppercase;
+    padding:8px 4px; border-radius:8px; border:1px solid var(--line);
+    color:var(--ink-soft); line-height:1.3;
+  }
+  .journey-step strong{display:block; font-family:'Fraunces', serif; font-size:11px; font-weight:600; text-transform:none; letter-spacing:0;}
+  .journey-step.done{background:var(--paper); color:var(--ink-soft);}
+  .journey-step.current{
+    border-color:var(--phase-color); background:color-mix(in srgb, var(--phase-color) 12%, var(--paper2));
+    color:var(--ink); font-weight:500;
+  }
+  .journey-step.future{opacity:0.45;}
+
+  .advance-banner{
+    background:color-mix(in srgb, var(--activar) 12%, var(--paper2));
+    border:1px solid var(--activar); border-radius:12px; padding:14px; margin-top:12px;
+  }
+  .advance-banner p{font-size:13px; color:var(--ink-soft); margin:0 0 10px; line-height:1.5;}
+  .advance-banner-btns{display:flex; gap:8px;}
+  .advance-banner button{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    padding:10px; border-radius:100px; cursor:pointer; min-height:40px;
+  }
+  .advance-banner .yes{background:var(--activar); color:var(--paper); border:none;}
+  .advance-banner .no{background:transparent; border:1px solid var(--line); color:var(--ink-soft);}
+
+  .week-mini{
+    background:var(--paper2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-bottom:18px; font-size:12.5px; color:var(--ink-soft); line-height:1.5;
+  }
+  .week-mini strong{color:var(--ink); font-weight:600;}
+
+  .muscle.phase-key{opacity:1 !important; animation:musclePulse 2.5s ease-in-out infinite;}
+  .muscle.phase-dim{opacity:0.3 !important;}
+  @keyframes musclePulse{0%,100%{filter:drop-shadow(0 0 3px var(--activar));}50%{filter:drop-shadow(0 0 8px var(--activar));}}
+
+  .guia-phase-lead{
+    background:var(--paper2); border-left:4px solid var(--phase-color, var(--ink));
+    border-radius:8px; padding:14px; margin-bottom:18px; font-size:13.5px;
+    color:var(--ink-soft); line-height:1.55;
+  }
+
   @media(min-width:640px){
     body{padding-left:24px; padding-right:24px;}
     .brand h1{font-size:26px;}
@@ -646,6 +693,8 @@
   <!-- HOY -->
   <section class="section active" id="sec-hoy">
     <div id="phaseFocus"></div>
+
+    <div class="week-mini" id="weekMini" hidden></div>
 
     <div class="stats">
       <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab">Hecho</div></div>
@@ -802,7 +851,7 @@
 
   <!-- GUÍA -->
   <section class="section" id="sec-guia">
-    <p class="lead">Tres fases: primero soltar lo tenso, luego activar lo débil, y por último reeducar el entorno para que no vuelva.</p>
+    <div id="guiaLead"></div>
     <div id="libraryFull"></div>
 
     <div class="plan-card" style="margin-top:24px;">
@@ -946,6 +995,8 @@ const MUSCLE_DATA = {
   'flexores': {role:'weak', title:'Flexores cervicales profundos', text:'Los verdaderos estabilizadores anteriores. Se "duermen" con cabeza adelantada; clave para corregirla.', exercise:'e5'},
   'pect-menor': {role:'tight', title:'Pectoral menor', text:'Se acorta con hombros redondeados y tira la escápula hacia delante.', exercise:'e3'},
 };
+
+const PHASE_ORDER = ['liberar','activar','reeducar'];
 
 const PHASES = {
   liberar: {
@@ -1157,12 +1208,102 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     document.getElementById('sec-'+btn.dataset.sec).classList.add('active');
     if(btn.dataset.sec === 'guia') renderLibrary();
     if(btn.dataset.sec === 'progreso') renderProgreso();
+    if(btn.dataset.sec === 'mapa') updateMapaLead();
     window.scrollTo({top:0, behavior:'smooth'});
   });
 });
 
 /* ========== MAPA ========== */
 function exerciseById(id){ return EXERCISES.find(e=>e.id===id); }
+
+function updateMapaLead(){
+  const el = document.querySelector('#sec-mapa > .lead');
+  if(!el) return;
+  if(!appSettings.userPhase){
+    el.textContent = 'Toca las zonas coloreadas para ver qué músculo está tenso o débil. La cabeza adelantada tensa los "cables" de atrás.';
+    return;
+  }
+  const p = PHASES[appSettings.userPhase];
+  const names = p.muscles.map(id=>MUSCLE_DATA[id]?.title).filter(Boolean).join(', ');
+  el.textContent = 'En tu fase ('+p.name+'), los músculos clave son: '+names+'. Toca el mapa para ver cada uno y saltar al ejercicio.';
+  updateMapaMuscles();
+}
+
+function updateMapaMuscles(){
+  document.querySelectorAll('.muscle').forEach(el=>{
+    el.classList.remove('phase-key','phase-dim');
+    if(!appSettings.userPhase) return;
+    const id = el.dataset.id;
+    if(PHASES[appSettings.userPhase].muscles.includes(id)) el.classList.add('phase-key');
+    else el.classList.add('phase-dim');
+  });
+}
+
+function renderPhaseJourney(){
+  if(!appSettings.userPhase) return '';
+  const cur = PHASE_ORDER.indexOf(appSettings.userPhase);
+  return '<div class="phase-journey" style="--phase-color:'+PHASES[appSettings.userPhase].color+'">'
+    + PHASE_ORDER.map((id,i)=>{
+      const p = PHASES[id];
+      const cls = i < cur ? 'done' : i === cur ? 'current' : 'future';
+      return '<div class="journey-step '+cls+'"><span>'+p.tag+'</span><strong>'+p.name+'</strong></div>';
+    }).join('')
+    + '</div>';
+}
+
+async function checkPhaseAdvance(){
+  if(!appSettings.userPhase) return null;
+  const dismissKey = 'advance-dismiss:'+appSettings.userPhase;
+  if(sessionStorage.getItem(dismissKey)) return null;
+  const idx = PHASE_ORDER.indexOf(appSettings.userPhase);
+  if(idx >= PHASE_ORDER.length - 1) return null;
+  let strongDays = 0;
+  const phaseEx = getPhaseExercises(appSettings.userPhase);
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    const done = phaseEx.filter(e=>log.done[e.id]).length;
+    if(done >= phaseEx.length) strongDays++;
+  }
+  if(strongDays >= 4) return PHASE_ORDER[idx + 1];
+  return null;
+}
+
+async function renderAdvanceBanner(){
+  const next = await checkPhaseAdvance();
+  if(!next) return '';
+  const p = PHASES[next];
+  return '<div class="advance-banner" id="advanceBanner">'
+    +'<p>Llevas varios días completando <strong>'+PHASES[appSettings.userPhase].name+'</strong>. ¿Quieres probar la fase <strong>'+p.name+'</strong>?</p>'
+    +'<div class="advance-banner-btns">'
+    +'<button type="button" class="yes" data-next="'+next+'">Sí, pasar a '+p.name+'</button>'
+    +'<button type="button" class="no" data-dismiss="1">Aún no</button>'
+    +'</div></div>';
+}
+
+async function renderWeekMini(){
+  const el = document.getElementById('weekMini');
+  let days = 0, painSum = 0, painN = 0;
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done).filter(Boolean).length;
+    if(done >= 3) days++;
+    if(log.pain !== null && log.pain !== undefined){ painSum += log.pain; painN++; }
+  }
+  if(days === 0 && !painN){ el.hidden = true; return; }
+  el.hidden = false;
+  let text = 'Esta semana: <strong>'+days+'/7</strong> días con rutina';
+  if(painN) text += ' · dolor medio <strong>'+(painSum/painN).toFixed(1)+'</strong>';
+  if(appSettings.userPhase){
+    const phaseEx = getPhaseExercises(appSettings.userPhase);
+    let phaseDoneDays = 0;
+    for(let i=0;i<7;i++){
+      const log = await loadLog(dateKey(i));
+      if(phaseEx.every(e=>log.done[e.id])) phaseDoneDays++;
+    }
+    if(phaseDoneDays) text += ' · <strong>'+phaseDoneDays+'</strong> días con tu fase completa';
+  }
+  el.innerHTML = text;
+}
 
 async function navigateToExercise(exId){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -1390,9 +1531,15 @@ function renderCard(ex, log, ctx){
 
 function updateTension(){
   const doneCount = Object.values(currentLog.done).filter(Boolean).length;
-  const pct = Math.round((doneCount/EXERCISES.length)*100);
+  const list = getRoutineList();
+  const doneInList = list.filter(e=>currentLog.done[e.id]).length;
+  const pct = appSettings.userPhase
+    ? Math.round((doneInList/list.length)*100)
+    : Math.round((doneCount/EXERCISES.length)*100);
   document.getElementById('tensionValue').textContent = pct+'%';
-  document.getElementById('statDone').textContent = doneCount+'/'+EXERCISES.length;
+  document.getElementById('statDone').textContent = appSettings.userPhase
+    ? doneInList+'/'+list.length
+    : doneCount+'/'+EXERCISES.length;
   const pctFactor = pct/100;
   document.getElementById('cableL').setAttribute('d', `M 16 10 Q ${8+ pctFactor*4} ${15- pctFactor*3} 5 20`);
   document.getElementById('cableR').setAttribute('d', `M 20 10 Q ${28- pctFactor*4} ${15- pctFactor*3} 31 20`);
@@ -1400,7 +1547,10 @@ function updateTension(){
   document.getElementById('cableL').style.stroke = color;
   document.getElementById('cableR').style.stroke = color;
 
-  if(pct === 100 && lastPct >= 0 && lastPct < 100) showCelebration();
+  if(pct === 100 && lastPct >= 0 && lastPct < 100){
+    const fullPct = Math.round((doneCount/EXERCISES.length)*100);
+    if(!appSettings.userPhase || fullPct === 100) showCelebration();
+  }
   lastPct = pct;
 
   const remaining = getRoutineList().filter(e=>!currentLog.done[e.id]).length;
@@ -1484,7 +1634,7 @@ function getRoutineList(){
   return appSettings.userPhase ? getPhaseExercises(appSettings.userPhase) : EXERCISES;
 }
 
-function renderPhaseFocus(){
+async function renderPhaseFocus(){
   const el = document.getElementById('phaseFocus');
   if(!appSettings.userPhase){
     el.innerHTML = '<div class="phase-focus" style="--phase-color:var(--accent)">'
@@ -1495,19 +1645,38 @@ function renderPhaseFocus(){
     document.getElementById('pickPhaseBtn').addEventListener('click', showPhasePicker);
     return;
   }
+  await renderPhaseFocusContent();
+}
+
+async function renderPhaseFocusContent(){
+  const el = document.getElementById('phaseFocus');
   const p = PHASES[appSettings.userPhase];
   const signs = p.signs.map(s=>'<li>'+s+'</li>').join('');
+  const journey = renderPhaseJourney();
+  const advance = await renderAdvanceBanner();
   el.innerHTML = '<div class="phase-focus" style="--phase-color:'+p.color+'">'
     +'<div class="phase-focus-top"><div>'
     +'<div class="phase-focus-tag">'+p.tag+' · tu fase</div>'
     +'<h3>'+p.name+'</h3></div>'
     +'<button type="button" class="phase-focus-change" id="changePhaseInline">Cambiar</button></div>'
+    + journey
     +'<p>'+p.explain+'</p>'
     +'<ul>'+signs+'</ul>'
     +'<div class="phase-focus-tip"><strong>Hoy:</strong> '+p.focus+'</div>'
     +'<div class="phase-focus-tip" style="border-top:none;padding-top:4px;margin-top:6px;">'
-    +'<strong>Después:</strong> '+p.next+'</div></div>';
+    +'<strong>Después:</strong> '+p.next+'</div>'
+    + advance + '</div>';
   document.getElementById('changePhaseInline').addEventListener('click', showPhasePicker);
+  const banner = document.getElementById('advanceBanner');
+  if(banner){
+    banner.querySelector('.yes')?.addEventListener('click', (e)=>{
+      selectPhase(e.target.dataset.next);
+    });
+    banner.querySelector('.no')?.addEventListener('click', ()=>{
+      sessionStorage.setItem('advance-dismiss:'+appSettings.userPhase, '1');
+      renderPhaseFocusContent();
+    });
+  }
 }
 
 function showPhasePicker(){
@@ -1518,11 +1687,13 @@ function showPhasePicker(){
 function selectPhase(phaseId){
   appSettings.userPhase = phaseId;
   saveSettings(appSettings);
+  sessionStorage.removeItem('advance-dismiss:'+phaseId);
   closeOverlay('phaseOverlay');
   renderPhaseFocus();
   updatePhaseLabels();
   renderHoy();
   updateTension();
+  updateMapaMuscles();
   vibrate(50);
 }
 
@@ -1691,15 +1862,15 @@ async function renderHoy(){
   currentLog = await loadLog(key);
   const ctx = {key, rerender: renderHoy};
 
-  renderPhaseFocus();
+  const phaseOrder = appSettings.userPhase
+    ? [appSettings.userPhase, ...PHASE_ORDER.filter(p=>p!==appSettings.userPhase)]
+    : PHASE_ORDER;
+
+  await renderPhaseFocus();
 
   const container = document.getElementById('checklistHoy');
   container.innerHTML = '';
   if(!routineActive) container.style.display = '';
-
-  const phaseOrder = appSettings.userPhase
-    ? [appSettings.userPhase, ...['liberar','activar','reeducar'].filter(p=>p!==appSettings.userPhase)]
-    : ['liberar','activar','reeducar'];
 
   phaseOrder.forEach(phaseId=>{
     const phase = PHASES[phaseId];
@@ -1732,6 +1903,7 @@ async function renderHoy(){
 
   renderPainUI();
   updateTension();
+  await renderWeekMini();
   if(routineActive && routineIds.length) renderRoutineStep();
   await renderStreak();
 }
@@ -1750,12 +1922,25 @@ async function renderLibrary(){
   const key = todayKey();
   const log = await loadLog(key);
   const ctx = {key, rerender: renderLibrary};
+  const leadEl = document.getElementById('guiaLead');
+  if(appSettings.userPhase){
+    const p = PHASES[appSettings.userPhase];
+    leadEl.innerHTML = '<div class="guia-phase-lead" style="--phase-color:'+p.color+'">'
+      +'<strong>Tu fase: '+p.name+'.</strong> '+p.focus+'</div>';
+  } else {
+    leadEl.innerHTML = '<p class="lead">Tres fases: primero soltar lo tenso, luego activar lo débil, y por último reeducar el entorno.</p>';
+  }
   const container = document.getElementById('libraryFull');
   container.innerHTML = '';
-  ['liberar','activar','reeducar'].forEach(phaseId=>{
+  const phaseOrder = appSettings.userPhase
+    ? [appSettings.userPhase, ...PHASE_ORDER.filter(p=>p!==appSettings.userPhase)]
+    : PHASE_ORDER;
+  phaseOrder.forEach(phaseId=>{
     const phase = PHASES[phaseId];
+    const isCurrent = appSettings.userPhase === phaseId;
     const head = document.createElement('div');
-    head.className = 'phase-head';
+    head.className = 'phase-head' + (isCurrent ? ' is-current' : (appSettings.userPhase ? ' is-muted' : ''));
+    head.style.setProperty('--phase-color', phase.color);
     head.innerHTML = `<span class="phase-dot" style="background:${phase.color}"></span><span class="phase-name">${phase.name}</span><span class="phase-tag">${phase.tag}</span>`;
     container.appendChild(head);
     const descEl = document.createElement('p');
