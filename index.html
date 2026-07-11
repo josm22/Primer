@@ -280,7 +280,46 @@
   }
   .role.tight{background:var(--tight-soft); color:var(--tight);}
   .role.weak{background:var(--weak-soft); color:var(--weak);}
-  .info-panel p{margin:0;}
+  .info-panel p{margin:0 0 10px;}
+  .info-link{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    padding:10px 14px; border-radius:100px; border:1px solid var(--activar);
+    background:var(--activar-soft); color:var(--activar); cursor:pointer;
+    width:100%; min-height:40px; transition:transform .12s ease;
+  }
+  .info-link:active{transform:scale(0.98);}
+
+  .rep-status{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft);
+    margin-bottom:8px; letter-spacing:0.02em;
+  }
+  .rep-status strong{color:var(--ink); font-size:14px;}
+
+  .ex-card.highlight{
+    animation:highlightPulse 2.5s ease;
+    box-shadow:0 0 0 2px var(--activar), inset 3px 0 0 0 var(--phase-color);
+  }
+  @keyframes highlightPulse{
+    0%,100%{box-shadow:0 0 0 2px transparent, inset 3px 0 0 0 var(--phase-color);}
+    15%,45%{box-shadow:0 0 0 2px var(--activar), inset 3px 0 0 0 var(--phase-color);}
+  }
+
+  .insight-box{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin-bottom:20px;
+  }
+  .insight-box h3{font-family:'Fraunces', serif; font-size:16px; margin:0 0 10px;}
+  .insight-line{
+    font-size:13px; color:var(--ink-soft); line-height:1.55; margin:0 0 6px;
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  }
+  .insight-line:last-child{margin-bottom:0;}
+  .insight-val{
+    font-family:'Fraunces', serif; font-weight:700; font-size:17px;
+    color:var(--ink); flex:0 0 auto;
+  }
+  .insight-val.good{color:var(--activar);}
+  .insight-val.warn{color:var(--liberar);}
   .hint{
     font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
     margin-top:8px; text-align:center;
@@ -567,6 +606,7 @@
         <div class="role" id="info-role"></div>
         <h3 id="info-title"></h3>
         <p id="info-text"></p>
+        <button type="button" class="info-link" id="infoExLink" hidden>Ver ejercicio relacionado →</button>
       </div>
     </div>
 
@@ -598,6 +638,13 @@
 
   <!-- PROGRESO -->
   <section class="section" id="sec-progreso">
+    <div class="insight-box" id="weeklyInsight">
+      <h3>Esta semana</h3>
+      <div class="insight-line"><span>Días con rutina</span><span class="insight-val" id="insightDays">—</span></div>
+      <div class="insight-line"><span>Media ejercicios</span><span class="insight-val" id="insightPct">—</span></div>
+      <div class="insight-line"><span>Dolor medio</span><span class="insight-val" id="insightPain">—</span></div>
+    </div>
+
     <div class="section-title">Últimos 14 días</div>
     <div class="section-sub">% de ejercicios completados cada día</div>
     <div class="history-grid" id="historyGrid"></div>
@@ -669,14 +716,14 @@
 <script>
 /* ========== DATA ========== */
 const MUSCLE_DATA = {
-  'trap-sup': {role:'tight', title:'Trapecio superior', text:'Se acorta al sostener la cabeza adelantada. Responsable del dolor "en gorro" hacia la sien.'},
-  'elevador': {role:'tight', title:'Elevador de la escápula', text:'Conecta cervicales con el borde superior de la escápula. Se sobrecarga con hombros elevados frente al teclado.'},
-  'suboccipital': {role:'tight', title:'Suboccipitales', text:'Grupo profundo en la base del cráneo (C0-C1-C2). Muy sensible a mirar la pantalla; causa cefalea tensional.'},
-  'trap-med': {role:'weak', title:'Trapecio medio', text:'Se alarga e inhibe con hombros caídos. Su debilidad impide abrir el pecho sin esfuerzo consciente.'},
-  'romboides': {role:'weak', title:'Romboides', text:'Estabilizan la escápula. Se debilitan con hombros protraídos y postura redondeada.'},
-  'ecom': {role:'tight', title:'ECOM', text:'Se activa en exceso para compensar la falta de fuerza de los flexores profundos.'},
-  'flexores': {role:'weak', title:'Flexores cervicales profundos', text:'Los verdaderos estabilizadores anteriores. Se "duermen" con cabeza adelantada; clave para corregirla.'},
-  'pect-menor': {role:'tight', title:'Pectoral menor', text:'Se acorta con hombros redondeados y tira la escápula hacia delante.'},
+  'trap-sup': {role:'tight', title:'Trapecio superior', text:'Se acorta al sostener la cabeza adelantada. Responsable del dolor "en gorro" hacia la sien.', exercise:'e2'},
+  'elevador': {role:'tight', title:'Elevador de la escápula', text:'Conecta cervicales con el borde superior de la escápula. Se sobrecarga con hombros elevados frente al teclado.', exercise:'e4'},
+  'suboccipital': {role:'tight', title:'Suboccipitales', text:'Grupo profundo en la base del cráneo (C0-C1-C2). Muy sensible a mirar la pantalla; causa cefalea tensional.', exercise:'e1'},
+  'trap-med': {role:'weak', title:'Trapecio medio', text:'Se alarga e inhibe con hombros caídos. Su debilidad impide abrir el pecho sin esfuerzo consciente.', exercise:'e7'},
+  'romboides': {role:'weak', title:'Romboides', text:'Estabilizan la escápula. Se debilitan con hombros protraídos y postura redondeada.', exercise:'e7'},
+  'ecom': {role:'tight', title:'ECOM', text:'Se activa en exceso para compensar la falta de fuerza de los flexores profundos.', exercise:'e2'},
+  'flexores': {role:'weak', title:'Flexores cervicales profundos', text:'Los verdaderos estabilizadores anteriores. Se "duermen" con cabeza adelantada; clave para corregirla.', exercise:'e5'},
+  'pect-menor': {role:'tight', title:'Pectoral menor', text:'Se acorta con hombros redondeados y tira la escápula hacia delante.', exercise:'e3'},
 };
 
 const PHASES = {
@@ -694,8 +741,8 @@ const EXERCISES = [
     detail:'Antebrazo en marco de puerta a 90°. Paso adelante rotando tronco al lado contrario.'},
   {id:'e4', phase:'liberar', name:'Elevador de la escápula', mode:'timer', seconds:30,
     detail:'Mano en nuca, mirada a axila contraria, presión suave hacia abajo.'},
-  {id:'e5', phase:'activar', name:'Chin tuck', mode:'reps', reps:'3 × 10',
-    detail:'"Doble mentón" sin bajar barbilla. Mantén 5 seg. El ejercicio más importante.'},
+  {id:'e5', phase:'activar', name:'Chin tuck', mode:'rep-counter', sets:3, repsPerSet:10,
+    detail:'"Doble mentón" sin bajar barbilla. Mantén 5 seg por rep. El ejercicio más importante.'},
   {id:'e6', phase:'activar', name:'Flexión cráneo-cervical', mode:'reps', reps:'8-10 × 10s',
     detail:'Tumbado sin almohada, asiente ligeramente sin despegar la cabeza del suelo.'},
   {id:'e7', phase:'activar', name:'Remo con banda', mode:'reps', reps:'3 × 12-15',
@@ -853,6 +900,22 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 });
 
 /* ========== MAPA ========== */
+function exerciseById(id){ return EXERCISES.find(e=>e.id===id); }
+
+async function navigateToExercise(exId){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelector('.nav-btn[data-sec="guia"]').classList.add('active');
+  document.getElementById('sec-guia').classList.add('active');
+  await renderLibrary();
+  const card = document.querySelector('[data-ex-id="'+exId+'"]');
+  if(card){
+    card.classList.add('highlight');
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    setTimeout(()=>card.classList.remove('highlight'), 3000);
+  }
+}
+
 function showInfo(id){
   const d = MUSCLE_DATA[id];
   if(!d) return;
@@ -861,6 +924,15 @@ function showInfo(id){
   document.getElementById('info-role').className = 'role ' + d.role;
   document.getElementById('info-title').textContent = d.title;
   document.getElementById('info-text').textContent = d.text;
+  const linkBtn = document.getElementById('infoExLink');
+  if(d.exercise){
+    const ex = exerciseById(d.exercise);
+    linkBtn.hidden = false;
+    linkBtn.textContent = 'Ver: ' + ex.name + ' →';
+    linkBtn.onclick = ()=> navigateToExercise(d.exercise);
+  } else {
+    linkBtn.hidden = true;
+  }
   panel.classList.add('show');
 }
 
@@ -908,17 +980,60 @@ const len = curve.getTotalLength();
 });
 
 /* ========== EXERCISE CARDS ========== */
+function exerciseMeta(ex){
+  if(ex.mode==='timer') return ex.seconds+'s';
+  if(ex.mode==='rep-counter') return ex.sets+' × '+ex.repsPerSet;
+  if(ex.mode==='reps') return ex.reps;
+  return ex.target+'/día';
+}
+
+function repCounterInfo(ex, count){
+  const total = ex.sets * ex.repsPerSet;
+  const set = Math.min(Math.floor(count / ex.repsPerSet) + 1, ex.sets);
+  const repInSet = count % ex.repsPerSet;
+  return {total, set, repInSet, done: count >= total};
+}
+
+function repCounterLabel(ex, count){
+  const info = repCounterInfo(ex, count);
+  if(info.done) return '¡Series completas!';
+  return 'Serie <strong>'+info.set+'/'+ex.sets+'</strong> · Rep <strong>'+info.repInSet+'/'+ex.repsPerSet+'</strong>';
+}
+
+async function addRep(ex, log, ctx){
+  log.counters[ex.id] = (log.counters[ex.id]||0) + 1;
+  const info = repCounterInfo(ex, log.counters[ex.id]);
+  log.done[ex.id] = info.done;
+  vibrate(40);
+  if(info.done) vibrate([40, 30, 80]);
+  await saveLog(ctx.key, log);
+  ctx.rerender();
+  updateTension();
+  return info.done;
+}
+
 function renderCard(ex, log, ctx){
   const phase = PHASES[ex.phase];
   const isDone = !!log.done[ex.id];
   const card = document.createElement('div');
   card.className = 'ex-card' + (isDone ? ' done' : '');
+  card.dataset.exId = ex.id;
   card.style.setProperty('--phase-color', phase.color);
 
   const check = document.createElement('div');
   check.className = 'ex-check' + (isDone ? ' checked' : '');
   check.addEventListener('click', async ()=>{
-    log.done[ex.id] = !log.done[ex.id];
+    if(ex.mode === 'rep-counter'){
+      if(log.done[ex.id]){
+        log.done[ex.id] = false;
+        log.counters[ex.id] = 0;
+      } else {
+        log.counters[ex.id] = ex.sets * ex.repsPerSet;
+        log.done[ex.id] = true;
+      }
+    } else {
+      log.done[ex.id] = !log.done[ex.id];
+    }
     await saveLog(ctx.key, log);
     ctx.rerender();
     updateTension();
@@ -928,7 +1043,7 @@ function renderCard(ex, log, ctx){
   body.className = 'ex-body';
   const top = document.createElement('div');
   top.className = 'ex-top';
-  top.innerHTML = `<span class="ex-name">${ex.name}</span><span class="ex-meta">${ex.mode==='timer' ? ex.seconds+'s' : (ex.mode==='reps' ? ex.reps : ex.target+'/día')}</span>`;
+  top.innerHTML = `<span class="ex-name">${ex.name}</span><span class="ex-meta">${exerciseMeta(ex)}</span>`;
 
   const detail = document.createElement('div');
   detail.className = 'ex-detail';
@@ -951,6 +1066,22 @@ function renderCard(ex, log, ctx){
       });
     });
     controls.appendChild(btn);
+  } else if(ex.mode === 'rep-counter'){
+    const count = log.counters[ex.id] || 0;
+    const status = document.createElement('div');
+    status.className = 'rep-status';
+    status.innerHTML = repCounterLabel(ex, count);
+    controls.appendChild(status);
+    if(!repCounterInfo(ex, count).done){
+      const btn = document.createElement('button');
+      btn.className = 'ex-btn';
+      btn.textContent = '+1 rep';
+      btn.addEventListener('click', async ()=>{
+        const finished = await addRep(ex, log, ctx);
+        if(routineActive && finished) advanceRoutine();
+      });
+      controls.appendChild(btn);
+    }
   } else if(ex.mode === 'reps'){
     const btn = document.createElement('button');
     btn.className = 'ex-btn';
@@ -1121,6 +1252,26 @@ function renderRoutineStep(){
       });
     });
     actions.appendChild(btn);
+  } else if(ex.mode === 'rep-counter'){
+    const count = currentLog.counters[ex.id] || 0;
+    const info = repCounterInfo(ex, count);
+    const status = document.createElement('div');
+    status.className = 'rep-status';
+    status.style.width = '100%';
+    status.style.marginBottom = '8px';
+    status.innerHTML = repCounterLabel(ex, count);
+    actions.appendChild(status);
+    if(!info.done){
+      const btn = document.createElement('button');
+      btn.className = 'routine-btn primary';
+      btn.textContent = '+1 rep';
+      btn.addEventListener('click', async ()=>{
+        const finished = await addRep(ex, currentLog, {key, rerender: ()=>{ renderHoy(); renderRoutineStep(); }});
+        if(finished) advanceRoutine();
+        else renderRoutineStep();
+      });
+      actions.appendChild(btn);
+    }
   } else if(ex.mode === 'reps'){
     const btn = document.createElement('button');
     btn.className = 'routine-btn primary';
@@ -1248,6 +1399,53 @@ async function renderLibrary(){
 }
 
 async function renderProgreso(){
+  let weekDays = 0, weekPctSum = 0;
+  let weekPainSum = 0, weekPainN = 0;
+  let prevPainSum = 0, prevPainN = 0;
+
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    const done = Object.values(log.done).filter(Boolean).length;
+    weekPctSum += (done/EXERCISES.length)*100;
+    if(done >= 3) weekDays++;
+    if(log.pain !== null && log.pain !== undefined){
+      weekPainSum += log.pain; weekPainN++;
+    }
+  }
+  for(let i=7;i<14;i++){
+    const log = await loadLog(dateKey(i));
+    if(log.pain !== null && log.pain !== undefined){
+      prevPainSum += log.pain; prevPainN++;
+    }
+  }
+
+  const avgPct = Math.round(weekPctSum / 7);
+  document.getElementById('insightDays').textContent = weekDays + '/7';
+  document.getElementById('insightDays').className = 'insight-val' + (weekDays>=5 ? ' good' : weekDays>=3 ? '' : ' warn');
+  document.getElementById('insightPct').textContent = avgPct + '%';
+
+  const painEl = document.getElementById('insightPain');
+  if(weekPainN){
+    const avg = (weekPainSum/weekPainN).toFixed(1);
+    let painText = avg + '/10';
+    if(prevPainN){
+      const prevAvg = prevPainSum/prevPainN;
+      const diff = (weekPainSum/weekPainN) - prevAvg;
+      if(Math.abs(diff) >= 0.3){
+        painText += diff < 0 ? ' ↓' : ' ↑';
+        painEl.className = 'insight-val ' + (diff < 0 ? 'good' : 'warn');
+      } else {
+        painEl.className = 'insight-val';
+      }
+    } else {
+      painEl.className = 'insight-val';
+    }
+    painEl.textContent = painText;
+  } else {
+    painEl.textContent = 'Sin datos';
+    painEl.className = 'insight-val';
+  }
+
   const grid = document.getElementById('historyGrid');
   const painGrid = document.getElementById('painHistoryGrid');
   grid.innerHTML = ''; painGrid.innerHTML = '';
