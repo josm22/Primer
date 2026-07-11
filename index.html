@@ -283,6 +283,67 @@
   .install-banner .install-go{background:var(--activar); color:var(--paper);}
   .install-banner .install-no{background:transparent; color:var(--paper); opacity:0.7;}
 
+  .spotlight-card{
+    background:var(--paper2); border:1px solid var(--line); border-left:4px solid var(--liberar);
+    border-radius:10px; padding:12px 14px; margin-bottom:18px;
+  }
+  .spotlight-card[hidden]{display:none;}
+  .spotlight-card strong{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:9px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--liberar); margin-bottom:6px;
+  }
+  .spotlight-card p{margin:0 0 10px; font-size:13px; color:var(--ink-soft); line-height:1.5;}
+  .spotlight-card button{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; padding:8px 14px;
+    border-radius:100px; border:1px solid var(--ink); background:var(--ink);
+    color:var(--paper); cursor:pointer; min-height:36px;
+  }
+
+  .mapa-chips{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .mapa-chips[hidden]{display:none;}
+  .mapa-chip{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; padding:8px 12px;
+    border-radius:100px; border:1px solid var(--line); background:var(--paper2);
+    color:var(--ink); cursor:pointer; min-height:36px;
+  }
+  .mapa-chip:active{transform:scale(0.97);}
+  .muscle.map-flash{animation:mapFlash 2s ease;}
+  @keyframes mapFlash{
+    0%,100%{filter:drop-shadow(0 0 0 transparent);}
+    30%,70%{filter:drop-shadow(0 0 10px var(--activar));}
+  }
+
+  .pain-note{margin-top:12px;}
+  .pain-note label{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:9px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .pain-note input{
+    width:100%; font-family:'IBM Plex Sans', sans-serif; font-size:13px;
+    padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink);
+  }
+
+  .badge-hint{
+    font-size:11px; color:var(--ink-soft); margin:8px 0 0; line-height:1.45;
+  }
+
+  .ex-ranking{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:22px;
+  }
+  .ex-ranking h3{font-family:'Fraunces', serif; font-size:15px; margin:0 0 10px;}
+  .ex-rank-row{
+    display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:12.5px;
+  }
+  .ex-rank-row:last-child{margin-bottom:0;}
+  .ex-rank-name{flex:1; color:var(--ink-soft);}
+  .ex-rank-bar{flex:0 0 80px; height:6px; background:var(--line); border-radius:3px; overflow:hidden;}
+  .ex-rank-fill{height:100%; background:var(--activar); border-radius:3px;}
+  .ex-rank-pct{font-family:'IBM Plex Mono', monospace; font-size:10px; width:28px; text-align:right;}
+
   .pause-toast-close{
     background:none; border:none; color:var(--paper); opacity:0.7;
     font-size:20px; line-height:1; padding:4px 8px; cursor:pointer; flex:0 0 auto;
@@ -900,12 +961,19 @@
 
     <div class="daily-tip" id="dailyTip" hidden></div>
 
+    <div class="spotlight-card" id="spotlightCard" hidden>
+      <strong>Punto débil esta semana</strong>
+      <p id="spotlightText"></p>
+      <button type="button" id="spotlightBtn">Ir al ejercicio</button>
+    </div>
+
     <div class="badges-block" id="badgesBlock">
       <div class="badges-head" id="badgesHead">
         <h3>Logros</h3>
         <span class="badges-count" id="badgesCount">0/0</span>
       </div>
       <div class="badges-row" id="badgesRow"></div>
+      <p class="badge-hint" id="badgeHint"></p>
     </div>
 
     <div class="stats">
@@ -940,6 +1008,10 @@
           <strong id="painValue">—</strong>
         </div>
         <input type="range" class="pain-slider" id="painSlider" min="0" max="10" step="1" value="0">
+      </div>
+      <div class="pain-note" id="painNoteWrap">
+        <label for="painNote">Nota de hoy (opcional)</label>
+        <input type="text" id="painNote" maxlength="120" placeholder="Ej. duele más al mirar abajo">
       </div>
     </div>
 
@@ -997,6 +1069,8 @@
   <!-- MAPA -->
   <section class="section" id="sec-mapa">
     <p class="lead">Toca las zonas coloreadas para ver qué músculo está tenso o débil. La cabeza adelantada tensa los "cables" de atrás.</p>
+
+    <div class="mapa-chips" id="mapaChips" hidden></div>
 
     <div class="view-toggle">
       <button class="active" data-view="posterior">Posterior</button>
@@ -1115,6 +1189,11 @@
       <div class="insight-line"><span>Dolor medio</span><span class="insight-val" id="insightPain">—</span></div>
       <div class="week-heatmap" id="weekHeatmap"></div>
       <p class="insight-narrative" id="insightNarrative"></p>
+    </div>
+
+    <div class="ex-ranking" id="exRanking">
+      <h3>Ejercicios (14 días)</h3>
+      <div id="exRankingList">Cargando…</div>
     </div>
 
     <div class="phase-stats" id="phaseStats">
@@ -1394,7 +1473,7 @@ async function loadLog(key){
     const raw = localStorage.getItem(fullKey);
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  return {done:{}, counters:{}, pain:null};
+  return {done:{}, counters:{}, pain:null, note:''};
 }
 
 async function saveLog(key, log){
@@ -1406,7 +1485,7 @@ async function saveLog(key, log){
   try{ localStorage.setItem(fullKey, val); }catch(e){ console.error(e); }
 }
 
-let currentLog = {done:{}, counters:{}, pain:null};
+let currentLog = {done:{}, counters:{}, pain:null, note:''};
 let lastPct = -1;
 let routineIds = [];
 let routineStep = 0;
@@ -1654,7 +1733,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     document.getElementById('sec-'+btn.dataset.sec).classList.add('active');
     if(btn.dataset.sec === 'guia') renderLibrary();
     if(btn.dataset.sec === 'progreso') renderProgreso();
-    if(btn.dataset.sec === 'mapa') updateMapaLead();
+    if(btn.dataset.sec === 'mapa'){ updateMapaLead(); renderMapaChips(); }
     window.scrollTo({top:0, behavior:'smooth'});
   });
 });
@@ -1662,17 +1741,144 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 /* ========== MAPA ========== */
 function exerciseById(id){ return EXERCISES.find(e=>e.id===id); }
 
+function switchMapView(view){
+  document.querySelectorAll('.view-toggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  document.getElementById('view-posterior').style.display = view === 'posterior' ? 'block' : 'none';
+  document.getElementById('view-lateral').style.display = view === 'lateral' ? 'block' : 'none';
+}
+
+const LATERAL_MUSCLES = new Set(['ecom','flexores','pect-menor']);
+
+function flashMuscle(id){
+  document.querySelectorAll('.muscle[data-id="'+id+'"]').forEach(m=>{
+    m.classList.add('map-flash');
+    setTimeout(()=>m.classList.remove('map-flash'), 2500);
+  });
+}
+
+function renderMapaChips(){
+  const el = document.getElementById('mapaChips');
+  if(!appSettings.userPhase){
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const muscles = PHASES[appSettings.userPhase].muscles;
+  el.innerHTML = muscles.map(id=>{
+    const d = MUSCLE_DATA[id];
+    return '<button type="button" class="mapa-chip" data-muscle="'+id+'">'+(d?.title || id)+'</button>';
+  }).join('');
+  el.querySelectorAll('.mapa-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.muscle;
+      switchMapView(LATERAL_MUSCLES.has(id) ? 'lateral' : 'posterior');
+      showInfo(id);
+      flashMuscle(id);
+    });
+  });
+}
+
+function scrollToExerciseInHoy(exId){
+  const card = document.querySelector('#checklistHoy [data-ex-id="'+exId+'"]');
+  if(card){
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    card.classList.add('highlight');
+    setTimeout(()=>card.classList.remove('highlight'), 2500);
+  }
+}
+
+async function findWeakExercise(){
+  const list = getRoutineList();
+  if(!list.length) return null;
+  const counts = {};
+  list.forEach(e=>{ counts[e.id] = 0; });
+  for(let i=0;i<7;i++){
+    const log = await loadLog(dateKey(i));
+    list.forEach(e=>{ if(log.done?.[e.id]) counts[e.id]++; });
+  }
+  let min = Infinity, weak = null;
+  list.forEach(e=>{
+    if(counts[e.id] < min){ min = counts[e.id]; weak = e; }
+  });
+  if(!weak || min >= 5) return null;
+  return {ex: weak, count: min};
+}
+
+let spotlightExId = null;
+
+async function renderSpotlight(){
+  const card = document.getElementById('spotlightCard');
+  const weak = await findWeakExercise();
+  if(!weak || currentLog.done[weak.ex.id]){
+    card.hidden = true;
+    spotlightExId = null;
+    return;
+  }
+  spotlightExId = weak.ex.id;
+  card.hidden = false;
+  document.getElementById('spotlightText').textContent =
+    'Has hecho «'+weak.ex.name+'» solo '+weak.count+'/7 días. Priorízalo hoy — es clave en tu fase.';
+}
+
+async function renderBadgeHint(){
+  const el = document.getElementById('badgeHint');
+  const badges = appSettings.badges || {};
+  const streak = parseInt(document.getElementById('statStreak').textContent, 10) || 0;
+  const hints = [];
+  if(!badges.first) hints.push('Próximo logro: completa tu primer ejercicio');
+  else if(streak < 7) hints.push('Próximo logro: racha 7 días ('+streak+'/7)');
+  else if(streak < 14) hints.push('Próximo logro: racha 14 días ('+streak+'/14)');
+  else if(streak < 30) hints.push('Próximo logro: racha 30 días ('+streak+'/30)');
+  else if(!badges.full_week){
+    let weekDays = 0;
+    for(let i=0;i<7;i++){
+      const log = await loadLog(dateKey(i));
+      if(Object.values(log.done||{}).filter(Boolean).length >= 3) weekDays++;
+    }
+    hints.push('Próximo logro: semana top ('+weekDays+'/7 días con rutina)');
+  }
+  el.textContent = hints[0] || '¡Todos los logros desbloqueados! Sigue con la constancia.';
+}
+
+async function renderExRanking(){
+  const container = document.getElementById('exRankingList');
+  const list = appSettings.userPhase ? getPhaseExercises(appSettings.userPhase) : EXERCISES;
+  const counts = {};
+  list.forEach(e=>{ counts[e.id] = 0; });
+  for(let i=0;i<14;i++){
+    const log = await loadLog(dateKey(i));
+    list.forEach(e=>{ if(log.done?.[e.id]) counts[e.id]++; });
+  }
+  const ranked = list.map(e=>({
+    ex: e,
+    count: counts[e.id],
+    pct: Math.round((counts[e.id]/14)*100),
+  })).sort((a,b)=>b.count - a.count);
+  const top = ranked.slice(0, 3);
+  const bottom = ranked.filter(r=>r.count < 7).slice(-2).reverse();
+  const show = [...top];
+  bottom.forEach(r=>{ if(!show.find(s=>s.ex.id === r.ex.id)) show.push(r); });
+  container.innerHTML = show.map(r=>'<div class="ex-rank-row">'
+    +'<span class="ex-rank-name">'+r.ex.name+'</span>'
+    +'<div class="ex-rank-bar"><div class="ex-rank-fill" style="width:'+r.pct+'%"></div></div>'
+    +'<span class="ex-rank-pct">'+r.count+'/14</span></div>').join('');
+}
+
 function updateMapaLead(){
   const el = document.querySelector('#sec-mapa > .lead');
   if(!el) return;
   if(!appSettings.userPhase){
     el.textContent = 'Toca las zonas coloreadas para ver qué músculo está tenso o débil. La cabeza adelantada tensa los "cables" de atrás.';
+    renderMapaChips();
     return;
   }
   const p = PHASES[appSettings.userPhase];
   const names = p.muscles.map(id=>MUSCLE_DATA[id]?.title).filter(Boolean).join(', ');
   el.textContent = 'En tu fase ('+p.name+'), los músculos clave son: '+names+'. Toca el mapa para ver cada uno y saltar al ejercicio.';
   updateMapaMuscles();
+  renderMapaChips();
 }
 
 function updateMapaMuscles(){
@@ -1795,11 +2001,7 @@ document.querySelectorAll('.muscle').forEach(el=>{
 
 document.querySelectorAll('.view-toggle button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const view = btn.dataset.view;
-    document.getElementById('view-posterior').style.display = view==='posterior' ? 'block':'none';
-    document.getElementById('view-lateral').style.display = view==='lateral' ? 'block':'none';
+    switchMapView(btn.dataset.view);
     document.getElementById('info-panel').classList.remove('show');
   });
 });
@@ -2081,9 +2283,12 @@ function renderPainUI(){
     fine.classList.add('show');
     slider.value = pain;
     valueEl.textContent = pain + '/10';
+    document.getElementById('painNoteWrap').style.display = '';
+    document.getElementById('painNote').value = currentLog.note || '';
   } else {
     fine.classList.remove('show');
     valueEl.textContent = '—';
+    document.getElementById('painNoteWrap').style.display = 'none';
   }
 
   document.getElementById('statPain').textContent = hasPain ? pain : '—';
@@ -2105,8 +2310,18 @@ document.getElementById('painSlider').addEventListener('input', async (e)=>{
   document.querySelectorAll('.pain-zone').forEach(z=>{
     z.classList.toggle('active', painZoneForValue(val) === z.dataset.zone);
   });
+  document.getElementById('painNoteWrap').style.display = '';
   await saveLog(todayKey(), currentLog);
   document.getElementById('statPain').textContent = val;
+});
+
+document.getElementById('painNote').addEventListener('input', async (e)=>{
+  currentLog.note = e.target.value.trim();
+  await saveLog(todayKey(), currentLog);
+});
+
+document.getElementById('spotlightBtn').addEventListener('click', ()=>{
+  if(spotlightExId) scrollToExerciseInHoy(spotlightExId);
 });
 
 /* ========== USER PHASE ========== */
@@ -2502,8 +2717,10 @@ async function renderHoy(){
   updateTension();
   renderNextUp();
   renderDailyTip();
+  await renderSpotlight();
   await renderWeekMini();
   await checkAchievements();
+  await renderBadgeHint();
   if(routineActive && routineIds.length) renderRoutineStep();
 }
 
@@ -2565,7 +2782,8 @@ async function exportAllData(){
     const log = await loadLog(k);
     const hasData = Object.values(log.done||{}).some(Boolean)
       || Object.keys(log.counters||{}).length
-      || log.pain !== null && log.pain !== undefined;
+      || log.pain !== null && log.pain !== undefined
+      || log.note;
     if(hasData) data.logs[k] = log;
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -2741,10 +2959,20 @@ async function buildPhysioReport(){
     if(done >= 3) totalDays++;
     const pain = log.pain != null ? log.pain : '—';
     if(log.pain != null){ painSum += log.pain; painN++; }
-    dayLines.push(k+': '+done+'/9 ('+pct+'%) · dolor '+pain);
+    let line = k+': '+done+'/9 ('+pct+'%) · dolor '+pain;
+    if(log.note) line += ' · «'+log.note+'»';
+    dayLines.push(line);
   }
   lines.push('Días con rutina (≥3 ej.): '+totalDays+'/14');
   if(painN) lines.push('Dolor medio: '+(painSum/painN).toFixed(1)+'/10');
+  const notes = [];
+  for(let i=13;i>=0;i--){
+    const log = await loadLog(dateKey(i));
+    if(log.note) notes.push(dateKey(i)+': '+log.note);
+  }
+  if(notes.length){
+    lines.push('', 'Notas de dolor/síntomas:', ...notes);
+  }
   lines.push('');
   for(const id of PHASE_ORDER){
     const exs = getPhaseExercises(id);
@@ -2890,6 +3118,7 @@ async function renderProgreso(){
   document.getElementById('insightNarrative').textContent =
     buildWeekNarrative(weekDays, avgPct, painDiff);
   await renderWeekHeatmap();
+  await renderExRanking();
 
   await renderPhaseStats();
   await renderPhysioReport();
@@ -2931,7 +3160,7 @@ async function renderProgreso(){
 document.getElementById('resetDay').addEventListener('click', async ()=>{
   if(!confirm('¿Reiniciar el progreso de hoy?')) return;
   const key = todayKey();
-  await saveLog(key, {done:{}, counters:{}, pain:null});
+  await saveLog(key, {done:{}, counters:{}, pain:null, note:''});
   sessionStorage.removeItem('celebrated:' + key);
   lastPct = -1;
   endRoutine();
