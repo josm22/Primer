@@ -654,6 +654,36 @@
     color:var(--ink-soft); line-height:1.55;
   }
 
+  .next-up{
+    display:flex; align-items:center; gap:10px; background:var(--paper2);
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:18px;
+  }
+  .next-up-lab{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase;
+    letter-spacing:0.06em; color:var(--ink-soft); flex:0 0 auto;
+  }
+  .next-up-btn{
+    flex:1; text-align:left; background:none; border:none; cursor:pointer;
+    font-family:'Fraunces', serif; font-weight:600; font-size:14px; color:var(--ink);
+    padding:0;
+  }
+  .next-up-btn::after{content:' →'; color:var(--ink-soft); font-weight:400;}
+
+  .phase-stats{margin-bottom:22px;}
+  .phase-stat-row{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .phase-stat-name{font-family:'IBM Plex Mono', monospace; font-size:10px; width:62px; flex:0 0 auto; color:var(--ink-soft);}
+  .phase-stat-bar{flex:1; height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .phase-stat-fill{height:100%; border-radius:4px; transition:width .3s ease;}
+  .phase-stat-pct{font-family:'IBM Plex Mono', monospace; font-size:10px; width:32px; text-align:right; flex:0 0 auto;}
+
+  .data-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .data-actions button{
+    flex:1; min-width:120px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); cursor:pointer;
+  }
+  #importFile{display:none;}
+
   @media(min-width:640px){
     body{padding-left:24px; padding-right:24px;}
     .brand h1{font-size:26px;}
@@ -697,7 +727,7 @@
     <div class="week-mini" id="weekMini" hidden></div>
 
     <div class="stats">
-      <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab">Hecho</div></div>
+      <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab" id="statDoneLabel">Hecho</div></div>
       <div class="stat"><div class="num" id="statStreak">0</div><div class="lab">Racha</div></div>
       <div class="stat"><div class="num" id="statPain">—</div><div class="lab">Dolor</div></div>
     </div>
@@ -736,6 +766,11 @@
       <span class="routine-hint" id="routineHint">9 ejercicios · sigue el orden</span>
     </div>
 
+    <div class="next-up" id="nextUp" hidden>
+      <span class="next-up-lab">Siguiente</span>
+      <button type="button" class="next-up-btn" id="nextUpBtn"></button>
+    </div>
+
     <div class="routine-flow" id="routineFlow">
       <div class="routine-progress" id="routineProgress">Ejercicio 1 de 9</div>
       <div class="routine-bar"><div class="routine-bar-fill" id="routineBarFill" style="width:0%"></div></div>
@@ -762,6 +797,11 @@
         <option value="35" selected>Cada 35 minutos</option>
         <option value="40">Cada 40 minutos</option>
       </select>
+      <div class="data-actions">
+        <button type="button" id="exportDataBtn">Exportar datos</button>
+        <button type="button" id="importDataBtn">Importar backup</button>
+        <input type="file" id="importFile" accept="application/json,.json">
+      </div>
     </div>
 
     <button class="reset-link" id="resetDay">Reiniciar el día de hoy</button>
@@ -876,6 +916,10 @@
       <div class="insight-line"><span>Días con rutina</span><span class="insight-val" id="insightDays">—</span></div>
       <div class="insight-line"><span>Media ejercicios</span><span class="insight-val" id="insightPct">—</span></div>
       <div class="insight-line"><span>Dolor medio</span><span class="insight-val" id="insightPain">—</span></div>
+    </div>
+
+    <div class="phase-stats" id="phaseStats">
+      <div class="section-title" style="font-size:15px;margin-bottom:10px;">Por fase (7 días)</div>
     </div>
 
     <div class="section-title">Últimos 14 días</div>
@@ -1037,14 +1081,14 @@ const EXERCISES = [
     detail:'Antebrazo en marco de puerta a 90°. Paso adelante rotando tronco al lado contrario.'},
   {id:'e4', phase:'liberar', name:'Elevador de la escápula', mode:'timer', seconds:30,
     detail:'Mano en nuca, mirada a axila contraria, presión suave hacia abajo.'},
-  {id:'e5', phase:'activar', name:'Chin tuck', mode:'rep-counter', sets:3, repsPerSet:10,
+  {id:'e5', phase:'activar', name:'Chin tuck', mode:'rep-counter', sets:3, repsPerSet:10, holdSeconds:5,
     detail:'"Doble mentón" sin bajar barbilla. Mantén 5 seg por rep. El ejercicio más importante.'},
-  {id:'e6', phase:'activar', name:'Flexión cráneo-cervical', mode:'reps', reps:'8-10 × 10s',
-    detail:'Tumbado sin almohada, asiente ligeramente sin despegar la cabeza del suelo.'},
-  {id:'e7', phase:'activar', name:'Remo con banda', mode:'reps', reps:'3 × 12-15',
+  {id:'e6', phase:'activar', name:'Flexión cráneo-cervical', mode:'rep-counter', sets:10, repsPerSet:1, minComplete:8, holdSeconds:10,
+    detail:'Tumbado sin almohada, asiente ligeramente sin despegar la cabeza del suelo. 8–10 mantenciones de 10 s.'},
+  {id:'e7', phase:'activar', name:'Remo con banda', mode:'rep-counter', sets:3, repsPerSet:12,
     detail:'Codos pegados, omóplatos atrás y abajo, sin encoger hombros.'},
-  {id:'e8', phase:'activar', name:'Y-T-W', mode:'reps', reps:'2 × 10/letra',
-    detail:'Brazos en Y, T y W con pulgares arriba. Trapecio inferior y escápulas.'},
+  {id:'e8', phase:'activar', name:'Y-T-W', mode:'rep-counter', sets:2, repsPerSet:30, repUnit:'ronda',
+    detail:'Brazos en Y, T y W con pulgares arriba (10 por letra = 30 por ronda).'},
   {id:'e9', phase:'reeducar', name:'Pausa activa', mode:'counter', target:6,
     detail:'Cada 30–40 min: 5 chin tucks + hombros atrás + mirar lejos. Suma una pausa.'},
 ];
@@ -1385,22 +1429,68 @@ const len = curve.getTotalLength();
 /* ========== EXERCISE CARDS ========== */
 function exerciseMeta(ex){
   if(ex.mode==='timer') return ex.seconds+'s';
-  if(ex.mode==='rep-counter') return ex.sets+' × '+ex.repsPerSet;
+  if(ex.mode==='rep-counter'){
+    if(ex.repUnit==='ronda') return ex.sets+' rondas';
+    if(ex.repsPerSet===1) return (ex.minComplete||ex.sets)+' mant.';
+    return ex.sets+' × '+ex.repsPerSet;
+  }
   if(ex.mode==='reps') return ex.reps;
   return ex.target+'/día';
 }
 
 function repCounterInfo(ex, count){
   const total = ex.sets * ex.repsPerSet;
+  const goal = ex.minComplete || total;
   const set = Math.min(Math.floor(count / ex.repsPerSet) + 1, ex.sets);
   const repInSet = count % ex.repsPerSet;
-  return {total, set, repInSet, done: count >= total};
+  return {total, goal, set, repInSet, done: count >= goal};
 }
 
 function repCounterLabel(ex, count){
   const info = repCounterInfo(ex, count);
-  if(info.done) return '¡Series completas!';
+  if(info.done) return '¡Objetivo cumplido!';
+  if(ex.repUnit==='ronda'){
+    return 'Ronda <strong>'+info.set+'/'+ex.sets+'</strong> · <strong>'+info.repInSet+'/'+ex.repsPerSet+'</strong> mov.';
+  }
+  if(ex.repsPerSet===1){
+    return 'Mantención <strong>'+count+'/'+info.goal+'</strong>';
+  }
   return 'Serie <strong>'+info.set+'/'+ex.sets+'</strong> · Rep <strong>'+info.repInSet+'/'+ex.repsPerSet+'</strong>';
+}
+
+function appendRepControls(ex, log, ctx, parent, btnClass){
+  const count = log.counters[ex.id] || 0;
+  const status = document.createElement('div');
+  status.className = 'rep-status';
+  if(parent.classList?.contains('routine-actions')) status.style.width = '100%';
+  status.innerHTML = repCounterLabel(ex, count);
+  parent.appendChild(status);
+  if(repCounterInfo(ex, count).done) return;
+
+  if(ex.holdSeconds){
+    const holdBtn = document.createElement('button');
+    holdBtn.className = btnClass || 'ex-btn';
+    holdBtn.textContent = 'Mantener '+ex.holdSeconds+'s';
+    holdBtn.addEventListener('click', ()=>{
+      startTimerOverlay(
+        {name:ex.name, phase:ex.phase, seconds:ex.holdSeconds},
+        async ()=>{
+          const finished = await addRep(ex, log, ctx);
+          if(routineActive && finished) advanceRoutine();
+        }
+      );
+    });
+    parent.appendChild(holdBtn);
+  }
+
+  const btn = document.createElement('button');
+  btn.className = btnClass || 'ex-btn';
+  btn.textContent = ex.repsPerSet===1 ? '+1 mant.' : '+1 rep';
+  btn.addEventListener('click', async ()=>{
+    const finished = await addRep(ex, log, ctx);
+    if(routineActive && finished) advanceRoutine();
+  });
+  parent.appendChild(btn);
 }
 
 async function addRep(ex, log, ctx){
@@ -1431,7 +1521,7 @@ function renderCard(ex, log, ctx){
         log.done[ex.id] = false;
         log.counters[ex.id] = 0;
       } else {
-        log.counters[ex.id] = ex.sets * ex.repsPerSet;
+        log.counters[ex.id] = ex.minComplete || (ex.sets * ex.repsPerSet);
         log.done[ex.id] = true;
       }
     } else {
@@ -1470,21 +1560,7 @@ function renderCard(ex, log, ctx){
     });
     controls.appendChild(btn);
   } else if(ex.mode === 'rep-counter'){
-    const count = log.counters[ex.id] || 0;
-    const status = document.createElement('div');
-    status.className = 'rep-status';
-    status.innerHTML = repCounterLabel(ex, count);
-    controls.appendChild(status);
-    if(!repCounterInfo(ex, count).done){
-      const btn = document.createElement('button');
-      btn.className = 'ex-btn';
-      btn.textContent = '+1 rep';
-      btn.addEventListener('click', async ()=>{
-        const finished = await addRep(ex, log, ctx);
-        if(routineActive && finished) advanceRoutine();
-      });
-      controls.appendChild(btn);
-    }
+    appendRepControls(ex, log, ctx, controls, 'ex-btn');
   } else if(ex.mode === 'reps'){
     const btn = document.createElement('button');
     btn.className = 'ex-btn';
@@ -1540,6 +1616,7 @@ function updateTension(){
   document.getElementById('statDone').textContent = appSettings.userPhase
     ? doneInList+'/'+list.length
     : doneCount+'/'+EXERCISES.length;
+  document.getElementById('statDoneLabel').textContent = appSettings.userPhase ? 'Tu fase' : 'Hecho';
   const pctFactor = pct/100;
   document.getElementById('cableL').setAttribute('d', `M 16 10 Q ${8+ pctFactor*4} ${15- pctFactor*3} 5 20`);
   document.getElementById('cableR').setAttribute('d', `M 20 10 Q ${28- pctFactor*4} ${15- pctFactor*3} 31 20`);
@@ -1769,25 +1846,7 @@ function renderRoutineStep(){
     });
     actions.appendChild(btn);
   } else if(ex.mode === 'rep-counter'){
-    const count = currentLog.counters[ex.id] || 0;
-    const info = repCounterInfo(ex, count);
-    const status = document.createElement('div');
-    status.className = 'rep-status';
-    status.style.width = '100%';
-    status.style.marginBottom = '8px';
-    status.innerHTML = repCounterLabel(ex, count);
-    actions.appendChild(status);
-    if(!info.done){
-      const btn = document.createElement('button');
-      btn.className = 'routine-btn primary';
-      btn.textContent = '+1 rep';
-      btn.addEventListener('click', async ()=>{
-        const finished = await addRep(ex, currentLog, {key, rerender: ()=>{ renderHoy(); renderRoutineStep(); }});
-        if(finished) advanceRoutine();
-        else renderRoutineStep();
-      });
-      actions.appendChild(btn);
-    }
+    appendRepControls(ex, currentLog, {key, rerender: ()=>{ renderHoy(); renderRoutineStep(); }}, actions, 'routine-btn primary');
   } else if(ex.mode === 'reps'){
     const btn = document.createElement('button');
     btn.className = 'routine-btn primary';
@@ -1903,10 +1962,114 @@ async function renderHoy(){
 
   renderPainUI();
   updateTension();
+  renderNextUp();
   await renderWeekMini();
   if(routineActive && routineIds.length) renderRoutineStep();
   await renderStreak();
 }
+
+function renderNextUp(){
+  const el = document.getElementById('nextUp');
+  const btn = document.getElementById('nextUpBtn');
+  const list = getRoutineList();
+  const next = list.find(e=>!currentLog.done[e.id]);
+  if(!next || routineActive){
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  btn.textContent = next.name;
+  btn.onclick = ()=>{
+    const card = document.querySelector('[data-ex-id="'+next.id+'"]');
+    if(card){
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      card.classList.add('highlight');
+      setTimeout(()=>card.classList.remove('highlight'), 2500);
+    }
+  };
+}
+
+async function renderPhaseStats(){
+  const container = document.getElementById('phaseStats');
+  const title = container.querySelector('.section-title');
+  container.innerHTML = '';
+  if(title) container.appendChild(title);
+  else {
+    const h = document.createElement('div');
+    h.className = 'section-title';
+    h.style.cssText = 'font-size:15px;margin-bottom:10px;';
+    h.textContent = 'Por fase (7 días)';
+    container.appendChild(h);
+  }
+  for(const phaseId of PHASE_ORDER){
+    const phase = PHASES[phaseId];
+    const exs = getPhaseExercises(phaseId);
+    let sum = 0;
+    for(let i=0;i<7;i++){
+      const log = await loadLog(dateKey(i));
+      sum += exs.filter(e=>log.done[e.id]).length / exs.length;
+    }
+    const pct = Math.round((sum/7)*100);
+    const row = document.createElement('div');
+    row.className = 'phase-stat-row';
+    row.innerHTML = '<span class="phase-stat-name">'+phase.name+'</span>'
+      +'<div class="phase-stat-bar"><div class="phase-stat-fill" style="width:'+pct+'%;background:'+phase.color+'"></div></div>'
+      +'<span class="phase-stat-pct">'+pct+'%</span>';
+    container.appendChild(row);
+  }
+}
+
+async function exportAllData(){
+  const data = {exportedAt:new Date().toISOString(), version:1, settings:appSettings, logs:{}};
+  for(let i=0;i<90;i++){
+    const k = dateKey(i);
+    const log = await loadLog(k);
+    const hasData = Object.values(log.done||{}).some(Boolean)
+      || Object.keys(log.counters||{}).length
+      || log.pain !== null && log.pain !== undefined;
+    if(hasData) data.logs[k] = log;
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cuello-backup-'+todayKey()+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  vibrate(40);
+}
+
+async function importAllData(file){
+  try{
+    const data = JSON.parse(await file.text());
+    if(!data.logs && !data.settings) throw new Error('formato inválido');
+    if(!confirm('¿Importar backup? Se fusionará con los datos actuales.')) return;
+    if(data.settings){
+      appSettings = {...appSettings, ...data.settings};
+      saveSettings(appSettings);
+      applyTheme(appSettings.dark);
+      updateReminderUI();
+      updatePhaseLabels();
+      scheduleReminder();
+    }
+    for(const [k,v] of Object.entries(data.logs||{})) await saveLog(k,v);
+    renderHoy();
+    updateMapaMuscles();
+    vibrate([50, 30, 80]);
+    alert('Backup importado correctamente.');
+  }catch(e){
+    alert('No se pudo importar el archivo.');
+  }
+}
+
+document.getElementById('exportDataBtn').addEventListener('click', exportAllData);
+document.getElementById('importDataBtn').addEventListener('click', ()=>{
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files?.[0];
+  if(file) importAllData(file);
+  e.target.value = '';
+});
 
 async function renderStreak(){
   let streak = 0;
@@ -2000,6 +2163,8 @@ async function renderProgreso(){
     painEl.textContent = 'Sin datos';
     painEl.className = 'insight-val';
   }
+
+  await renderPhaseStats();
 
   const grid = document.getElementById('historyGrid');
   const painGrid = document.getElementById('painHistoryGrid');
@@ -2130,6 +2295,7 @@ updatePhaseLabels();
 scheduleReminder();
 renderHoy();
 if(!appSettings.userPhase) showPhasePicker();
+else updateMapaMuscles();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
