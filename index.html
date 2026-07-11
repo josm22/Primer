@@ -56,7 +56,7 @@
     --reeducar-soft:#302a1a;
     --accent:#b8943a;
     --nav-bg:rgba(26,29,24,0.94);
-    --dot-opacity:0.08;
+    --dot-color:rgba(232,228,220,0.06);
   }
 
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -64,7 +64,7 @@
   body{
     margin:0;
     background:var(--paper);
-    background-image:radial-gradient(circle at 1px 1px, rgba(32,36,31,var(--dot-opacity)) 1px, transparent 0);
+    background-image:radial-gradient(circle at 1px 1px, var(--dot-color) 1px, transparent 0);
     background-size:22px 22px;
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
@@ -531,6 +531,82 @@
 
   body.overlay-open{overflow:hidden;}
 
+  /* ---------- PHASE PICKER ---------- */
+  .phase-overlay .picker-sheet{
+    background:var(--paper); border-radius:20px; padding:24px 20px;
+    width:100%; max-width:400px; max-height:90dvh; overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  }
+  .picker-sheet h2{font-family:'Fraunces', serif; font-size:22px; margin:0 0 6px;}
+  .picker-sheet .picker-sub{font-size:13px; color:var(--ink-soft); margin:0 0 18px; line-height:1.5;}
+  .phase-option{
+    display:block; width:100%; text-align:left; background:var(--paper2);
+    border:2px solid var(--line); border-radius:14px; padding:14px 16px;
+    margin-bottom:10px; cursor:pointer; transition:border-color .15s ease, transform .12s ease;
+  }
+  .phase-option:active{transform:scale(0.98);}
+  .phase-option:hover{border-color:var(--ink-soft);}
+  .phase-option-top{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
+  .phase-option-num{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .phase-option-name{font-family:'Fraunces', serif; font-weight:700; font-size:17px;}
+  .phase-option-hint{font-size:12.5px; color:var(--ink-soft); line-height:1.45; margin:0;}
+  .phase-option[data-phase="liberar"]{--opt-color:var(--liberar);}
+  .phase-option[data-phase="activar"]{--opt-color:var(--activar);}
+  .phase-option[data-phase="reeducar"]{--opt-color:var(--reeducar);}
+  .phase-option .phase-option-num{color:var(--opt-color);}
+  .phase-option.selected{border-color:var(--opt-color); background:color-mix(in srgb, var(--opt-color) 8%, var(--paper2));}
+
+  .picker-help{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft);
+    background:none; border:none; text-decoration:underline; cursor:pointer;
+    padding:8px 0; margin-top:4px; display:block; width:100%; text-align:center;
+  }
+  .quiz-block{display:none; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);}
+  .quiz-block.show{display:block;}
+  .quiz-q{font-family:'Fraunces', serif; font-size:15px; margin:0 0 10px;}
+  .quiz-opt{
+    display:block; width:100%; text-align:left; background:var(--paper);
+    border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+    margin-bottom:8px; font-size:13px; line-height:1.45; cursor:pointer; color:var(--ink);
+  }
+  .quiz-opt:active{background:var(--paper2);}
+
+  .phase-focus{
+    background:var(--paper2); border:1px solid var(--line); border-radius:14px;
+    padding:16px; margin-bottom:18px; border-left:4px solid var(--phase-color, var(--ink));
+  }
+  .phase-focus-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;}
+  .phase-focus-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--phase-color); margin-bottom:2px;
+  }
+  .phase-focus h3{font-family:'Fraunces', serif; font-size:18px; margin:0;}
+  .phase-focus-change{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    background:none; border:none; text-decoration:underline; cursor:pointer; padding:0; flex:0 0 auto;
+  }
+  .phase-focus p{font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin:0 0 10px;}
+  .phase-focus ul{margin:0; padding-left:18px; font-size:12.5px; color:var(--ink-soft); line-height:1.55;}
+  .phase-focus-tip{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--phase-color);
+    margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); line-height:1.5;
+  }
+
+  .phase-head.is-current .phase-name::after{
+    content:' · tú'; font-family:'IBM Plex Mono', monospace;
+    font-size:10px; color:var(--phase-color); font-weight:400;
+  }
+  .phase-head.is-muted{opacity:0.55;}
+  .phase-collapse-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    background:none; border:none; text-decoration:underline; cursor:pointer;
+    padding:0; margin:0 0 10px 18px; display:block;
+  }
+  .phase-exercises.collapsed{display:none;}
+
   @media(min-width:640px){
     body{padding-left:24px; padding-right:24px;}
     .brand h1{font-size:26px;}
@@ -569,6 +645,8 @@
 
   <!-- HOY -->
   <section class="section active" id="sec-hoy">
+    <div id="phaseFocus"></div>
+
     <div class="stats">
       <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab">Hecho</div></div>
       <div class="stat"><div class="num" id="statStreak">0</div><div class="lab">Racha</div></div>
@@ -622,6 +700,10 @@
 
     <div class="settings-block">
       <h3>Ajustes</h3>
+      <div class="setting-row" id="phaseRow">
+        <span>Mi fase<small id="phaseSettingLabel">Sin definir</small></span>
+        <button type="button" class="setting-select" id="changePhaseBtn" style="width:auto;margin:0;">Cambiar</button>
+      </div>
       <div class="setting-row" id="reminderRow">
         <span>Recordar pausas<small>Cada 30–40 min mientras la app está abierta</small></span>
         <div class="toggle-switch" id="reminderToggle" role="switch" aria-checked="false"></div>
@@ -760,6 +842,35 @@
   <footer>Educación cervical — no sustituye valoración profesional.<br>Datos guardados solo en este dispositivo.</footer>
 </div>
 
+<!-- PHASE PICKER -->
+<div class="overlay phase-overlay" id="phaseOverlay" aria-hidden="true">
+  <div class="picker-sheet">
+    <h2>¿En qué fase estás?</h2>
+    <p class="picker-sub">El plan va en orden: primero soltar, luego activar, y por último reeducar el entorno. Elige donde crees que estás — lo puedes cambiar cuando quieras.</p>
+    <div id="phaseOptions">
+      <button type="button" class="phase-option" data-phase="liberar">
+        <div class="phase-option-top"><span class="phase-option-num">Fase 01</span><span class="phase-option-name">Liberar</span></div>
+        <p class="phase-option-hint">Me duele o noto el cuello muy tenso al final del día.</p>
+      </button>
+      <button type="button" class="phase-option" data-phase="activar">
+        <div class="phase-option-top"><span class="phase-option-num">Fase 02</span><span class="phase-option-name">Activar</span></div>
+        <p class="phase-option-hint">Duele menos, pero sigo con la cabeza adelantada o hombros caídos.</p>
+      </button>
+      <button type="button" class="phase-option" data-phase="reeducar">
+        <div class="phase-option-top"><span class="phase-option-num">Fase 03</span><span class="phase-option-name">Reeducar</span></div>
+        <p class="phase-option-hint">Ya hago ejercicios, pero en el trabajo vuelvo a la misma postura.</p>
+      </button>
+    </div>
+    <button type="button" class="picker-help" id="showQuizBtn">No lo sé, ayúdame a elegir</button>
+    <div class="quiz-block" id="quizBlock">
+      <p class="quiz-q">¿Qué te describe mejor ahora?</p>
+      <button type="button" class="quiz-opt" data-phase="liberar">Tengo molestias o dolor frecuente en nuca, trapecios o sien.</button>
+      <button type="button" class="quiz-opt" data-phase="activar">El dolor bajó, pero me cuesta mantener el cuello erguido sin esfuerzo.</button>
+      <button type="button" class="quiz-opt" data-phase="reeducar">Entreno el cuello, pero horas frente a la pantalla me deshacen el progreso.</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" aria-label="Navegación principal">
   <button class="nav-btn active" data-sec="hoy" aria-label="Hoy">
@@ -837,9 +948,33 @@ const MUSCLE_DATA = {
 };
 
 const PHASES = {
-  liberar:  {name:'Liberar',  tag:'Fase 01', color:'var(--liberar)',  desc:'Bajar el tono sin buscar dolor. Tensión suave sostenida, a diario.'},
-  activar:  {name:'Activar',  tag:'Fase 02', color:'var(--activar)', desc:'Los débiles se entrenan. Calidad de movimiento, resistencia.'},
-  reeducar: {name:'Reeducar', tag:'Fase 03', color:'var(--reeducar)', desc:'Ajustar entorno y automatizar el gesto correcto.'},
+  liberar: {
+    name:'Liberar', tag:'Fase 01', color:'var(--liberar)',
+    desc:'Bajar el tono sin buscar dolor. Tensión suave sostenida, a diario.',
+    explain:'Aquí el cuello está sobrecargado: los "cables" del puente (trapecio superior, suboccipitales, ECOM) llevan semanas tirando. El objetivo no es estirar fuerte, sino convencer al sistema nervioso de que puede soltar.',
+    signs:['Dolor en nuca o trapecios al acabar la jornada','Cefalea tensional que sube a la sien','Hombros elevados sin darte cuenta'],
+    focus:'Estiramientos suaves, automasaje y calor. Sin buscar dolor.',
+    next:'Cuando el dolor diario baje, pasa a Activar para recuperar los músculos débiles.',
+    muscles:['trap-sup','suboccipital','ecom','elevador'],
+  },
+  activar: {
+    name:'Activar', tag:'Fase 02', color:'var(--activar)',
+    desc:'Los débiles se entrenan. Calidad de movimiento, resistencia.',
+    explain:'El dolor ya no domina, pero los flexores profundos y el trapecio medio siguen "dormidos". Sin ellos, la cabeza vuelve a adelantarse en cuanto dejas de pensar en la postura. Aquí se gana fuerza de resistencia, no de gimnasio.',
+    signs:['Duele menos, pero te caes hacia la pantalla','Cuesta mantener el pecho abierto','Chin tuck te cansa enseguida'],
+    focus:'Chin tuck a diario + remo y estabilidad escapular 3–4 días/semana.',
+    next:'Cuando mantengas mejor la postura al entrenar, refuerza Reeducar para que el puesto de trabajo no lo tire.',
+    muscles:['flexores','trap-med','romboides'],
+  },
+  reeducar: {
+    name:'Reeducar', tag:'Fase 03', color:'var(--reeducar)',
+    desc:'Ajustar entorno y automatizar el gesto correcto.',
+    explain:'Ya sabes qué hacer, pero el entorno te gana: pantalla baja, portátil, silla sin apoyo, horas sin pausa. Esta fase evita que tengas que "apagar el fuego" cada tarde. Sin ella, las otras dos fases no se sostienen.',
+    signs:['Acabas el día con la rutina hecha pero igual de encorvado','Subir el texto de la pantalla te ayuda al momento','Olvidas las pausas cuando estás concentrado'],
+    focus:'Altura de pantalla, pausas activas cada 30–40 min y apoyo de antebrazos.',
+    next:'Puedes seguir con ejercicios de Activar 2–3 veces/semana como mantenimiento.',
+    muscles:['pect-menor','flexores'],
+  },
 };
 
 const EXERCISES = [
@@ -902,8 +1037,25 @@ async function saveLog(key, log){
 
 let currentLog = {done:{}, counters:{}, pain:null};
 let lastPct = -1;
-let routineIndex = -1;
+let routineIds = [];
+let routineStep = 0;
 let routineActive = false;
+
+const SETTINGS_KEY = 'cervical:settings';
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35, userPhase:null};
+  }catch(e){ return {dark:false, reminders:false, reminderMin:35, userPhase:null}; }
+}
+
+function saveSettings(s){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }catch(e){}
+}
+
+let appSettings = loadSettings();
+let reminderTimer = null;
 
 const RING_LEN = 326.7;
 const timerState = {interval:null, remaining:0, total:0, paused:false, onComplete:null, color:'var(--liberar)'};
@@ -1251,15 +1403,23 @@ function updateTension(){
   if(pct === 100 && lastPct >= 0 && lastPct < 100) showCelebration();
   lastPct = pct;
 
-  const remaining = EXERCISES.filter(e=>!currentLog.done[e.id]).length;
+  const remaining = getRoutineList().filter(e=>!currentLog.done[e.id]).length;
+  const totalList = getRoutineList().length;
   const startBtn = document.getElementById('startRoutine');
   const hint = document.getElementById('routineHint');
   if(remaining === 0){
     startBtn.disabled = true;
-    hint.textContent = '¡Rutina completa!';
+    hint.textContent = appSettings.userPhase ? '¡Fase completa!' : '¡Rutina completa!';
   } else {
     startBtn.disabled = false;
-    hint.textContent = remaining + ' ejercicios pendientes · sigue el orden';
+    if(appSettings.userPhase){
+      const p = PHASES[appSettings.userPhase];
+      startBtn.textContent = 'Empezar fase ' + p.name;
+      hint.textContent = remaining + ' ejercicios de tu fase · ' + totalList + ' en total';
+    } else {
+      startBtn.textContent = 'Empezar rutina';
+      hint.textContent = remaining + ' ejercicios pendientes · sigue el orden';
+    }
   }
 }
 
@@ -1315,30 +1475,105 @@ document.getElementById('painSlider').addEventListener('input', async (e)=>{
   document.getElementById('statPain').textContent = val;
 });
 
-/* ========== ROUTINE FLOW ========== */
-function getNextPendingIndex(from){
-  for(let i = from; i < EXERCISES.length; i++){
-    if(!currentLog.done[EXERCISES[i].id]) return i;
+/* ========== USER PHASE ========== */
+function getPhaseExercises(phaseId){
+  return EXERCISES.filter(e=>e.phase===phaseId);
+}
+
+function getRoutineList(){
+  return appSettings.userPhase ? getPhaseExercises(appSettings.userPhase) : EXERCISES;
+}
+
+function renderPhaseFocus(){
+  const el = document.getElementById('phaseFocus');
+  if(!appSettings.userPhase){
+    el.innerHTML = '<div class="phase-focus" style="--phase-color:var(--accent)">'
+      +'<div class="phase-focus-top"><div><div class="phase-focus-tag">Personaliza</div>'
+      +'<h3>¿En qué fase estás?</h3></div></div>'
+      +'<p>El plan tiene 3 fases en orden. Dinos dónde estás y te mostramos qué hacer y por qué.</p>'
+      +'<button type="button" class="routine-start" id="pickPhaseBtn">Elegir mi fase</button></div>';
+    document.getElementById('pickPhaseBtn').addEventListener('click', showPhasePicker);
+    return;
   }
-  return -1;
+  const p = PHASES[appSettings.userPhase];
+  const signs = p.signs.map(s=>'<li>'+s+'</li>').join('');
+  el.innerHTML = '<div class="phase-focus" style="--phase-color:'+p.color+'">'
+    +'<div class="phase-focus-top"><div>'
+    +'<div class="phase-focus-tag">'+p.tag+' · tu fase</div>'
+    +'<h3>'+p.name+'</h3></div>'
+    +'<button type="button" class="phase-focus-change" id="changePhaseInline">Cambiar</button></div>'
+    +'<p>'+p.explain+'</p>'
+    +'<ul>'+signs+'</ul>'
+    +'<div class="phase-focus-tip"><strong>Hoy:</strong> '+p.focus+'</div>'
+    +'<div class="phase-focus-tip" style="border-top:none;padding-top:4px;margin-top:6px;">'
+    +'<strong>Después:</strong> '+p.next+'</div></div>';
+  document.getElementById('changePhaseInline').addEventListener('click', showPhasePicker);
+}
+
+function showPhasePicker(){
+  document.getElementById('quizBlock').classList.remove('show');
+  openOverlay('phaseOverlay');
+}
+
+function selectPhase(phaseId){
+  appSettings.userPhase = phaseId;
+  saveSettings(appSettings);
+  closeOverlay('phaseOverlay');
+  renderPhaseFocus();
+  updatePhaseLabels();
+  renderHoy();
+  updateTension();
+  vibrate(50);
+}
+
+function updatePhaseLabels(){
+  const label = document.getElementById('phaseSettingLabel');
+  const eyebrow = document.querySelector('.brand .eyebrow');
+  if(appSettings.userPhase){
+    const p = PHASES[appSettings.userPhase];
+    label.textContent = p.tag + ' · ' + p.name;
+    eyebrow.textContent = p.tag + ' · ' + p.name;
+  } else {
+    label.textContent = 'Sin definir';
+    eyebrow.textContent = 'Cuello · mapa + cuaderno';
+  }
+}
+
+document.querySelectorAll('.phase-option').forEach(btn=>{
+  btn.addEventListener('click', ()=> selectPhase(btn.dataset.phase));
+});
+document.querySelectorAll('.quiz-opt').forEach(btn=>{
+  btn.addEventListener('click', ()=> selectPhase(btn.dataset.phase));
+});
+document.getElementById('showQuizBtn').addEventListener('click', ()=>{
+  document.getElementById('quizBlock').classList.toggle('show');
+});
+document.getElementById('changePhaseBtn').addEventListener('click', showPhasePicker);
+
+/* ========== ROUTINE FLOW ========== */
+function buildRoutineQueue(){
+  return getRoutineList().filter(e=>!currentLog.done[e.id]).map(e=>e.id);
 }
 
 function renderRoutineStep(){
   const flow = document.getElementById('routineFlow');
-  if(routineIndex < 0){
+  if(!routineActive || routineStep >= routineIds.length){
     flow.classList.remove('active');
     document.getElementById('checklistHoy').style.display = '';
+    if(routineActive) endRoutine();
     return;
   }
 
-  const ex = EXERCISES[routineIndex];
+  const ex = exerciseById(routineIds[routineStep]);
   const phase = PHASES[ex.phase];
-  const doneCount = Object.values(currentLog.done).filter(Boolean).length;
+  const list = getRoutineList();
+  const doneInList = list.filter(e=>currentLog.done[e.id]).length;
 
   flow.classList.add('active');
   document.getElementById('checklistHoy').style.display = 'none';
-  document.getElementById('routineProgress').textContent = 'Ejercicio ' + (routineIndex + 1) + ' de ' + EXERCISES.length;
-  document.getElementById('routineBarFill').style.width = ((doneCount/EXERCISES.length)*100) + '%';
+  document.getElementById('routineProgress').textContent = 'Ejercicio ' + (routineStep + 1) + ' de ' + routineIds.length
+    + (appSettings.userPhase ? ' · ' + phase.name : '');
+  document.getElementById('routineBarFill').style.width = ((doneInList/list.length)*100) + '%';
   document.getElementById('routinePhase').textContent = phase.tag;
   document.getElementById('routinePhase').style.color = phase.color;
   document.getElementById('routineName').textContent = ex.name;
@@ -1425,28 +1660,28 @@ function renderRoutineStep(){
 }
 
 function advanceRoutine(){
-  const next = getNextPendingIndex(routineIndex + 1);
-  if(next < 0){
+  routineStep++;
+  if(routineStep >= routineIds.length){
     endRoutine();
     return;
   }
-  routineIndex = next;
   renderRoutineStep();
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function endRoutine(){
   routineActive = false;
-  routineIndex = -1;
+  routineIds = [];
+  routineStep = 0;
   document.getElementById('routineFlow').classList.remove('active');
   document.getElementById('checklistHoy').style.display = '';
 }
 
 document.getElementById('startRoutine').addEventListener('click', ()=>{
-  const next = getNextPendingIndex(0);
-  if(next < 0) return;
+  routineIds = buildRoutineQueue();
+  if(!routineIds.length) return;
   routineActive = true;
-  routineIndex = next;
+  routineStep = 0;
   renderRoutineStep();
   document.getElementById('routineFlow').scrollIntoView({behavior:'smooth', block:'start'});
 });
@@ -1456,23 +1691,48 @@ async function renderHoy(){
   currentLog = await loadLog(key);
   const ctx = {key, rerender: renderHoy};
 
+  renderPhaseFocus();
+
   const container = document.getElementById('checklistHoy');
   container.innerHTML = '';
   if(!routineActive) container.style.display = '';
-  ['liberar','activar','reeducar'].forEach(phaseId=>{
+
+  const phaseOrder = appSettings.userPhase
+    ? [appSettings.userPhase, ...['liberar','activar','reeducar'].filter(p=>p!==appSettings.userPhase)]
+    : ['liberar','activar','reeducar'];
+
+  phaseOrder.forEach(phaseId=>{
     const phase = PHASES[phaseId];
+    const isCurrent = appSettings.userPhase === phaseId;
     const head = document.createElement('div');
-    head.className = 'phase-head';
+    head.className = 'phase-head' + (isCurrent ? ' is-current' : (appSettings.userPhase ? ' is-muted' : ''));
+    head.style.setProperty('--phase-color', phase.color);
     head.innerHTML = `<span class="phase-dot" style="background:${phase.color}"></span><span class="phase-name">${phase.name}</span><span class="phase-tag">${phase.tag}</span>`;
     container.appendChild(head);
+
+    const exWrap = document.createElement('div');
+    exWrap.className = 'phase-exercises' + (appSettings.userPhase && !isCurrent ? ' collapsed' : '');
     EXERCISES.filter(e=>e.phase===phaseId).forEach(ex=>{
-      container.appendChild(renderCard(ex, currentLog, ctx));
+      exWrap.appendChild(renderCard(ex, currentLog, ctx));
     });
+    container.appendChild(exWrap);
+
+    if(appSettings.userPhase && !isCurrent){
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'phase-collapse-btn';
+      toggle.textContent = 'Ver ejercicios de ' + phase.name;
+      toggle.addEventListener('click', ()=>{
+        const open = exWrap.classList.toggle('collapsed');
+        toggle.textContent = open ? 'Ver ejercicios de ' + phase.name : 'Ocultar ' + phase.name;
+      });
+      container.appendChild(toggle);
+    }
   });
 
   renderPainUI();
   updateTension();
-  if(routineActive && routineIndex >= 0) renderRoutineStep();
+  if(routineActive && routineIds.length) renderRoutineStep();
   await renderStreak();
 }
 
@@ -1600,25 +1860,6 @@ document.getElementById('resetDay').addEventListener('click', async ()=>{
   renderHoy();
 });
 
-renderHoy();
-
-/* ========== THEME ========== */
-const SETTINGS_KEY = 'cervical:settings';
-
-function loadSettings(){
-  try{
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {dark:false, reminders:false, reminderMin:35};
-  }catch(e){ return {dark:false, reminders:false, reminderMin:35}; }
-}
-
-function saveSettings(s){
-  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }catch(e){}
-}
-
-let appSettings = loadSettings();
-let reminderTimer = null;
-
 function applyTheme(dark){
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.getElementById('metaTheme').content = dark ? '#1a1d18' : '#f2ede2';
@@ -1700,7 +1941,10 @@ document.getElementById('pauseToastDone').addEventListener('click', async ()=>{
 
 applyTheme(appSettings.dark);
 updateReminderUI();
+updatePhaseLabels();
 scheduleReminder();
+renderHoy();
+if(!appSettings.userPhase) showPhasePicker();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
