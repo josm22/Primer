@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f2ede2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Cuello — mapa y cuaderno</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#f2ede2;
+    --paper2:#eae2d2;
+    --ink:#20241f;
+    --ink-soft:#4b4f43;
+    --line:#c9bea6;
+    --tight:#a3402f;
+    --tight-soft:#e8cdc3;
+    --weak:#2f5c78;
+    --weak-soft:#cfdfe6;
+    --liberar:#a3402f;
+    --liberar-soft:#ecd6cc;
+    --activar:#2f6b6e;
+    --activar-soft:#d3e2e0;
+    --reeducar:#8a6b1f;
+    --reeducar-soft:#e8dfc2;
+    --accent:#8a6b1f;
+    --nav-h:64px;
+    --safe-b:env(safe-area-inset-bottom, 0px);
+    --safe-t:env(safe-area-inset-top, 0px);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, rgba(32,36,31,0.05) 1px, transparent 0);
+    background-size:22px 22px;
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    padding:calc(12px + var(--safe-t)) 16px calc(var(--nav-h) + var(--safe-b) + 20px);
+    min-height:100dvh;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:18px;
+  }
+  .brand{min-width:0;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:4px;
+  }
+  .brand h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:22px; line-height:1.1;
+    margin:0; letter-spacing:-0.01em;
+  }
+  .brand h1 em{font-style:italic; font-weight:500; color:var(--tight);}
+
+  .tension-pill{
+    flex:0 0 auto; background:var(--paper2); border:1px solid var(--line);
+    border-radius:12px; padding:8px 10px; display:flex; align-items:center; gap:8px;
+    min-width:108px;
+  }
+  .tension-pill svg{width:36px; height:22px; flex:0 0 36px;}
+  .tension-pill .val{
+    font-family:'Fraunces', serif; font-weight:700; font-size:17px; line-height:1;
+  }
+  .tension-pill .lab{
+    font-family:'IBM Plex Mono', monospace; font-size:8px; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  .section{display:none; animation:rise .28s ease;}
+  .section.active{display:block;}
+  @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .lead{font-size:14px; color:var(--ink-soft); line-height:1.55; margin:0 0 16px;}
+
+  /* ---------- STATS ---------- */
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px;}
+  .stat{
+    background:var(--paper2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 10px; text-align:center;
+  }
+  .stat .num{font-family:'Fraunces', serif; font-weight:700; font-size:22px;}
+  .stat .lab{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;
+  }
+
+  /* ---------- PAIN ---------- */
+  .pain-block{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin-bottom:20px;
+  }
+  .pain-block h3{font-family:'Fraunces', serif; font-size:16px; margin:0 0 2px;}
+  .pain-block p{font-size:12px; color:var(--ink-soft); margin:0 0 12px;}
+  .pain-scale{display:flex; gap:4px;}
+  .pain-dot{
+    flex:1; aspect-ratio:1; max-height:40px; border-radius:8px;
+    border:1px solid var(--line); background:var(--paper); cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-soft);
+    transition:transform .12s ease, background .12s ease;
+  }
+  .pain-dot:active{transform:scale(0.94);}
+  .pain-dot.active{background:var(--liberar); border-color:var(--liberar); color:var(--paper);}
+
+  /* ---------- PHASE / EXERCISE ---------- */
+  .phase-head{display:flex; align-items:baseline; gap:8px; margin:22px 0 4px; flex-wrap:wrap;}
+  .phase-head:first-child{margin-top:0;}
+  .phase-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .phase-name{font-family:'Fraunces', serif; font-weight:700; font-size:17px;}
+  .phase-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .phase-desc{font-size:13px; color:var(--ink-soft); margin:0 0 12px; line-height:1.5;}
+
+  .ex-card{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px; margin-bottom:10px; display:flex; gap:12px; align-items:flex-start;
+    transition:box-shadow .15s ease;
+  }
+  .ex-card.done{box-shadow:inset 3px 0 0 0 var(--phase-color);}
+  .ex-check{
+    width:28px; height:28px; border-radius:50%; border:2px solid var(--phase-color);
+    flex:0 0 auto; cursor:pointer; margin-top:1px; position:relative; background:var(--paper);
+  }
+  .ex-check.checked{background:var(--phase-color);}
+  .ex-check.checked::after{
+    content:''; position:absolute; left:8px; top:4px; width:5px; height:10px;
+    border:solid var(--paper); border-width:0 2.5px 2.5px 0; transform:rotate(40deg);
+  }
+  .ex-body{flex:1; min-width:0;}
+  .ex-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .ex-name{font-family:'Fraunces', serif; font-weight:600; font-size:15px;}
+  .ex-meta{font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--phase-color);}
+  .ex-detail{font-size:13px; color:var(--ink-soft); line-height:1.5; margin:5px 0 10px;}
+  .ex-controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .ex-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; padding:8px 14px;
+    border-radius:100px; border:1px solid var(--phase-color); background:transparent;
+    color:var(--phase-color); cursor:pointer; min-height:36px;
+  }
+  .ex-btn.running{background:var(--phase-color); color:var(--paper);}
+  .counter-row{display:flex; align-items:center; gap:8px;}
+  .counter-btn{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--phase-color);
+    background:transparent; color:var(--phase-color); font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .counter-num{font-family:'IBM Plex Mono', monospace; font-size:13px; min-width:48px; text-align:center;}
+
+  .reset-link{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft);
+    text-decoration:underline; cursor:pointer; background:none; border:none; padding:8px 0;
+    margin-top:8px; display:block;
+  }
+
+  /* ---------- MAPA / DIAGRAM ---------- */
+  .view-toggle{display:flex; gap:6px; margin-bottom:12px;}
+  .view-toggle button{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.05em; text-transform:uppercase; padding:10px 8px;
+    border-radius:100px; border:1px solid var(--ink); background:transparent;
+    color:var(--ink); cursor:pointer; min-height:40px;
+  }
+  .view-toggle button.active{background:var(--ink); color:var(--paper);}
+
+  .stage{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:14px; position:relative;
+  }
+  .stage-caption{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    text-align:center; margin-top:6px; letter-spacing:0.04em;
+  }
+  svg{width:100%;height:auto;display:block;}
+  .muscle{cursor:pointer; transition:opacity .2s ease;}
+  .muscle:active{opacity:0.7;}
+  .label-line{stroke:var(--ink-soft); stroke-width:1; stroke-dasharray:2 2;}
+  .vert-label{font-family:'IBM Plex Mono', monospace; font-size:10px; fill:var(--ink);}
+  .muscle-tag{font-family:'IBM Plex Sans', sans-serif; font-size:11px; font-weight:600; fill:var(--ink);}
+  .cable{stroke:var(--tight); stroke-width:2; fill:none; stroke-dasharray:4 3;}
+
+  .legend{display:flex; gap:14px; margin-top:12px; flex-wrap:wrap; font-size:12px;}
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .swatch{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+  .info-panel{
+    margin-top:12px; display:none; background:var(--paper); border:1px solid var(--line);
+    border-left:4px solid var(--ink); border-radius:8px; padding:14px;
+    font-size:14px; line-height:1.55; animation:rise .2s ease;
+  }
+  .info-panel.show{display:block;}
+  .info-panel h3{font-family:'Fraunces', serif; font-size:18px; margin:0 0 6px; font-weight:600;}
+  .info-panel .role{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; text-transform:uppercase;
+    letter-spacing:0.06em; padding:2px 8px; border-radius:100px; display:inline-block; margin-bottom:8px;
+  }
+  .role.tight{background:var(--tight-soft); color:var(--tight);}
+  .role.weak{background:var(--weak-soft); color:var(--weak);}
+  .info-panel p{margin:0;}
+  .hint{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+    margin-top:8px; text-align:center;
+  }
+
+  .bridge-box{
+    margin-top:24px; background:var(--paper2); border:1px solid var(--line);
+    border-radius:12px; padding:16px;
+  }
+  .bridge-box h2{font-family:'Fraunces', serif; font-size:19px; font-weight:700; margin:0 0 8px;}
+
+  .plan-card{
+    background:var(--paper2); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin-bottom:12px;
+  }
+  .plan-card .n{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--accent);
+    letter-spacing:0.08em;
+  }
+  .plan-card h4{font-family:'Fraunces', serif; font-size:16px; margin:4px 0 8px;}
+  .plan-card .card-lead{
+    font-size:13px; color:var(--ink-soft); line-height:1.55; margin:0 0 12px;
+    padding-bottom:10px; border-bottom:1px solid var(--line);
+  }
+  .plan-item{
+    display:block; margin-bottom:10px; padding-left:12px; border-left:2px solid var(--line);
+  }
+  .plan-item .name{font-family:'Fraunces', serif; font-weight:600; font-size:14px; display:block; margin-bottom:2px;}
+  .plan-item .detail{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+
+  /* ---------- PROGRESO ---------- */
+  .section-title{font-family:'Fraunces', serif; font-weight:700; font-size:18px; margin:0 0 4px;}
+  .section-sub{font-size:12px; color:var(--ink-soft); margin:0 0 10px;}
+  .history-grid{display:flex; gap:4px; align-items:flex-end; height:110px; margin:12px 0 6px;}
+  .history-bar{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; height:100%;}
+  .bar-fill{width:100%; border-radius:3px 3px 0 0; background:var(--activar); min-height:3px; transition:height .3s ease;}
+  .bar-date{font-family:'IBM Plex Mono', monospace; font-size:8px; color:var(--ink-soft);}
+  .pain-history{display:flex; gap:4px; align-items:flex-end; height:60px; margin-top:12px;}
+  .pain-bar-outer{flex:1; height:100%; display:flex; align-items:flex-end;}
+  .pain-bar{width:100%; background:var(--liberar); border-radius:3px 3px 0 0; opacity:0.75; min-height:3px;}
+
+  /* ---------- BOTTOM NAV ---------- */
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:100;
+    background:rgba(242,237,226,0.92); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+    padding:6px 8px calc(6px + var(--safe-b));
+    display:flex; justify-content:space-around; gap:2px;
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:none; border:none; cursor:pointer; padding:6px 4px; border-radius:10px;
+    color:var(--ink-soft); transition:color .15s ease, background .15s ease;
+    min-height:52px; justify-content:center;
+  }
+  .nav-btn svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .nav-btn span{font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.04em; text-transform:uppercase;}
+  .nav-btn.active{color:var(--ink); background:rgba(32,36,31,0.06);}
+  .nav-btn.active svg{stroke-width:2.2;}
+
+  footer{
+    margin-top:32px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    color:var(--ink-soft); text-align:center; line-height:1.5;
+  }
+
+  @media(min-width:640px){
+    body{padding-left:24px; padding-right:24px;}
+    .brand h1{font-size:26px;}
+    .stats{gap:12px;}
+    .stat{padding:14px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="eyebrow">Cuello · mapa + cuaderno</div>
+      <h1>El puente <em>colgante</em></h1>
+    </div>
+    <div class="tension-pill" title="Progreso de hoy">
+      <svg viewBox="0 0 36 22">
+        <circle cx="18" cy="6" r="5" fill="#e7ded0" stroke="var(--ink)" stroke-width="1"/>
+        <path id="cableL" d="M 16 10 Q 8 15 5 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path id="cableR" d="M 20 10 Q 28 15 31 20" stroke="var(--liberar)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <line x1="4" y1="20" x2="32" y2="20" stroke="var(--ink)" stroke-width="1.5"/>
+      </svg>
+      <div>
+        <div class="val" id="tensionValue">0%</div>
+        <div class="lab">hoy</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOY -->
+  <section class="section active" id="sec-hoy">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statDone">0/9</div><div class="lab">Hecho</div></div>
+      <div class="stat"><div class="num" id="statStreak">0</div><div class="lab">Racha</div></div>
+      <div class="stat"><div class="num" id="statPain">—</div><div class="lab">Dolor</div></div>
+    </div>
+
+    <div class="pain-block">
+      <h3>¿Cómo está el cuello hoy?</h3>
+      <p>0 = sin molestia · 10 = dolor intenso</p>
+      <div class="pain-scale" id="painScale"></div>
+    </div>
+
+    <div id="checklistHoy"></div>
+    <button class="reset-link" id="resetDay">Reiniciar el día de hoy</button>
+  </section>
+
+  <!-- MAPA -->
+  <section class="section" id="sec-mapa">
+    <p class="lead">Toca las zonas coloreadas para ver qué músculo está tenso o débil. La cabeza adelantada tensa los "cables" de atrás.</p>
+
+    <div class="view-toggle">
+      <button class="active" data-view="posterior">Posterior</button>
+      <button data-view="lateral">Lateral</button>
+    </div>
+
+    <div class="stage">
+      <div id="view-posterior">
+        <svg viewBox="0 0 640 520" id="svg-post">
+          <ellipse cx="320" cy="70" rx="66" ry="58" fill="#e7ded0" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="320" y="76" text-anchor="middle" class="vert-label" fill="var(--ink-soft)">occipital</text>
+          <g id="vertebrae-post"></g>
+          <path d="M 150 400 Q 320 350 490 400 L 490 430 Q 320 385 150 430 Z" fill="#ded3bd" stroke="var(--ink)" stroke-width="1.2"/>
+          <path class="muscle" data-id="trap-sup" d="M 300 120 Q 220 220 175 400" stroke="var(--tight)" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <path class="muscle" data-id="trap-sup" d="M 340 120 Q 420 220 465 400" stroke="var(--tight)" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <path class="muscle" data-id="elevador" d="M 285 150 Q 230 260 210 380" stroke="var(--tight)" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <path class="muscle" data-id="elevador" d="M 355 150 Q 410 260 430 380" stroke="var(--tight)" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <ellipse class="muscle" data-id="suboccipital" cx="320" cy="128" rx="46" ry="16" fill="var(--tight)" opacity="0.9"/>
+          <path class="muscle" data-id="trap-med" d="M 260 260 Q 320 300 380 260 L 380 310 Q 320 345 260 310 Z" fill="var(--weak)" opacity="0.55" stroke="var(--weak)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <path class="muscle" data-id="romboides" d="M 275 320 Q 320 350 365 320 L 360 375 Q 320 395 280 375 Z" fill="var(--weak)" opacity="0.4" stroke="var(--weak)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <line class="cable" x1="290" y1="80" x2="185" y2="410"/>
+          <line class="cable" x1="350" y1="80" x2="455" y2="410"/>
+          <line class="label-line" x1="175" y1="260" x2="90" y2="260"/>
+          <text x="20" y="264" class="muscle-tag" fill="var(--tight)">Trapecio superior</text>
+          <line class="label-line" x1="465" y1="220" x2="560" y2="220"/>
+          <text x="565" y="224" class="muscle-tag" fill="var(--tight)">Elevador escápula</text>
+          <line class="label-line" x1="320" y1="128" x2="320" y2="40"/>
+          <text x="320" y="30" text-anchor="middle" class="muscle-tag" fill="var(--tight)">Suboccipitales</text>
+          <line class="label-line" x1="320" y1="285" x2="560" y2="290"/>
+          <text x="565" y="294" class="muscle-tag" fill="var(--weak)">Trapecio medio</text>
+          <line class="label-line" x1="320" y1="345" x2="90" y2="350"/>
+          <text x="85" y="354" text-anchor="end" class="muscle-tag" fill="var(--weak)">Romboides</text>
+        </svg>
+      </div>
+
+      <div id="view-lateral" style="display:none;">
+        <svg viewBox="0 0 640 520" id="svg-lat">
+          <path d="M 380 40 Q 440 40 450 100 Q 452 130 430 145 L 400 150 L 395 175 L 370 175 L 365 150 Q 320 145 305 100 Q 300 60 340 45 Q 358 38 380 40 Z" fill="#e7ded0" stroke="var(--ink)" stroke-width="1.5"/>
+          <line x1="380" y1="120" x2="380" y2="440" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="386" y="435" class="vert-label">eje neutro</text>
+          <path id="cervical-curve" d="M 375 165 Q 340 220 355 280 Q 368 330 340 380" stroke="var(--ink)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <g id="vertebrae-lat"></g>
+          <path d="M 250 430 Q 340 400 460 430 L 470 480 Q 340 450 240 480 Z" fill="#ded3bd" stroke="var(--ink)" stroke-width="1.2"/>
+          <path class="muscle" data-id="ecom" d="M 400 150 Q 350 250 310 420" stroke="var(--tight)" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <ellipse class="muscle" data-id="suboccipital" cx="372" cy="168" rx="26" ry="12" fill="var(--tight)" opacity="0.9"/>
+          <path class="muscle" data-id="flexores" d="M 380 170 Q 400 240 385 310" stroke="var(--weak)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="5 3" opacity="0.75"/>
+          <path class="muscle" data-id="pect-menor" d="M 320 400 Q 380 415 440 440" stroke="var(--tight)" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.6"/>
+          <path class="cable" d="M 372 175 Q 330 280 305 420"/>
+          <line class="label-line" x1="372" y1="168" x2="500" y2="130"/>
+          <text x="505" y="134" class="muscle-tag" fill="var(--tight)">Suboccipitales</text>
+          <line class="label-line" x1="400" y1="260" x2="530" y2="260"/>
+          <text x="535" y="264" class="muscle-tag" fill="var(--tight)">ECOM</text>
+          <line class="label-line" x1="392" y1="240" x2="150" y2="210"/>
+          <text x="145" y="214" text-anchor="end" class="muscle-tag" fill="var(--weak)">Flexores profundos</text>
+          <line class="label-line" x1="380" y1="420" x2="530" y2="440"/>
+          <text x="535" y="444" class="muscle-tag" fill="var(--tight)">Pectoral menor</text>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--tight)"></span>Tensos</span>
+        <span><span class="swatch" style="background:var(--weak)"></span>Débiles</span>
+      </div>
+      <div class="hint">Toca cualquier zona coloreada</div>
+
+      <div class="info-panel" id="info-panel">
+        <div class="role" id="info-role"></div>
+        <h3 id="info-title"></h3>
+        <p id="info-text"></p>
+      </div>
+    </div>
+
+    <div class="bridge-box">
+      <h2>¿Por qué un puente colgante?</h2>
+      <p class="lead" style="margin-bottom:0">La cabeza pesa 4,5–5,5 kg en posición neutra. Cada centímetro hacia la pantalla multiplica la carga — a 15° ya son ~12 kg. Los suboccipitales y el trapecio superior son los cables; los flexores profundos y el trapecio medio son el contrapeso que se debilita.</p>
+    </div>
+  </section>
+
+  <!-- GUÍA -->
+  <section class="section" id="sec-guia">
+    <p class="lead">Tres fases: primero soltar lo tenso, luego activar lo débil, y por último reeducar el entorno para que no vuelva.</p>
+    <div id="libraryFull"></div>
+
+    <div class="plan-card" style="margin-top:24px;">
+      <div class="n">REFERENCIA RÁPIDA</div>
+      <h4>Liberar → Activar → Reeducar</h4>
+      <p class="card-lead">Sin la fase 3, las otras dos apagan el fuego cada día. Ajusta pantalla, respaldo y pausas activas.</p>
+      <div class="plan-item">
+        <span class="name">Altura de pantalla</span>
+        <span class="detail">Borde superior a la altura de los ojos. Portátil elevado + teclado externo.</span>
+      </div>
+      <div class="plan-item">
+        <span class="name">Pausas activas</span>
+        <span class="detail">Cada 30–40 min: 5 chin tucks + hombros atrás + mirar lejos, 30 seg.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROGRESO -->
+  <section class="section" id="sec-progreso">
+    <div class="section-title">Últimos 14 días</div>
+    <div class="section-sub">% de ejercicios completados cada día</div>
+    <div class="history-grid" id="historyGrid"></div>
+
+    <div style="margin-top:28px;">
+      <div class="section-title" style="font-size:16px;">Nivel de dolor</div>
+      <div class="pain-history" id="painHistoryGrid"></div>
+    </div>
+  </section>
+
+  <footer>Educación cervical — no sustituye valoración profesional.<br>Datos guardados solo en este dispositivo.</footer>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <button class="nav-btn active" data-sec="hoy" aria-label="Hoy">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span>Hoy</span>
+  </button>
+  <button class="nav-btn" data-sec="mapa" aria-label="Mapa">
+    <svg viewBox="0 0 24 24"><path d="M4 6l6-2 8 2 6-2v14l-6 2-8-2-6 2z"/><path d="M10 4v14M18 6v14"/></svg>
+    <span>Mapa</span>
+  </button>
+  <button class="nav-btn" data-sec="guia" aria-label="Guía">
+    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    <span>Guía</span>
+  </button>
+  <button class="nav-btn" data-sec="progreso" aria-label="Progreso">
+    <svg viewBox="0 0 24 24"><path d="M3 20h18"/><rect x="5" y="12" width="3" height="6" rx="1"/><rect x="10.5" y="8" width="3" height="10" rx="1"/><rect x="16" y="4" width="3" height="14" rx="1"/></svg>
+    <span>Datos</span>
+  </button>
+</nav>
+
+<script>
+/* ========== DATA ========== */
+const MUSCLE_DATA = {
+  'trap-sup': {role:'tight', title:'Trapecio superior', text:'Se acorta al sostener la cabeza adelantada. Responsable del dolor "en gorro" hacia la sien.'},
+  'elevador': {role:'tight', title:'Elevador de la escápula', text:'Conecta cervicales con el borde superior de la escápula. Se sobrecarga con hombros elevados frente al teclado.'},
+  'suboccipital': {role:'tight', title:'Suboccipitales', text:'Grupo profundo en la base del cráneo (C0-C1-C2). Muy sensible a mirar la pantalla; causa cefalea tensional.'},
+  'trap-med': {role:'weak', title:'Trapecio medio', text:'Se alarga e inhibe con hombros caídos. Su debilidad impide abrir el pecho sin esfuerzo consciente.'},
+  'romboides': {role:'weak', title:'Romboides', text:'Estabilizan la escápula. Se debilitan con hombros protraídos y postura redondeada.'},
+  'ecom': {role:'tight', title:'ECOM', text:'Se activa en exceso para compensar la falta de fuerza de los flexores profundos.'},
+  'flexores': {role:'weak', title:'Flexores cervicales profundos', text:'Los verdaderos estabilizadores anteriores. Se "duermen" con cabeza adelantada; clave para corregirla.'},
+  'pect-menor': {role:'tight', title:'Pectoral menor', text:'Se acorta con hombros redondeados y tira la escápula hacia delante.'},
+};
+
+const PHASES = {
+  liberar:  {name:'Liberar',  tag:'Fase 01', color:'var(--liberar)',  desc:'Bajar el tono sin buscar dolor. Tensión suave sostenida, a diario.'},
+  activar:  {name:'Activar',  tag:'Fase 02', color:'var(--activar)', desc:'Los débiles se entrenan. Calidad de movimiento, resistencia.'},
+  reeducar: {name:'Reeducar', tag:'Fase 03', color:'var(--reeducar)', desc:'Ajustar entorno y automatizar el gesto correcto.'},
+};
+
+const EXERCISES = [
+  {id:'e1', phase:'liberar', name:'Auto-masaje suboccipital', mode:'timer', seconds:120,
+    detail:'Pelotas de tenis bajo el borde del cráneo, tumbado boca arriba. Peso de la cabeza 1–2 min, "sí" pequeños.'},
+  {id:'e2', phase:'liberar', name:'Estiramiento ECOM / trapecio', mode:'timer', seconds:40,
+    detail:'Mano fija el asiento. Oreja al hombro opuesto, barbilla arriba (ECOM) o al pecho (trapecio). 30–40 s/lado.'},
+  {id:'e3', phase:'liberar', name:'Estiramiento pectoral menor', mode:'timer', seconds:30,
+    detail:'Antebrazo en marco de puerta a 90°. Paso adelante rotando tronco al lado contrario.'},
+  {id:'e4', phase:'liberar', name:'Elevador de la escápula', mode:'timer', seconds:30,
+    detail:'Mano en nuca, mirada a axila contraria, presión suave hacia abajo.'},
+  {id:'e5', phase:'activar', name:'Chin tuck', mode:'reps', reps:'3 × 10',
+    detail:'"Doble mentón" sin bajar barbilla. Mantén 5 seg. El ejercicio más importante.'},
+  {id:'e6', phase:'activar', name:'Flexión cráneo-cervical', mode:'reps', reps:'8-10 × 10s',
+    detail:'Tumbado sin almohada, asiente ligeramente sin despegar la cabeza del suelo.'},
+  {id:'e7', phase:'activar', name:'Remo con banda', mode:'reps', reps:'3 × 12-15',
+    detail:'Codos pegados, omóplatos atrás y abajo, sin encoger hombros.'},
+  {id:'e8', phase:'activar', name:'Y-T-W', mode:'reps', reps:'2 × 10/letra',
+    detail:'Brazos en Y, T y W con pulgares arriba. Trapecio inferior y escápulas.'},
+  {id:'e9', phase:'reeducar', name:'Pausa activa', mode:'counter', target:6,
+    detail:'Cada 30–40 min: 5 chin tucks + hombros atrás + mirar lejos. Suma una pausa.'},
+];
+
+/* ========== STORAGE ========== */
+const STORAGE_PREFIX = 'cervical:';
+
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dateKey(offset){
+  const d = new Date();
+  d.setDate(d.getDate()-offset);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+async function loadLog(key){
+  const fullKey = STORAGE_PREFIX + key;
+  try{
+    if(window.storage){
+      const r = await window.storage.get(fullKey, false);
+      if(r) return JSON.parse(r.value);
+    }
+  }catch(e){}
+  try{
+    const raw = localStorage.getItem(fullKey);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {done:{}, counters:{}, pain:null};
+}
+
+async function saveLog(key, log){
+  const fullKey = STORAGE_PREFIX + key;
+  const val = JSON.stringify(log);
+  try{
+    if(window.storage) await window.storage.set(fullKey, val, false);
+  }catch(e){}
+  try{ localStorage.setItem(fullKey, val); }catch(e){ console.error(e); }
+}
+
+let currentLog = {done:{}, counters:{}, pain:null};
+const activeTimers = new Map();
+
+/* ========== NAV ========== */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('sec-'+btn.dataset.sec).classList.add('active');
+    if(btn.dataset.sec === 'guia') renderLibrary();
+    if(btn.dataset.sec === 'progreso') renderProgreso();
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
+
+/* ========== MAPA ========== */
+function showInfo(id){
+  const d = MUSCLE_DATA[id];
+  if(!d) return;
+  const panel = document.getElementById('info-panel');
+  document.getElementById('info-role').textContent = d.role === 'tight' ? 'Tenso / sobrecargado' : 'Débil / inhibido';
+  document.getElementById('info-role').className = 'role ' + d.role;
+  document.getElementById('info-title').textContent = d.title;
+  document.getElementById('info-text').textContent = d.text;
+  panel.classList.add('show');
+}
+
+document.querySelectorAll('.muscle').forEach(el=>{
+  el.addEventListener('click', ()=> showInfo(el.dataset.id));
+});
+
+document.querySelectorAll('.view-toggle button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const view = btn.dataset.view;
+    document.getElementById('view-posterior').style.display = view==='posterior' ? 'block':'none';
+    document.getElementById('view-lateral').style.display = view==='lateral' ? 'block':'none';
+    document.getElementById('info-panel').classList.remove('show');
+  });
+});
+
+const vertPost = document.getElementById('vertebrae-post');
+['C0','C1','C2','C3','C4','C5','C6','C7','T1'].forEach((lab,i)=>{
+  const y = 130 + i*28;
+  const el = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  el.setAttribute('cx',320); el.setAttribute('cy',y); el.setAttribute('r',7);
+  el.setAttribute('fill','#f2ede2'); el.setAttribute('stroke','var(--ink)'); el.setAttribute('stroke-width',1.2);
+  vertPost.appendChild(el);
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',335); t.setAttribute('y',y+4); t.setAttribute('class','vert-label');
+  t.textContent = lab;
+  vertPost.appendChild(t);
+});
+
+const curve = document.getElementById('cervical-curve');
+const vertLat = document.getElementById('vertebrae-lat');
+const len = curve.getTotalLength();
+['C0','C1','C2','C3','C4','C5','C6','C7'].forEach((lab,i)=>{
+  const pt = curve.getPointAtLength((len/7)*i);
+  const el = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  el.setAttribute('cx',pt.x); el.setAttribute('cy',pt.y); el.setAttribute('r',6);
+  el.setAttribute('fill','#f2ede2'); el.setAttribute('stroke','var(--ink)'); el.setAttribute('stroke-width',1.2);
+  vertLat.appendChild(el);
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',pt.x-24); t.setAttribute('y',pt.y+3); t.setAttribute('class','vert-label');
+  t.textContent = lab;
+  vertLat.appendChild(t);
+});
+
+/* ========== EXERCISE CARDS ========== */
+function renderCard(ex, log, ctx){
+  const phase = PHASES[ex.phase];
+  const isDone = !!log.done[ex.id];
+  const card = document.createElement('div');
+  card.className = 'ex-card' + (isDone ? ' done' : '');
+  card.style.setProperty('--phase-color', phase.color);
+
+  const check = document.createElement('div');
+  check.className = 'ex-check' + (isDone ? ' checked' : '');
+  check.addEventListener('click', async ()=>{
+    log.done[ex.id] = !log.done[ex.id];
+    await saveLog(ctx.key, log);
+    ctx.rerender();
+    updateTension();
+  });
+
+  const body = document.createElement('div');
+  body.className = 'ex-body';
+  const top = document.createElement('div');
+  top.className = 'ex-top';
+  top.innerHTML = `<span class="ex-name">${ex.name}</span><span class="ex-meta">${ex.mode==='timer' ? ex.seconds+'s' : (ex.mode==='reps' ? ex.reps : ex.target+'/día')}</span>`;
+
+  const detail = document.createElement('div');
+  detail.className = 'ex-detail';
+  detail.textContent = ex.detail;
+
+  const controls = document.createElement('div');
+  controls.className = 'ex-controls';
+
+  if(ex.mode === 'timer'){
+    const btn = document.createElement('button');
+    btn.className = 'ex-btn';
+    btn.textContent = 'Iniciar';
+    const timerId = ex.id + ':' + ctx.key;
+    btn.addEventListener('click', ()=>{
+      if(activeTimers.has(timerId)) return;
+      let remaining = ex.seconds;
+      btn.classList.add('running');
+      btn.textContent = remaining+'s';
+      const interval = setInterval(()=>{
+        remaining -= 1;
+        btn.textContent = remaining+'s';
+        if(remaining <= 0){
+          clearInterval(interval);
+          activeTimers.delete(timerId);
+          btn.textContent = 'Iniciar';
+          btn.classList.remove('running');
+          log.done[ex.id] = true;
+          saveLog(ctx.key, log).then(()=>{ ctx.rerender(); updateTension(); });
+        }
+      },1000);
+      activeTimers.set(timerId, interval);
+    });
+    controls.appendChild(btn);
+  } else if(ex.mode === 'reps'){
+    const btn = document.createElement('button');
+    btn.className = 'ex-btn';
+    btn.textContent = isDone ? 'Hecho ✓' : 'Marcar hecho';
+    btn.addEventListener('click', async ()=>{
+      log.done[ex.id] = !log.done[ex.id];
+      await saveLog(ctx.key, log);
+      ctx.rerender();
+      updateTension();
+    });
+    controls.appendChild(btn);
+  } else if(ex.mode === 'counter'){
+    const row = document.createElement('div');
+    row.className = 'counter-row';
+    const minus = document.createElement('button');
+    minus.className = 'counter-btn'; minus.textContent = '–';
+    const num = document.createElement('span');
+    num.className = 'counter-num';
+    const count = log.counters[ex.id] || 0;
+    num.textContent = count + ' / ' + ex.target;
+    const plus = document.createElement('button');
+    plus.className = 'counter-btn'; plus.textContent = '+';
+    minus.addEventListener('click', async ()=>{
+      log.counters[ex.id] = Math.max(0,(log.counters[ex.id]||0)-1);
+      log.done[ex.id] = log.counters[ex.id] >= ex.target;
+      await saveLog(ctx.key, log); ctx.rerender(); updateTension();
+    });
+    plus.addEventListener('click', async ()=>{
+      log.counters[ex.id] = (log.counters[ex.id]||0)+1;
+      log.done[ex.id] = log.counters[ex.id] >= ex.target;
+      await saveLog(ctx.key, log); ctx.rerender(); updateTension();
+    });
+    row.appendChild(minus); row.appendChild(num); row.appendChild(plus);
+    controls.appendChild(row);
+  }
+
+  body.appendChild(top);
+  body.appendChild(detail);
+  body.appendChild(controls);
+  card.appendChild(check);
+  card.appendChild(body);
+  return card;
+}
+
+function updateTension(){
+  const doneCount = Object.values(currentLog.done).filter(Boolean).length;
+  const pct = Math.round((doneCount/EXERCISES.length)*100);
+  document.getElementById('tensionValue').textContent = pct+'%';
+  document.getElementById('statDone').textContent = doneCount+'/'+EXERCISES.length;
+  const pctFactor = pct/100;
+  document.getElementById('cableL').setAttribute('d', `M 16 10 Q ${8+ pctFactor*4} ${15- pctFactor*3} 5 20`);
+  document.getElementById('cableR').setAttribute('d', `M 20 10 Q ${28- pctFactor*4} ${15- pctFactor*3} 31 20`);
+  const color = pct>66 ? 'var(--activar)' : pct>33 ? 'var(--reeducar)' : 'var(--liberar)';
+  document.getElementById('cableL').style.stroke = color;
+  document.getElementById('cableR').style.stroke = color;
+}
+
+async function renderHoy(){
+  const key = todayKey();
+  currentLog = await loadLog(key);
+  const ctx = {key, rerender: renderHoy};
+
+  const container = document.getElementById('checklistHoy');
+  container.innerHTML = '';
+  ['liberar','activar','reeducar'].forEach(phaseId=>{
+    const phase = PHASES[phaseId];
+    const head = document.createElement('div');
+    head.className = 'phase-head';
+    head.innerHTML = `<span class="phase-dot" style="background:${phase.color}"></span><span class="phase-name">${phase.name}</span><span class="phase-tag">${phase.tag}</span>`;
+    container.appendChild(head);
+    EXERCISES.filter(e=>e.phase===phaseId).forEach(ex=>{
+      container.appendChild(renderCard(ex, currentLog, ctx));
+    });
+  });
+
+  const painScale = document.getElementById('painScale');
+  painScale.innerHTML = '';
+  for(let i=0;i<=10;i++){
+    const dot = document.createElement('div');
+    dot.className = 'pain-dot' + (currentLog.pain===i ? ' active':'');
+    dot.textContent = i;
+    dot.addEventListener('click', async ()=>{
+      currentLog.pain = i;
+      await saveLog(key, currentLog);
+      renderHoy();
+    });
+    painScale.appendChild(dot);
+  }
+
+  document.getElementById('statPain').textContent =
+    currentLog.pain===null||currentLog.pain===undefined ? '—' : currentLog.pain;
+  updateTension();
+  await renderStreak();
+}
+
+async function renderStreak(){
+  let streak = 0;
+  for(let i=0;i<60;i++){
+    const log = await loadLog(dateKey(i));
+    const doneCount = Object.values(log.done).filter(Boolean).length;
+    if(doneCount>=3) streak++; else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+}
+
+async function renderLibrary(){
+  const key = todayKey();
+  const log = await loadLog(key);
+  const ctx = {key, rerender: renderLibrary};
+  const container = document.getElementById('libraryFull');
+  container.innerHTML = '';
+  ['liberar','activar','reeducar'].forEach(phaseId=>{
+    const phase = PHASES[phaseId];
+    const head = document.createElement('div');
+    head.className = 'phase-head';
+    head.innerHTML = `<span class="phase-dot" style="background:${phase.color}"></span><span class="phase-name">${phase.name}</span><span class="phase-tag">${phase.tag}</span>`;
+    container.appendChild(head);
+    const descEl = document.createElement('p');
+    descEl.className = 'phase-desc';
+    descEl.textContent = phase.desc;
+    container.appendChild(descEl);
+    EXERCISES.filter(e=>e.phase===phaseId).forEach(ex=>{
+      container.appendChild(renderCard(ex, log, ctx));
+    });
+  });
+}
+
+async function renderProgreso(){
+  const grid = document.getElementById('historyGrid');
+  const painGrid = document.getElementById('painHistoryGrid');
+  grid.innerHTML = ''; painGrid.innerHTML = '';
+  for(let i=13;i>=0;i--){
+    const k = dateKey(i);
+    const log = await loadLog(k);
+    const doneCount = Object.values(log.done).filter(Boolean).length;
+    const pct = Math.round((doneCount/EXERCISES.length)*100);
+
+    const bar = document.createElement('div');
+    bar.className = 'history-bar';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.height = Math.max(pct,3)+'%';
+    fill.title = k+': '+pct+'%';
+    const label = document.createElement('div');
+    label.className = 'bar-date';
+    label.textContent = k.slice(5);
+    bar.appendChild(fill);
+    bar.appendChild(label);
+    grid.appendChild(bar);
+
+    const pOuter = document.createElement('div');
+    pOuter.className = 'pain-bar-outer';
+    const pBar = document.createElement('div');
+    pBar.className = 'pain-bar';
+    const painVal = (log.pain===null||log.pain===undefined) ? 0 : log.pain;
+    pBar.style.height = (painVal*10)+'%';
+    pBar.title = k+': dolor '+(log.pain ?? '—');
+    pOuter.appendChild(pBar);
+    painGrid.appendChild(pOuter);
+  }
+}
+
+document.getElementById('resetDay').addEventListener('click', async ()=>{
+  if(!confirm('¿Reiniciar el progreso de hoy?')) return;
+  const key = todayKey();
+  await saveLog(key, {done:{}, counters:{}, pain:null});
+  renderHoy();
+});
+
+renderHoy();
+</script>
+</body>
+</html>
