@@ -30,6 +30,7 @@ const state = {
   revealSkip: null,
   legalTableIds: new Set(),
   feed: [],
+  pendingSnap: null,
 };
 
 let audioCtx = null;
@@ -639,11 +640,19 @@ function submitMove(move) {
   if (state.busy) return;
   if (state.mode === 'online' && state.role === 'guest') {
     state.busy = true;
+    // Keep DOM for flight anim when host echoes state
+    state.pendingSnap = snapshotAnim(move, { me: state.me, game: state.game });
+    state.pendingMoveType = null;
+    ghostIds([move.cardId, ...(move.captureIds || [])]);
     state.net.send({ type: 'move', move });
     state.selectedHand = null;
     state.selectedTable.clear();
     setMsg('Enviando jugada…');
-    render();
+    // Soft UI update without wiping ghosted cards from layout
+    $('#btnCapture').disabled = true;
+    $('#btnDiscard').disabled = true;
+    $('#btnAuto').disabled = true;
+    $('#btnHint').disabled = true;
     return;
   }
   commitLocalMove({ ...move, player: state.me });
@@ -922,14 +931,15 @@ async function ingestRemoteState(game) {
   const mv =
     wasPlaying && log.length > prevLog ? log[log.length - 1] : null;
 
-  let snap = null;
-  if (mv && prevGame) {
+  let snap = state.pendingSnap || null;
+  if (!snap && mv && prevGame) {
     snap = snapshotAnim(
       { player: mv.player, cardId: mv.cardId, captureIds: mv.captureIds || [] },
       { me: state.me, game: prevGame }
     );
     ghostIds([mv.cardId, ...(mv.captureIds || [])]);
   }
+  state.pendingSnap = null;
 
   state.game = game;
   state.selectedHand = null;
