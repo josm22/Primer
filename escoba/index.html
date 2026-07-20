@@ -25,6 +25,10 @@
         <div class="hero-art" id="heroArt" aria-hidden="true"></div>
         <h1 class="brand"><span>La mesa está lista</span>Escoba</h1>
         <p class="tagline">Baraja española de verdad. Ves cada captura, llevas la cuenta de oros y sietes, y barres la mesa con estilo.</p>
+        <div class="field name-field">
+          <label for="playerName">Tu nombre</label>
+          <input id="playerName" maxlength="14" autocomplete="nickname" placeholder="Tú" spellcheck="false">
+        </div>
         <div class="actions">
           <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
           <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
@@ -56,6 +60,7 @@
       <div class="hero">
         <h1 class="brand" style="font-size:clamp(36px,11vw,48px)">Conectando</h1>
         <p class="status-line" id="joinWaitStatus">…</p>
+        <div class="wait-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         <button type="button" class="btn btn-ghost" id="btnJoinWaitHome">Cancelar</button>
       </div>
     </section>
@@ -67,18 +72,19 @@
           <div class="score-pill" id="scoreMe">
             <span class="who">Tú</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Tu puntuación">
               <div class="score-fill" id="barMe"></div>
             </div>
           </div>
           <div class="score-pill" id="scoreOpp">
             <span class="who">Rival</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Puntuación rival">
               <div class="score-fill" id="barOpp"></div>
             </div>
           </div>
         </div>
+        <span class="net-chip" id="netChip" hidden></span>
         <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
         <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
       </div>
@@ -94,8 +100,6 @@
         </div>
 
         <div class="felt" id="felt" aria-label="Mesa"></div>
-
-        <div class="sum-preview" id="sumPreview" aria-live="polite"></div>
 
         <div class="my-row">
           <div class="pile" id="pileMe" aria-label="Tus capturas"></div>
