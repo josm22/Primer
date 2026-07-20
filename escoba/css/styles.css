@@ -273,6 +273,14 @@ body::before {
   border: 1px solid rgba(224, 179, 77, 0.25);
 }
 
+.status-line {
+  text-align: center;
+  font-size: 0.95rem;
+  color: rgba(244, 235, 224, 0.72);
+  min-height: 1.4em;
+  margin-bottom: 16px;
+}
+
 .status-line.waiting-pulse {
   animation: waitingPulse 1.6s ease-in-out infinite;
 }
