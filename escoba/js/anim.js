@@ -425,10 +425,11 @@ export function snapshotAnim(move, { me, game }) {
  * capture  → carta entra al grupo y SALEN juntas al montón
  * escoba   → igual + barrido
  */
-export async function playTableAnim(snap, type, { onSfx } = {}) {
+export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
   if (prefersReducedMotion()) {
     onSfx?.(type === 'escoba' ? 'escoba' : type === 'capture' ? 'capture' : 'discard');
     await sleep(220);
+    await onBeforeClear?.();
     return;
   }
 
@@ -478,6 +479,7 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
 
     toast('A la mesa', { ms: 650 });
     await sleep(220);
+    await onBeforeClear?.();
     clearLayer();
     return;
   }
@@ -587,6 +589,7 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
 
   await sleep(type === 'escoba' ? 650 : 320);
   document.getElementById('felt')?.classList.remove('sweep');
+  await onBeforeClear?.();
   clearLayer();
 }
 

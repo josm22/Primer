@@ -12,11 +12,11 @@ export function cardBackUrl() {
 
 export function buildCardFaceHtml(card) {
   const src = cardImageUrl(card);
-  return `<img class="card-img" src="${src}" alt="${card.label}" draggable="false" loading="lazy">`;
+  return `<img class="card-img" src="${src}" alt="${card.label}" draggable="false">`;
 }
 
 export function buildCardBackHtml() {
-  return `<img class="card-img" src="${cardBackUrl()}" alt="" draggable="false" loading="lazy">`;
+  return `<img class="card-img" src="${cardBackUrl()}" alt="" draggable="false">`;
 }
 
 /** Precarga toda la baraja para que los vuelos no salgan en blanco. */

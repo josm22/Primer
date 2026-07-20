@@ -39,6 +39,7 @@ export class EscobaNet {
     this.clientId = null;
     this.topic = null;
     this.ready = false;
+    this.playerName = '';
     this._joinTimer = null;
     this._destroyed = false;
     this.handlers = {
@@ -115,7 +116,7 @@ export class EscobaNet {
   }
 
   _announceJoin() {
-    this.send({ type: 'join' });
+    this.send({ type: 'join', name: this.playerName || '' });
   }
 
   async _connect() {

@@ -41,7 +41,9 @@ const state = {
   netStatus: '',
   moveWatch: null,
   feltClearedUntil: 0,
+  feltClearTimer: null,
   heroIdle: null,
+  netChain: Promise.resolve(),
 };
 
 let audioCtx = null;
@@ -200,6 +202,22 @@ async function runDealIfNeeded() {
 async function sweepRoundLeftovers(g) {
   const left = g.roundLeftovers;
   if (!left?.cards?.length) return;
+  const felt = $('#felt');
+  // Tras un “dejar” que cierra la ronda, la carta nueva no está en el DOM
+  if (felt) {
+    for (const c of left.cards) {
+      const existing = document.querySelector(
+        `.card[data-id="${CSS.escape(c.id)}"]`
+      );
+      if (!existing) {
+        const el = cardEl(c, { face: true });
+        const rot = ((Math.random() * 10) % 11) - 5;
+        el.style.setProperty('--table-rot', `${rot}deg`);
+        felt.appendChild(el);
+      }
+    }
+    await sleep(40);
+  }
   const who =
     left.player == null ? null : state.names[left.player] || 'Jugador';
   await playLeftoverSweep(left, {
@@ -207,6 +225,75 @@ async function sweepRoundLeftovers(g) {
     onSfx: playSfx,
     whoName: who,
   });
+}
+
+function markFeltCleared() {
+  state.feltClearedUntil = Date.now() + 1200;
+  clearTimeout(state.feltClearTimer);
+  state.feltClearTimer = setTimeout(() => {
+    state.feltClearedUntil = 0;
+    if (!state.game || state.busy || state.dealing) return;
+    if (state.game.table.length) return;
+    const felt = $('#felt');
+    felt?.classList.remove('felt-cleared');
+    const empty = felt?.querySelector('.felt-empty');
+    if (empty) {
+      empty.classList.remove('cleared');
+      empty.textContent = 'Mesa limpia';
+    }
+  }, 1250);
+}
+
+function enqueueNet(task) {
+  state.netChain = state.netChain
+    .then(() => task())
+    .catch((err) => console.error(err));
+  return state.netChain;
+}
+
+function applyRemoteNames(names) {
+  if (!Array.isArray(names) || names.length < 2) return;
+  const cleaned = names.map((n) => String(n || '').trim().slice(0, 14) || 'Jugador');
+  state.names = cleaned;
+  // Conserva tu nombre local si lo tienes
+  const mine = myDisplayName();
+  if (mine && mine !== 'Tú') state.names[state.me] = mine;
+}
+
+function updatePlayButtons() {
+  const g = state.game;
+  if (!g) return;
+  const myTurn = g.phase === 'play' && g.currentPlayer === state.me && !state.busy;
+  const canPlay = myTurn && !!state.selectedHand;
+  $('#btnCapture').disabled = !(canPlay && state.selectedTable.size > 0);
+  $('#btnDiscard').disabled = !canPlay;
+}
+
+/** Actualiza selección sin reconstruir toda la mesa (más fluido en iPhone). */
+function patchSelection() {
+  const g = state.game;
+  if (!g) return;
+  const myTurn = g.phase === 'play' && g.currentPlayer === state.me && !state.busy;
+  const selecting = myTurn && !!state.selectedHand;
+
+  $$('#myHand .card').forEach((el) => {
+    const id = el.dataset.id;
+    const selected = state.selectedHand === id;
+    el.classList.toggle('selected', selected);
+    el.classList.toggle('dim', myTurn && !!state.selectedHand && !selected);
+  });
+
+  $$('#felt > .card').forEach((el) => {
+    const id = el.dataset.id;
+    if (!id) return;
+    el.classList.toggle('capture-target', state.selectedTable.has(id));
+    el.onclick = selecting ? () => toggleTable(id) : null;
+  });
+
+  updatePlayButtons();
+  if (!state.busy && g.phase === 'play') {
+    setMsg(myTurn ? 'Tu turno' : `Turno de ${state.names[1 - state.me]}`);
+  }
 }
 
 async function finishAfterMove() {
@@ -235,7 +322,7 @@ async function finishAfterMove() {
 
   const last = normalizeLogMove(lastMoveFrom(g));
   if (last?.type === 'escoba') {
-    state.feltClearedUntil = Date.now() + 1200;
+    markFeltCleared();
   }
 
   render();
@@ -665,14 +752,14 @@ function selectHand(id) {
     state.selectedTable.clear();
     playSfx('select');
   }
-  render();
+  patchSelection();
 }
 
 function toggleTable(id) {
   if (state.selectedTable.has(id)) state.selectedTable.delete(id);
   else state.selectedTable.add(id);
   playSfx('select');
-  render();
+  patchSelection();
 }
 
 function lastMoveFrom(game) {
@@ -708,7 +795,11 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
   state.selectedTable.clear();
 
   if (broadcast && state.mode === 'online' && state.role === 'host') {
-    state.net.send({ type: 'state', game: serializeState(state.game) });
+    state.net.send({
+      type: 'state',
+      game: serializeState(state.game),
+      names: state.names,
+    });
   }
 
   const mv = lastMoveFrom(state.game);
@@ -721,7 +812,13 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
           ? 'Capturando…'
           : 'Dejando carta…'
     );
-    await playTableAnim(snap, mv.type, { onSfx: playSfx });
+    await playTableAnim(snap, mv.type, {
+      onSfx: playSfx,
+      onBeforeClear: async () => {
+        // Pinta el destino bajo el flyer para evitar un frame en blanco
+        if (state.game?.phase === 'play') render();
+      },
+    });
   }
 
   state.lastSeenLog = (state.game.moveLog || []).length;
@@ -981,6 +1078,7 @@ function leaveToHome() {
   state.lastSeenLog = 0;
   state.feed = [];
   state.feltClearedUntil = 0;
+  clearTimeout(state.feltClearTimer);
   clearMoveWatch();
   clearFlyLayer();
   setNetChip('');
@@ -1019,11 +1117,19 @@ function startCpu() {
 function beginHostMatch() {
   if (state.role !== 'host' || !state.net) return;
   if (state.game && state.net.ready) {
-    state.net.send({ type: 'state', game: serializeState(state.game) });
+    state.net.send({
+      type: 'state',
+      game: serializeState(state.game),
+      names: state.names,
+    });
     return;
   }
   saveName();
-  state.names = [myDisplayName(), 'Amigo'];
+  state.names[0] = myDisplayName();
+  if (!state.names[1] || state.names[1] === 'Amigo') {
+    // se rellena con el nombre del join si llegó
+    state.names[1] = state.names[1] || 'Amigo';
+  }
   state.game = createMatch({ firstPlayer: 0 });
   state.lastSeenLog = 0;
   state.selectedHand = null;
@@ -1031,7 +1137,12 @@ function beginHostMatch() {
   state.feed = [];
   state.prevScores = [0, 0];
   state.net.markReady();
-  state.net.send({ type: 'state', game: serializeState(state.game) });
+  state.net.send({ type: 'hello', names: state.names });
+  state.net.send({
+    type: 'state',
+    game: serializeState(state.game),
+    names: state.names,
+  });
   $('#inviteOverlay').classList.remove('open');
   showScreen('screenGame');
   setNetChip('En línea', 'ok');
@@ -1045,6 +1156,7 @@ async function startHost() {
     saveName();
     state.net?.destroy();
     state.net = new EscobaNet();
+    state.net.playerName = myDisplayName();
     wireNet(state.net);
     $('#inviteStatus').textContent = 'Creando sala…';
     $('#inviteOverlay').classList.add('open');
@@ -1073,6 +1185,7 @@ async function startJoin() {
     saveName();
     state.net?.destroy();
     state.net = new EscobaNet();
+    state.net.playerName = myDisplayName();
     wireNet(state.net);
     showScreen('screenJoinWait');
     $('#joinWaitStatus').textContent = 'Conectando…';
@@ -1091,12 +1204,34 @@ async function startJoin() {
   }
 }
 
-async function ingestRemoteState(game) {
+async function ingestRemoteState(game, meta = {}) {
   clearMoveWatch();
+  if (meta.names) applyRemoteNames(meta.names);
+
   const prevLog = state.lastSeenLog || 0;
   const wasPlaying = !!state.game;
   const prevGame = state.game;
   const log = game.moveLog || [];
+
+  // Ignora estados viejos / duplicados mientras animamos
+  if (wasPlaying && log.length < prevLog) {
+    const reset =
+      game.phase === 'play' &&
+      (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd');
+    if (!reset) return;
+  }
+  if (
+    wasPlaying &&
+    log.length === prevLog &&
+    game.phase === prevGame?.phase &&
+    !meta.force
+  ) {
+    // Solo refresco de nombres / sync sin jugada nueva
+    state.game = game;
+    if (!state.busy) render();
+    return;
+  }
+
   const rawMv =
     wasPlaying && log.length > prevLog ? log[log.length - 1] : null;
   const mv = normalizeLogMove(rawMv);
@@ -1129,8 +1264,13 @@ async function ingestRemoteState(game) {
   if (mv && snap) {
     pushFeed(mv);
     state.busy = true;
-    await playTableAnim(snap, mv.type, { onSfx: playSfx });
-    if (mv.type === 'escoba') state.feltClearedUntil = Date.now() + 1200;
+    await playTableAnim(snap, mv.type, {
+      onSfx: playSfx,
+      onBeforeClear: async () => {
+        if (state.game?.phase === 'play') render();
+      },
+    });
+    if (mv.type === 'escoba') markFeltCleared();
   }
 
   state.lastSeenLog = log.length;
@@ -1167,8 +1307,11 @@ async function ingestRemoteState(game) {
 }
 
 function wireNet(net) {
-  net.on('onPeerJoin', () => {
-    if (state.role === 'host') beginHostMatch();
+  net.on('onPeerJoin', (data) => {
+    if (state.role !== 'host') return;
+    const guestName = String(data?.name || '').trim().slice(0, 14);
+    if (guestName) state.names[1] = guestName;
+    beginHostMatch();
   });
 
   net.on('onReconnect', () => {
@@ -1180,17 +1323,31 @@ function wireNet(net) {
     if (!data || typeof data !== 'object') return;
 
     if (data.type === 'requestState' && state.role === 'host' && state.game) {
-      net.send({ type: 'state', game: serializeState(state.game) });
+      net.send({
+        type: 'state',
+        game: serializeState(state.game),
+        names: state.names,
+      });
+      return;
+    }
+
+    if (data.type === 'hello' && data.names) {
+      applyRemoteNames(data.names);
+      if (state.game && !state.busy) render();
       return;
     }
 
     if (data.type === 'state' && state.role === 'guest') {
-      ingestRemoteState(data.game);
+      enqueueNet(() => ingestRemoteState(data.game, { names: data.names }));
       return;
     }
 
     if (data.type === 'move' && state.role === 'host') {
-      (async () => {
+      enqueueNet(async () => {
+        if (state.busy || state.dealing) {
+          net.send({ type: 'reject', reason: 'Espera un momento' });
+          return;
+        }
         try {
           const move = { ...data.move, player: 1 };
           await applyAndReveal(move, { broadcast: true });
@@ -1198,7 +1355,7 @@ function wireNet(net) {
           net.send({ type: 'reject', reason: err.message });
           state.busy = false;
         }
-      })();
+      });
       return;
     }
 
@@ -1208,7 +1365,7 @@ function wireNet(net) {
       clearGhosts();
       const reason = data.reason || 'Jugada rechazada';
       if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
-      else if (/inválida|sumar 15/i.test(reason)) flashBad('Esa captura no vale');
+      else if (/inválida|sumar 15|espera/i.test(reason)) flashBad(reason.includes('Espera') ? 'Espera un momento' : 'Esa captura no vale');
       else flashBad(reason);
       render();
     }
@@ -1376,7 +1533,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=14').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=15').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

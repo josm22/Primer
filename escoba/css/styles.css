@@ -196,6 +196,7 @@ body::before {
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.2s ease, opacity 0.2s;
   letter-spacing: 0.01em;
+  touch-action: manipulation;
 }
 
 .btn:active { transform: scale(0.98); }
@@ -615,6 +616,7 @@ body::before {
   -webkit-appearance: none;
   appearance: none;
   overflow: hidden;
+  touch-action: manipulation;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.3) inset,
     0 6px 16px rgba(0, 0, 0, 0.32);
@@ -819,7 +821,11 @@ body::before {
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding:
+    max(24px, env(safe-area-inset-top, 0px))
+    max(24px, env(safe-area-inset-right, 0px))
+    max(24px, env(safe-area-inset-bottom, 0px))
+    max(24px, env(safe-area-inset-left, 0px));
 }
 
 .overlay.open { display: flex; animation: fadeIn 0.3s ease; }
