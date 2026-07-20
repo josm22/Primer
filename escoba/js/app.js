@@ -860,11 +860,14 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
   state.selectedTable.clear();
 
   if (broadcast && state.mode === 'online' && state.role === 'host') {
-    state.net.send({
+    const payload = {
       type: 'state',
       game: serializeState(state.game),
       names: state.names,
-    });
+    };
+    if (!state.net.send(payload)) {
+      setTimeout(() => state.net?.send(payload), 500);
+    }
   }
 
   const mv = lastMoveFrom(state.game);
@@ -1135,6 +1138,9 @@ function showRoundPanel(g) {
       else inner.classList.add('match-lose');
     }
   }
+  requestAnimationFrame(() => {
+    actions.querySelector('button:not([disabled])')?.focus?.();
+  });
 }
 
 function nextRound() {
