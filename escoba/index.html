@@ -23,8 +23,8 @@
     <section id="screenHome" class="screen active">
       <div class="hero">
         <div class="hero-art" id="heroArt" aria-hidden="true"></div>
-        <h1 class="brand"><span>Baraja española</span>Escoba</h1>
-        <p class="tagline">Oros, copas, espadas y bastos. Invita a un amigo o practica contra la CPU. Partidas a 21.</p>
+        <h1 class="brand"><span>La mesa está lista</span>Escoba</h1>
+        <p class="tagline">Baraja española de verdad. Ves cada captura, llevas la cuenta de oros y sietes, y barres la mesa con estilo.</p>
         <div class="actions">
           <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
           <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
@@ -70,18 +70,45 @@
         <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
         <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
       </div>
+
+      <div class="live-stats" id="statsOpp"></div>
+
       <div class="msg-bar" id="msgBar"></div>
+
       <div class="table-area">
-        <div class="opp-hand" id="oppHand" aria-label="Mano del rival"></div>
+        <div class="opp-row">
+          <div class="opp-hand" id="oppHand" aria-label="Mano del rival"></div>
+          <div class="pile" id="pileOpp" aria-label="Capturas del rival"></div>
+        </div>
+
         <div class="felt" id="felt" aria-label="Mesa"></div>
-        <div class="my-hand" id="myHand" aria-label="Tu mano"></div>
+
+        <div class="sum-preview" id="sumPreview" aria-live="polite"></div>
+
+        <div class="my-row">
+          <div class="pile" id="pileMe" aria-label="Tus capturas"></div>
+          <div class="my-hand" id="myHand" aria-label="Tu mano"></div>
+        </div>
       </div>
+
+      <div class="live-stats" id="statsMe"></div>
+
       <div class="play-bar">
         <button type="button" class="btn btn-ghost" id="btnDiscard" disabled>Dejar</button>
         <button type="button" class="btn btn-ghost" id="btnAuto" disabled>Auto</button>
         <button type="button" class="btn btn-gold" id="btnCapture" disabled>Capturar</button>
       </div>
     </section>
+  </div>
+
+  <!-- Capture reveal -->
+  <div class="reveal" id="revealOverlay" aria-live="assertive">
+    <div class="reveal-panel">
+      <div class="reveal-burst" aria-hidden="true"></div>
+      <h2 id="revealTitle">Captura</h2>
+      <div class="reveal-cards" id="revealCards"></div>
+      <p class="reveal-loot" id="revealLoot"></p>
+    </div>
   </div>
 
   <!-- Invite overlay -->
@@ -133,7 +160,7 @@
   <script type="module">
     const art = document.getElementById('heroArt');
     if (art) {
-      for (const id of ['oros-1', 'copas-10', 'espadas-12', 'bastos-7']) {
+      for (const id of ['oros-7', 'copas-12', 'espadas-10', 'bastos-1', 'oros-1']) {
         const d = document.createElement('div');
         d.className = 'mini-card';
         d.innerHTML = `<img src="./cards/${id}.png" alt="" draggable="false">`;
