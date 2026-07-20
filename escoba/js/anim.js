@@ -187,6 +187,135 @@ function toast(text, { escoba = false, ms = 900 } = {}) {
   return t;
 }
 
+function burstSparks(cx, cy) {
+  const layer = ensureLayer();
+  const colors = ['#efc56a', '#7dffb0', '#f4ebe0', '#e0b34d', '#fff6d6'];
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const ang = (Math.PI * 2 * i) / 22 + Math.random() * 0.3;
+    const dist = 48 + Math.random() * 90;
+    const size = 5 + Math.random() * 7;
+    p.style.left = `${cx}px`;
+    p.style.top = `${cy}px`;
+    p.style.width = `${size}px`;
+    p.style.height = `${size}px`;
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
+    p.style.setProperty('--dy', `${Math.sin(ang) * dist}px`);
+    p.style.animationDelay = `${Math.random() * 0.08}s`;
+    layer.appendChild(p);
+  }
+}
+
+/**
+ * Reparto: cartas salen del mazo hacia mesa y manos.
+ */
+export async function playDealAnim({
+  tableCards = [],
+  myCards = [],
+  oppCount = 0,
+  me = 0,
+  onSfx,
+} = {}) {
+  clearLayer();
+  const layer = ensureLayer();
+  layer.classList.add('active');
+
+  const felt = selRect('#felt');
+  const deck = selRect('.deck-badge') || felt;
+  const origin = {
+    left: (deck?.left ?? window.innerWidth / 2) + (deck?.width ?? 0) / 2 - 24,
+    top: (deck?.top ?? window.innerHeight / 2) + (deck?.height ?? 0) / 2 - 36,
+    width: 48,
+    height: 74,
+  };
+
+  await preload(cardBackUrl());
+  await Promise.all(tableCards.map((c) => preload(cardImageUrl(c))));
+  await Promise.all(myCards.map((c) => preload(cardImageUrl(c))));
+
+  onSfx?.('deal');
+  toast('Repartiendo…', { ms: 700 });
+
+  const flyers = [];
+
+  // Mesa (cara arriba)
+  for (let i = 0; i < tableCards.length; i++) {
+    const land = feltLanding(felt, i);
+    const node = makeFlyer(null, origin, { face: false, z: 1 + i });
+    flyers.push(
+      (async () => {
+        await sleep(70 * i);
+        await animateTo(node, { ...land, width: 72, height: 110 }, {
+          ms: 420,
+          rotate: (i - 1.5) * 3,
+          easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
+        });
+        setFace(node, tableCards[i]);
+        await animateTo(node, land, { ms: 120, scale: 1.02 });
+      })()
+    );
+  }
+
+  // Rival (dorso)
+  for (let i = 0; i < oppCount; i++) {
+    const hand = handOrigin(1 - me, me);
+    const spread = (i - (oppCount - 1) / 2) * 22;
+    const land = {
+      left: hand.left + spread,
+      top: hand.top,
+      width: 56,
+      height: 86,
+    };
+    const node = makeFlyer(null, origin, { face: false, z: 10 + i });
+    flyers.push(
+      (async () => {
+        await sleep(90 + 55 * i);
+        await animateTo(node, land, {
+          ms: 480,
+          rotate: 180 + (i - 1) * 4,
+          easing: 'cubic-bezier(0.22, 0.8, 0.28, 1)',
+        });
+      })()
+    );
+  }
+
+  // Tú (cara arriba)
+  for (let i = 0; i < myCards.length; i++) {
+    const hand = handOrigin(me, me);
+    const mid = (myCards.length - 1) / 2;
+    const spread = (i - mid) * 26;
+    const land = {
+      left: hand.left + spread,
+      top: hand.top,
+      width: 68,
+      height: 104,
+    };
+    const node = makeFlyer(null, origin, { face: false, z: 20 + i });
+    flyers.push(
+      (async () => {
+        await sleep(140 + 60 * i);
+        await animateTo(node, {
+          left: land.left,
+          top: land.top - 18,
+          width: land.width,
+          height: land.height,
+        }, { ms: 420, rotate: (i - mid) * 5 });
+        setFace(node, myCards[i]);
+        await animateTo(node, land, {
+          ms: 160,
+          rotate: (i - mid) * 4,
+        });
+      })()
+    );
+  }
+
+  await Promise.all(flyers);
+  await sleep(280);
+  clearLayer();
+}
+
 function feltLanding(felt, index = 0) {
   const w = 72;
   const h = 110;
@@ -398,13 +527,14 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
   await sleep(220);
 
   const loot = lootText([playedCard, ...tableTaken]);
-  if (type === 'escoba') {
-    document.getElementById('felt')?.classList.add('sweep');
-    toast('¡ESCOBA!', { escoba: true, ms: 1100 });
-    if (loot) toast(loot, { ms: 1100 });
-  } else {
-    toast(loot || 'Captura', { ms: 900 });
-  }
+    toast(type === 'escoba' ? '¡ESCOBA!' : 'Captura', { escoba: type === 'escoba', ms: type === 'escoba' ? 1200 : 800 });
+    if (type === 'escoba') {
+      document.getElementById('felt')?.classList.add('sweep');
+      burstSparks(cx, cy);
+    } else if (loot) {
+      // Solo loot tras capturar (resultado), no ayuda previa
+      toast(loot, { ms: 900 });
+    }
 
   // LEAVE: whole stack flies off the table into the capture pile
   const dest = pileLanding(pile, felt, meSide);
