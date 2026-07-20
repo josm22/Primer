@@ -73,16 +73,34 @@ body::before {
   to { opacity: 1; transform: none; }
 }
 
-@keyframes dealIn {
-  from { opacity: 0; transform: translateY(-40px) rotate(-10deg) scale(0.82); }
-  to { opacity: 1; transform: none; }
-}
-
-
 @keyframes sweep {
   0% { transform: scale(1); }
   35% { transform: scale(1.03) rotate(-1deg); }
   100% { transform: scale(1); }
+}
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes sparkFly {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+
+@keyframes ptsBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.28); color: var(--gold); }
+  100% { transform: scale(1); }
+}
+
+@keyframes turnGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 179, 77, 0.2); }
+  50% { box-shadow: 0 0 0 6px rgba(224, 179, 77, 0); }
 }
 
 @keyframes floatSuit {
@@ -301,6 +319,11 @@ body::before {
 .score-pill.active {
   border-color: rgba(224, 179, 77, 0.65);
   background: rgba(224, 179, 77, 0.12);
+  animation: turnGlow 1.8s ease infinite;
+}
+
+.score-pill .pts.bump {
+  animation: ptsBump 0.55s cubic-bezier(.22,.8,.3,1);
 }
 
 .score-pill .who {
@@ -346,7 +369,7 @@ body::before {
 
 .opp-hand .card,
 .my-hand .card {
-  margin-left: -12px;
+  margin-left: -14px;
 }
 
 .opp-hand .card:first-child,
@@ -354,8 +377,25 @@ body::before {
   margin-left: 0;
 }
 
+.my-hand .card {
+  transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-rot, 0deg));
+  transform-origin: 50% 100%;
+}
+
 .opp-hand .card.face-down {
-  transform: rotate(180deg);
+  transform: translateY(var(--fan-y, 0px)) rotate(calc(180deg + var(--fan-rot, 0deg)));
+  transform-origin: 50% 0%;
+}
+
+.felt > .card {
+  transform: rotate(var(--table-rot, 0deg));
+}
+
+#screenGame.dealing .my-hand .card,
+#screenGame.dealing .opp-hand .card,
+#screenGame.dealing .felt > .card {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .felt {
@@ -412,8 +452,7 @@ body::before {
   position: relative;
   cursor: pointer;
   user-select: none;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s;
-  animation: dealIn 0.42s cubic-bezier(.22,.8,.3,1) both;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s, opacity 0.15s;
   flex-shrink: 0;
   padding: 0;
   border: none;
@@ -426,13 +465,6 @@ body::before {
     0 6px 16px rgba(0, 0, 0, 0.32);
   border: 1px solid rgba(40, 28, 14, 0.35);
 }
-
-.card:nth-child(1) { animation-delay: 0.02s; }
-.card:nth-child(2) { animation-delay: 0.07s; }
-.card:nth-child(3) { animation-delay: 0.12s; }
-.card:nth-child(4) { animation-delay: 0.17s; }
-.card:nth-child(5) { animation-delay: 0.22s; }
-.card:nth-child(6) { animation-delay: 0.27s; }
 
 .card.face-down { cursor: default; }
 
@@ -447,7 +479,7 @@ body::before {
 }
 
 .card.selected {
-  transform: translateY(-16px) scale(1.05);
+  transform: translateY(calc(var(--fan-y, 0px) - 18px)) rotate(var(--fan-rot, 0deg)) scale(1.06);
   box-shadow: 0 14px 28px rgba(224, 179, 77, 0.45);
   z-index: 5;
   outline: 2px solid var(--gold);
@@ -457,7 +489,7 @@ body::before {
 .card.capture-target {
   outline: 2px solid #3ecf82;
   outline-offset: 2px;
-  transform: translateY(-8px);
+  transform: translateY(-8px) rotate(var(--table-rot, 0deg));
   z-index: 4;
 }
 
@@ -470,6 +502,15 @@ body::before {
 }
 
 .play-bar .btn { flex: 1; }
+
+#btnCapture.sum-ready {
+  box-shadow: 0 0 0 2px rgba(125, 255, 176, 0.55), 0 8px 22px rgba(184, 135, 42, 0.35);
+}
+
+#btnCapture.sum-bad:not(:disabled) {
+  filter: saturate(0.7);
+  opacity: 0.85;
+}
 
 
 
@@ -601,6 +642,12 @@ body::before {
 
 .sum-preview.ok { color: #7dffb0; }
 .sum-preview.bad { color: #ffb4a8; }
+.sum-preview.shake { animation: shakeX 0.4s ease; }
+
+.msg-bar.flash-bad {
+  color: #ffb4a8;
+  animation: shakeX 0.4s ease;
+}
 
 .card.is-oro { box-shadow: 0 0 0 1px rgba(224,179,77,0.55), 0 6px 16px rgba(0,0,0,0.32); }
 .card.is-siete { outline: 1px dashed rgba(255,255,255,0.25); outline-offset: 1px; }
@@ -933,5 +980,23 @@ body::before {
   opacity: 0 !important;
   pointer-events: none !important;
   transform: scale(0.85) !important;
+}
+
+.spark {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 95;
+  box-shadow: 0 0 8px rgba(224, 179, 77, 0.7);
+  animation: sparkFly 0.75s cubic-bezier(.15,.7,.3,1) forwards;
+  margin-left: -3px;
+  margin-top: -3px;
+}
+
+.name-field input {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 1.15rem;
+  font-family: var(--font-ui);
 }
 
