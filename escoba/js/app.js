@@ -350,6 +350,23 @@ function startCpu() {
   maybeAiOrWait();
 }
 
+function beginHostMatch() {
+  if (state.role !== 'host' || !state.net) return;
+  if (state.game && state.net.ready) {
+    // Ya hay partida: reenviar estado al que se une tarde / reintenta
+    state.net.send({ type: 'state', game: serializeState(state.game) });
+    return;
+  }
+  state.game = createMatch({ firstPlayer: 0 });
+  state.selectedHand = null;
+  state.selectedTable.clear();
+  state.net.markReady();
+  state.net.send({ type: 'state', game: serializeState(state.game) });
+  $('#inviteOverlay').classList.remove('open');
+  showScreen('screenGame');
+  render();
+}
+
 async function startHost() {
   try {
     state.net?.destroy();
@@ -364,6 +381,7 @@ async function startHost() {
     state.role = 'host';
     state.me = 0;
     state.names = ['Tú', 'Amigo'];
+    state.game = null;
   } catch (err) {
     $('#inviteStatus').textContent = err.message || 'Error al crear sala';
   }
@@ -386,33 +404,31 @@ async function startJoin() {
     state.role = 'guest';
     state.me = 1;
     state.names = ['Anfitrión', 'Tú'];
-    $('#joinWaitStatus').textContent = 'Conectado. Esperando partida…';
+    $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
   } catch (err) {
     $('#joinWaitStatus').textContent = err.message || 'No se pudo unir';
   }
 }
 
 function wireNet(net) {
-  net.on('onReady', ({ role }) => {
-    if (role === 'host') {
-      state.game = createMatch({ firstPlayer: 0 });
-      state.selectedHand = null;
-      state.selectedTable.clear();
-      net.send({ type: 'state', game: serializeState(state.game) });
-      $('#inviteOverlay').classList.remove('open');
-      showScreen('screenGame');
-      render();
-    }
+  net.on('onPeerJoin', () => {
+    if (state.role === 'host') beginHostMatch();
   });
 
   net.on('onMessage', (data) => {
     if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'requestState' && state.role === 'host' && state.game) {
+      net.send({ type: 'state', game: serializeState(state.game) });
+      return;
+    }
 
     if (data.type === 'state' && state.role === 'guest') {
       state.game = data.game;
       state.busy = false;
       state.selectedHand = null;
       state.selectedTable.clear();
+      state.net?.markReady();
       $('#roundOverlay').classList.remove('open');
       showScreen('screenGame');
       render();
@@ -441,33 +457,54 @@ function wireNet(net) {
   });
 
   net.on('onDisconnect', () => {
-    setMsg('Tu amigo se ha desconectado');
+    setMsg('Conexión interrumpida. Reintentando…');
   });
 
   net.on('onError', (err) => {
     console.error(err);
-    setMsg(err?.message || 'Error de conexión');
+    const msg = err?.message || 'Error de conexión';
+    if ($('#inviteOverlay')?.classList.contains('open')) {
+      $('#inviteStatus').textContent = msg;
+    } else if ($('#screenJoinWait')?.classList.contains('active')) {
+      $('#joinWaitStatus').textContent = msg;
+    } else {
+      setMsg(msg);
+    }
   });
 
   net.on('onStatus', (s) => {
-    const el = $('#inviteStatus') || $('#joinWaitStatus');
-    if (el) el.textContent = s;
+    if ($('#inviteOverlay')?.classList.contains('open')) {
+      $('#inviteStatus').textContent = s;
+    }
+    if ($('#screenJoinWait')?.classList.contains('active')) {
+      $('#joinWaitStatus').textContent = s;
+    }
   });
 }
 
 async function shareInvite() {
   const code = $('#inviteCode').textContent;
-  const text = `¡Juguemos a la Escoba! Código: ${code}`;
-  const url = location.href.split('#')[0];
+  const base = location.href.split('?')[0].split('#')[0];
+  const url = `${base}?code=${encodeURIComponent(code)}`;
+  const text = `¡Juguemos a la Escoba! Código: ${code}\n${url}`;
   try {
     if (navigator.share) {
       await navigator.share({ title: 'Escoba', text, url });
     } else {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      $('#inviteStatus').textContent = 'Código copiado al portapapeles';
+      await navigator.clipboard.writeText(text);
+      $('#inviteStatus').textContent = 'Código y enlace copiados';
     }
   } catch (_) {
     /* usuario canceló */
+  }
+}
+
+function applyInviteFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const code = normalizeCode(params.get('code') || '');
+  if (code.length === 6) {
+    showScreen('screenJoin');
+    $('#joinCode').value = code;
   }
 }
 
@@ -513,3 +550,4 @@ function registerSw() {
 bindUi();
 registerSw();
 showScreen('screenHome');
+applyInviteFromUrl();
