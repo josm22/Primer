@@ -13,17 +13,18 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
-  <title>Escoba — online</title>
+  <title>Escoba — baraja española</title>
 </head>
 <body>
   <div id="app">
     <!-- HOME -->
     <section id="screenHome" class="screen active">
       <div class="hero">
+        <div class="hero-art" id="heroArt" aria-hidden="true"></div>
         <h1 class="brand"><span>Baraja española</span>Escoba</h1>
-        <p class="tagline">Partidas a 21 puntos. Invita a un amigo con un código o practica contra la CPU.</p>
+        <p class="tagline">Oros, copas, espadas y bastos. Invita a un amigo o practica contra la CPU. Partidas a 21.</p>
         <div class="actions">
           <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
           <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
@@ -128,6 +129,18 @@
     </div>
   </div>
 
+  <script type="module">
+    import { suitSvg } from './js/cards-ui.js';
+    const art = document.getElementById('heroArt');
+    if (art) {
+      for (const suit of ['oros', 'copas', 'espadas', 'bastos']) {
+        const d = document.createElement('div');
+        d.className = 'mini-card';
+        d.innerHTML = suitSvg(suit, { size: 28 });
+        art.appendChild(d);
+      }
+    }
+  </script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
