@@ -1300,7 +1300,6 @@ body::before {
 .card.ghosting {
   opacity: 0 !important;
   pointer-events: none !important;
-  transform: scale(0.85) !important;
 }
 
 .card.sending {

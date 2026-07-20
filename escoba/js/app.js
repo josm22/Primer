@@ -369,10 +369,15 @@ function armMoveWatch() {
   clearTimeout(state.moveWatch);
   state.moveWatch = setTimeout(() => {
     if (!state.busy || state.role !== 'guest') return;
+    const snap = state.pendingSnap;
     clearGhosts();
     clearSending();
     state.busy = false;
     state.animSeat = null;
+    if (snap?.move) {
+      state.selectedHand = snap.move.cardId || null;
+      state.selectedTable = new Set(snap.move.captureIds || []);
+    }
     state.pendingSnap = null;
     flashBad('Sin respuesta — reintentando');
     setNetChip('Sincronizando', 'warn');
@@ -670,22 +675,33 @@ function openPeek(playerIdx) {
     fill('#peekSietes', sietes);
     fill('#peekAll', sorted);
   }
-  overlay.classList.add('open');
-  focusReturnEl = document.activeElement;
+  openOverlay('#peekOverlay', '#btnClosePeek');
   playSfx('peek');
-  requestAnimationFrame(() => $('#btnClosePeek')?.focus?.());
 }
 
 let focusReturnEl = null;
 
+function setAppInert(on) {
+  const app = $('#app');
+  if (!app) return;
+  if (on) app.setAttribute('inert', '');
+  else app.removeAttribute('inert');
+}
+
+function anyOverlayOpen() {
+  return !!document.querySelector('.overlay.open');
+}
+
 function openOverlay(overlaySel, focusSel) {
   focusReturnEl = document.activeElement;
+  setAppInert(true);
   $(overlaySel)?.classList.add('open');
   requestAnimationFrame(() => $(focusSel)?.focus?.());
 }
 
 function closeOverlay(overlaySel) {
   $(overlaySel)?.classList.remove('open');
+  if (!anyOverlayOpen()) setAppInert(false);
   const back = focusReturnEl;
   focusReturnEl = null;
   if (back && typeof back.focus === 'function') {
@@ -1174,7 +1190,7 @@ function showRoundPanel(g) {
         state.selectedTable.clear();
         state.prevScores = [0, 0];
         sendState(state.game);
-        $('#roundOverlay').classList.remove('open');
+        closeRoundOverlay();
         showScreen('screenGame');
         requestDeal();
         render();
@@ -1192,6 +1208,8 @@ function showRoundPanel(g) {
   home.textContent = 'Salir al inicio';
   home.onclick = () => leaveToHome();
   actions.appendChild(home);
+  focusReturnEl = document.activeElement;
+  setAppInert(true);
   panel.classList.add('open');
   const inner = panel.querySelector('.panel');
   if (inner) {
@@ -1209,12 +1227,17 @@ function showRoundPanel(g) {
   });
 }
 
+function closeRoundOverlay() {
+  $('#roundOverlay')?.classList.remove('open');
+  if (!anyOverlayOpen()) setAppInert(false);
+}
+
 function nextRound() {
   if (state.mode === 'online' && state.role === 'guest') return;
   state.game = startNextRound(state.game);
   state.lastSeenLog = 0;
   state.feed = [];
-  $('#roundOverlay').classList.remove('open');
+  closeRoundOverlay();
   requestDeal();
   render();
   if (state.mode === 'online' && state.role === 'host') {
@@ -1249,6 +1272,8 @@ function leaveToHome() {
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
   $('#rulesOverlay')?.classList.remove('open');
+  setAppInert(false);
+  focusReturnEl = null;
   $('#inviteStatus')?.classList.remove('waiting-pulse');
   $('#joinWaitStatus')?.classList.remove('waiting-pulse');
   showScreen('screenHome');
@@ -1268,7 +1293,7 @@ function startCpu() {
   state.selectedTable.clear();
   state.prevScores = [0, 0];
   showScreen('screenGame');
-  $('#roundOverlay').classList.remove('open');
+  closeRoundOverlay();
   stopHeroIdle();
   requestDeal();
   render();
@@ -1296,7 +1321,7 @@ function beginHostMatch() {
   state.net.markReady();
   state.net.send({ type: 'hello', names: state.names });
   sendState(state.game);
-  $('#inviteOverlay').classList.remove('open');
+  closeOverlay('#inviteOverlay');
   showScreen('screenGame');
   setNetChip('En línea', 'ok');
   requestDeal();
@@ -1312,7 +1337,7 @@ async function startHost() {
     state.net.playerName = myDisplayName();
     wireNet(state.net);
     $('#inviteStatus').textContent = 'Creando sala…';
-    $('#inviteOverlay').classList.add('open');
+    openOverlay('#inviteOverlay', '#btnCancelInvite');
     const { code } = await state.net.host();
     $('#inviteCode').textContent = code;
     $('#inviteStatus').textContent = 'Comparte el código con tu amigo';
@@ -1370,9 +1395,12 @@ async function ingestRemoteState(game, meta = {}) {
 
   // Ignora estados viejos / duplicados mientras animamos
   if (wasPlaying && log.length < prevLog) {
+    // Nueva ronda/partida aunque el guest no viera el panel de fin
     const reset =
       game.phase === 'play' &&
-      (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd');
+      (prevGame.phase === 'roundEnd' ||
+        prevGame.phase === 'matchEnd' ||
+        log.length === 0);
     if (!reset) return;
   }
   if (
@@ -1399,12 +1427,13 @@ async function ingestRemoteState(game, meta = {}) {
     setMsg('Sincronizado');
   }
 
-  // Nueva ronda o primera llegada del estado: animar reparto
+  // Reparto animado solo si la mesa es realmente nueva
   const isFreshDeal =
-    !wasPlaying ||
-    (prevGame &&
-      game.phase === 'play' &&
-      (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd'));
+    game.phase === 'play' &&
+    ((prevGame &&
+      (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd')) ||
+      (!wasPlaying && log.length === 0) ||
+      (wasPlaying && log.length === 0 && gap === 0 && prevLog > 0));
 
   let snap = state.pendingSnap || null;
   if (snap && mv) {
@@ -1434,7 +1463,7 @@ async function ingestRemoteState(game, meta = {}) {
   state.selectedTable.clear();
   state.net?.markReady();
   setNetChip('En línea', 'ok');
-  $('#roundOverlay').classList.remove('open');
+  closeRoundOverlay();
   showScreen('screenGame');
 
   // Guest confirma nombre tras estar listo (rejoin / primera sync)
@@ -1466,9 +1495,16 @@ async function ingestRemoteState(game, meta = {}) {
   }
 
   if (isFreshDeal && game.phase === 'play' && !mv) {
+    state.feed = [];
     requestDeal();
     render();
     await runDealIfNeeded();
+    return;
+  }
+
+  // Guest se une a mitad de partida: pinta el estado sin falso reparto
+  if (!wasPlaying && game.phase === 'play' && log.length > 0 && !mv) {
+    render();
     return;
   }
 
@@ -1709,6 +1745,12 @@ function bindUi() {
   $('#peekOverlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'peekOverlay') closeOverlay('#peekOverlay');
   });
+  $('#rulesOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'rulesOverlay') closeRules();
+  });
+  $('#inviteOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'inviteOverlay' && !state.game) leaveToHome();
+  });
   $('#joinCode').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') startJoin();
   });
@@ -1760,7 +1802,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=20').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=21').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
