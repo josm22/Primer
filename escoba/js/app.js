@@ -329,9 +329,6 @@ function render() {
     );
   }
 
-  // no machine hints — player chooses freely
-  state.legalTableIds = new Set();
-
   renderStats();
   renderScoreBars();
   renderPiles();
