@@ -1,0 +1,26 @@
+{
+  "name": "Escoba — online",
+  "short_name": "Escoba",
+  "description": "Escoba del 15: juega online con un amigo por código de invitación",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c3a28",
+  "theme_color": "#145c3d",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
