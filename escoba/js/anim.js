@@ -391,6 +391,44 @@ function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
   };
 }
 
+/** Mide el destino real ya pintado en el montón (tras onBeforeClear). */
+function measurePileDest(meSide, { crossed = false } = {}) {
+  const root = meSide ? '#pileMe' : '#pileOpp';
+  if (crossed) {
+    const marks = document.querySelectorAll(`${root} .escoba-mark`);
+    const el = marks[marks.length - 1];
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 4) {
+        return { left: r.left, top: r.top, width: r.width, height: r.height, rotate: 90 };
+      }
+    }
+  }
+  const cards = document.querySelectorAll(`${root} .pile-stack .card.tiny`);
+  const el = cards[cards.length - 1];
+  if (el) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 4) {
+      return { left: r.left, top: r.top, width: r.width, height: r.height, rotate: 0 };
+    }
+  }
+  return null;
+}
+
+function ghostPile(meSide) {
+  const root = meSide ? '#pileMe' : '#pileOpp';
+  document
+    .querySelectorAll(`${root} .pile-stack .card, ${root} .escoba-mark`)
+    .forEach((el) => el.classList.add('ghosting'));
+}
+
+function unghostPile(meSide) {
+  const root = meSide ? '#pileMe' : '#pileOpp';
+  document
+    .querySelectorAll(`${root} .ghosting`)
+    .forEach((el) => el.classList.remove('ghosting'));
+}
+
 function lootText(cards) {
   const list = cards.filter(Boolean);
   const oros = list.filter((c) => c.suit === 'oros').length;
@@ -610,67 +648,104 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
     toast(loot || 'Captura', { ms: 850 });
   }
 
-  // LEAVE: whole stack flies off the table into the capture pile
-  const dest = pileLanding(pile, felt, meSide, { crossed: type === 'escoba' });
+  // LEAVE: el mazo se acerca al montón, se pinta el destino y aterriza exacto
+  const approx = pileLanding(pile, felt, meSide, { crossed: type === 'escoba' });
   const pack = [playedFlyer, ...tableFlyers];
   await Promise.all(
     pack.map((node, i) =>
       animateTo(
         node,
         {
-          left: dest.left + i * 3,
-          top: dest.top - i * 3,
-          width: dest.width,
-          height: dest.height,
+          left: approx.left + i * 3,
+          top: approx.top - 28 - i * 3,
+          width: approx.width,
+          height: approx.height,
         },
         {
-          ms: 620,
+          ms: 520,
           rotate: (i - 1) * 5,
-          opacity: i === pack.length - 1 ? 1 : 0.7,
+          opacity: i === pack.length - 1 ? 1 : 0.55,
           easing: 'cubic-bezier(0.25, 0.8, 0.2, 1)',
         }
       )
     )
   );
 
-  // Escoba: la última carta se gira boca abajo y se cruza (90°)
+  // Apoya solo la carta de encima; el resto se desvanece
+  const topFlyer = pack[pack.length - 1];
+  await Promise.all(
+    pack.slice(0, -1).map((node) =>
+      animateTo(
+        node,
+        {
+          left: approx.left,
+          top: approx.top - 10,
+          width: approx.width * 0.9,
+          height: approx.height * 0.9,
+        },
+        { ms: 160, opacity: 0, scale: 0.92 }
+      )
+    )
+  );
+
   if (type === 'escoba') {
-    const marker = pack[pack.length - 1];
-    setBack(marker);
+    setBack(topFlyer);
     await animateTo(
-      marker,
+      topFlyer,
       {
-        left: dest.left,
-        top: dest.top,
-        width: dest.width,
-        height: dest.height,
+        left: approx.left,
+        top: approx.top - 12,
+        width: approx.width,
+        height: approx.height,
       },
       {
-        ms: 380,
+        ms: 300,
         rotate: 90,
         scale: 1.04,
         easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
       }
     );
-    await sleep(280);
-  } else {
-    await sleep(320);
   }
 
   document.getElementById('felt')?.classList.remove('sweep');
   await onBeforeClear?.();
+  ghostPile(meSide);
+
+  const exact = measurePileDest(meSide, { crossed: type === 'escoba' }) || {
+    ...approx,
+    top: approx.top,
+    rotate: type === 'escoba' ? 90 : 0,
+  };
+  await animateTo(
+    topFlyer,
+    {
+      left: exact.left,
+      top: exact.top,
+      width: exact.width,
+      height: exact.height,
+    },
+    {
+      ms: 240,
+      rotate: exact.rotate ?? (type === 'escoba' ? 90 : 0),
+      scale: 1,
+      easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
+    }
+  );
+  await sleep(180);
   clearLayer();
+  unghostPile(meSide);
 }
 
 /**
  * Fin de ronda: cartas que quedaban en la mesa van al montón del último
  * que capturó (o se retiran si nadie capturó).
  */
-export async function playLeftoverSweep(leftovers, { me, onSfx, whoName } = {}) {
+export async function playLeftoverSweep(leftovers, { me, onSfx, whoName, onBeforeClear } = {}) {
   if (!leftovers?.cards?.length) return;
   if (prefersReducedMotion()) {
     onSfx?.('discard');
     await sleep(160);
+    await onBeforeClear?.();
     return;
   }
 
@@ -713,29 +788,49 @@ export async function playLeftoverSweep(leftovers, { me, onSfx, whoName } = {}) 
         )
       )
     );
+    await onBeforeClear?.();
   } else {
     const n = leftovers.cards.length;
     toast(
       `${n} carta${n > 1 ? 's' : ''} → ${whoName || 'montón'}`,
       { ms: 900 }
     );
-    const dest = pileLanding(pile, felt, meSide);
+    const approx = pileLanding(pile, felt, meSide);
     await Promise.all(
       flyers.map((node, i) =>
         animateTo(
           node,
           {
-            left: dest.left + i * 3,
-            top: dest.top - i * 3,
-            width: dest.width,
-            height: dest.height,
+            left: approx.left + i * 3,
+            top: approx.top - 24 - i * 3,
+            width: approx.width,
+            height: approx.height,
           },
-          { ms: 580, rotate: (i - 1) * 4, easing: 'cubic-bezier(0.25, 0.8, 0.2, 1)' }
+          { ms: 500, rotate: (i - 1) * 4, easing: 'cubic-bezier(0.25, 0.8, 0.2, 1)' }
         )
       )
     );
+    // Solo la de encima aterriza; el resto se funde
+    await Promise.all(
+      flyers.slice(0, -1).map((node) =>
+        animateTo(node, { ...approx, top: approx.top - 8 }, { ms: 140, opacity: 0 })
+      )
+    );
+    await onBeforeClear?.();
+    ghostPile(meSide);
+    const exact = measurePileDest(meSide) || approx;
+    const top = flyers[flyers.length - 1];
+    await animateTo(
+      top,
+      { left: exact.left, top: exact.top, width: exact.width, height: exact.height },
+      { ms: 220, rotate: exact.rotate || 0, easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)' }
+    );
+    await sleep(200);
+    clearLayer();
+    unghostPile(meSide);
+    return;
   }
 
-  await sleep(280);
+  await sleep(200);
   clearLayer();
 }

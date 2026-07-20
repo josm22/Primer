@@ -231,6 +231,9 @@ async function sweepRoundLeftovers(g) {
     me: state.me,
     onSfx: playSfx,
     whoName: who,
+    onBeforeClear: async () => {
+      renderPiles();
+    },
   });
 }
 
@@ -809,6 +812,7 @@ function render(opts = {}) {
 }
 
 function selectHand(id) {
+  if (state.busy || state.dealing) return;
   if (state.selectedHand === id) {
     state.selectedHand = null;
     state.selectedTable.clear();
@@ -821,6 +825,7 @@ function selectHand(id) {
 }
 
 function toggleTable(id) {
+  if (state.busy || state.dealing) return;
   if (state.selectedTable.has(id)) state.selectedTable.delete(id);
   else state.selectedTable.add(id);
   playSfx('select');
@@ -841,6 +846,18 @@ function ghostIds(ids) {
   }
 }
 
+function sendState(game = state.game) {
+  if (!state.net || !game) return false;
+  const payload = {
+    type: 'state',
+    game: serializeState(game),
+    names: state.names,
+  };
+  if (state.net.send(payload)) return true;
+  setTimeout(() => state.net?.send(payload), 500);
+  return false;
+}
+
 async function applyAndReveal(move, { broadcast = false } = {}) {
   state.busy = true;
   const beforeLen = (state.game.moveLog || []).length;
@@ -853,45 +870,41 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
     state.game = applyMove(state.game, move);
   } catch (err) {
     state.busy = false;
-    document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
+    clearGhosts();
     throw err;
   }
   state.selectedHand = null;
   state.selectedTable.clear();
 
   if (broadcast && state.mode === 'online' && state.role === 'host') {
-    const payload = {
-      type: 'state',
-      game: serializeState(state.game),
-      names: state.names,
-    };
-    if (!state.net.send(payload)) {
-      setTimeout(() => state.net?.send(payload), 500);
+    sendState(state.game);
+  }
+
+  try {
+    const mv = lastMoveFrom(state.game);
+    if (mv && (state.game.moveLog || []).length > beforeLen) {
+      pushFeed(mv);
+      setMsg(
+        mv.type === 'escoba'
+          ? '¡Escoba!'
+          : mv.type === 'capture'
+            ? 'Capturando…'
+            : 'Dejando carta…'
+      );
+      await playTableAnim(snap, mv.type, {
+        onSfx: playSfx,
+        onBeforeClear: async () => {
+          // Destino bajo el flyer (también en fin de ronda)
+          state.skipNextPilePaint = true;
+          render();
+        },
+      });
     }
+  } finally {
+    state.lastSeenLog = (state.game.moveLog || []).length;
+    state.busy = false;
+    clearGhosts();
   }
-
-  const mv = lastMoveFrom(state.game);
-  if (mv && (state.game.moveLog || []).length > beforeLen) {
-    pushFeed(mv);
-    setMsg(
-      mv.type === 'escoba'
-        ? '¡Escoba!'
-        : mv.type === 'capture'
-          ? 'Capturando…'
-          : 'Dejando carta…'
-    );
-    await playTableAnim(snap, mv.type, {
-      onSfx: playSfx,
-      onBeforeClear: async () => {
-        // Destino bajo el flyer (también en fin de ronda)
-        state.skipNextPilePaint = true;
-        render();
-      },
-    });
-  }
-
-  state.lastSeenLog = (state.game.moveLog || []).length;
-  state.busy = false;
   await finishAfterMove();
 }
 
@@ -934,6 +947,7 @@ function submitMove(move) {
     setMsg('Enviando jugada…');
     armMoveWatch();
     // Soft UI update without wiping ghosted cards from layout
+    patchSelection();
     $('#btnCapture').disabled = true;
     $('#btnDiscard').disabled = true;
     return;
@@ -1103,11 +1117,7 @@ function showRoundPanel(g) {
         state.selectedHand = null;
         state.selectedTable.clear();
         state.prevScores = [0, 0];
-        state.net.send({
-          type: 'state',
-          game: serializeState(state.game),
-          names: state.names,
-        });
+        sendState(state.game);
         $('#roundOverlay').classList.remove('open');
         showScreen('screenGame');
         requestDeal();
@@ -1152,11 +1162,7 @@ function nextRound() {
   requestDeal();
   render();
   if (state.mode === 'online' && state.role === 'host') {
-    state.net.send({
-      type: 'state',
-      game: serializeState(state.game),
-      names: state.names,
-    });
+    sendState(state.game);
   }
   runDealIfNeeded();
 }
@@ -1212,11 +1218,7 @@ function startCpu() {
 function beginHostMatch() {
   if (state.role !== 'host' || !state.net) return;
   if (state.game && state.net.ready) {
-    state.net.send({
-      type: 'state',
-      game: serializeState(state.game),
-      names: state.names,
-    });
+    sendState(state.game);
     return;
   }
   saveName();
@@ -1233,11 +1235,7 @@ function beginHostMatch() {
   state.prevScores = [0, 0];
   state.net.markReady();
   state.net.send({ type: 'hello', names: state.names });
-  state.net.send({
-    type: 'state',
-    game: serializeState(state.game),
-    names: state.names,
-  });
+  sendState(state.game);
   $('#inviteOverlay').classList.remove('open');
   showScreen('screenGame');
   setNetChip('En línea', 'ok');
@@ -1340,6 +1338,13 @@ async function ingestRemoteState(game, meta = {}) {
       (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd'));
 
   let snap = state.pendingSnap || null;
+  if (snap && mv) {
+    const sm = snap.move || {};
+    const same =
+      String(sm.cardId || '') === String(mv.cardId || '') &&
+      Number(sm.player ?? state.me) === Number(mv.player);
+    if (!same) snap = null;
+  }
   if (!snap && mv && prevGame) {
     snap = snapshotAnim(
       { player: mv.player, cardId: mv.cardId, captureIds: mv.captureIds || [] },
@@ -1363,21 +1368,24 @@ async function ingestRemoteState(game, meta = {}) {
     state.net.send({ type: 'hello', playerName: myDisplayName() });
   }
 
-  if (mv && snap) {
-    pushFeed(mv);
-    state.busy = true;
-    await playTableAnim(snap, mv.type, {
-      onSfx: playSfx,
-      onBeforeClear: async () => {
-        state.skipNextPilePaint = true;
-        render();
-      },
-    });
-    if (mv.type === 'escoba') markFeltCleared();
+  try {
+    if (mv && snap) {
+      pushFeed(mv);
+      state.busy = true;
+      await playTableAnim(snap, mv.type, {
+        onSfx: playSfx,
+        onBeforeClear: async () => {
+          state.skipNextPilePaint = true;
+          render();
+        },
+      });
+      if (mv.type === 'escoba') markFeltCleared();
+    }
+  } finally {
+    state.lastSeenLog = log.length;
+    state.busy = false;
+    clearGhosts();
   }
-
-  state.lastSeenLog = log.length;
-  state.busy = false;
 
   if (isFreshDeal && game.phase === 'play' && !mv) {
     requestDeal();
@@ -1427,12 +1435,7 @@ function wireNet(net) {
     if (state.role === 'guest') {
       requestStateFromHost();
     } else if (state.role === 'host' && state.game) {
-      // qos 0: reenvía estado tras reconectar
-      net.send({
-        type: 'state',
-        game: serializeState(state.game),
-        names: state.names,
-      });
+      sendState(state.game);
       setNetChip('En línea', 'ok');
     }
   });
@@ -1441,11 +1444,7 @@ function wireNet(net) {
     if (!data || typeof data !== 'object') return;
 
     if (data.type === 'requestState' && state.role === 'host' && state.game) {
-      net.send({
-        type: 'state',
-        game: serializeState(state.game),
-        names: state.names,
-      });
+      sendState(state.game);
       return;
     }
 
@@ -1666,7 +1665,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=18').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=19').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
@@ -1687,11 +1686,5 @@ startHeroIdle();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || !state.net?.ready) return;
   if (state.role === 'guest') requestStateFromHost();
-  else if (state.role === 'host' && state.game) {
-    state.net.send({
-      type: 'state',
-      game: serializeState(state.game),
-      names: state.names,
-    });
-  }
+  else if (state.role === 'host' && state.game) sendState(state.game);
 });
