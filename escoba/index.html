@@ -10,7 +10,8 @@
   <meta name="description" content="Escoba del 15 — juega online con un amigo por invitación">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+  <link rel="icon" href="icon-512.png" sizes="512x512" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
@@ -25,6 +26,10 @@
         <div class="hero-art" id="heroArt" aria-hidden="true"></div>
         <h1 class="brand"><span>La mesa está lista</span>Escoba</h1>
         <p class="tagline">Baraja española de verdad. Ves cada captura, llevas la cuenta de oros y sietes, y barres la mesa con estilo.</p>
+        <div class="field name-field">
+          <label for="playerName">Tu nombre</label>
+          <input id="playerName" maxlength="14" autocomplete="nickname" placeholder="Tú" spellcheck="false">
+        </div>
         <div class="actions">
           <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
           <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
@@ -56,6 +61,7 @@
       <div class="hero">
         <h1 class="brand" style="font-size:clamp(36px,11vw,48px)">Conectando</h1>
         <p class="status-line" id="joinWaitStatus">…</p>
+        <div class="wait-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         <button type="button" class="btn btn-ghost" id="btnJoinWaitHome">Cancelar</button>
       </div>
     </section>
@@ -67,25 +73,26 @@
           <div class="score-pill" id="scoreMe">
             <span class="who">Tú</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Tu puntuación">
               <div class="score-fill" id="barMe"></div>
             </div>
           </div>
           <div class="score-pill" id="scoreOpp">
             <span class="who">Rival</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Puntuación rival">
               <div class="score-fill" id="barOpp"></div>
             </div>
           </div>
         </div>
+        <span class="net-chip" id="netChip" hidden></span>
         <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
         <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
       </div>
 
       <div class="live-stats" id="statsOpp"></div>
 
-      <div class="msg-bar" id="msgBar"></div>
+      <div class="msg-bar" id="msgBar" role="status" aria-live="polite"></div>
 
       <div class="table-area">
         <div class="opp-row">
@@ -94,8 +101,6 @@
         </div>
 
         <div class="felt" id="felt" aria-label="Mesa"></div>
-
-        <div class="sum-preview" id="sumPreview" aria-live="polite"></div>
 
         <div class="my-row">
           <div class="pile" id="pileMe" aria-label="Tus capturas"></div>
@@ -115,7 +120,7 @@
   </div>
 
   <!-- Peek captures -->
-  <div class="overlay" id="peekOverlay" role="dialog" aria-modal="true">
+  <div class="overlay" id="peekOverlay" role="dialog" aria-modal="true" aria-labelledby="peekTitle">
     <div class="panel peek-panel">
       <h2 id="peekTitle">Capturas</h2>
       <div id="peekBody"></div>
@@ -124,14 +129,15 @@
   </div>
 
   <!-- Invite overlay -->
-  <div class="overlay" id="inviteOverlay" role="dialog" aria-modal="true">
+  <div class="overlay" id="inviteOverlay" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
     <div class="panel">
-      <h2>Invitación</h2>
+      <h2 id="inviteTitle">Invitación</h2>
       <p>Comparte este código. Cuando tu amigo se una, empieza la partida.</p>
-      <div class="invite-code" id="inviteCode">······</div>
+      <div class="invite-code" id="inviteCode" title="Toca para copiar" role="button" tabindex="0">······</div>
       <p class="status-line" id="inviteStatus"></p>
       <div class="actions">
         <button type="button" class="btn btn-gold" id="btnShare">Compartir</button>
+        <button type="button" class="btn btn-primary" id="btnCopyCode">Copiar código</button>
         <button type="button" class="btn btn-ghost" id="btnCancelInvite">Cancelar</button>
       </div>
       <p class="hint">Ambos necesitáis internet. Si se queda emparejando, pide a tu amigo que pulse Unirme otra vez con el mismo código. En iPhone: Compartir → Añadir a pantalla de inicio.</p>
@@ -139,7 +145,7 @@
   </div>
 
   <!-- Round / match end -->
-  <div class="overlay" id="roundOverlay" role="dialog" aria-modal="true">
+  <div class="overlay" id="roundOverlay" role="dialog" aria-modal="true" aria-labelledby="roundTitle">
     <div class="panel">
       <h2 id="roundTitle">Fin de ronda</h2>
       <div id="roundBody"></div>
@@ -148,16 +154,16 @@
   </div>
 
   <!-- Rules -->
-  <div class="overlay" id="rulesOverlay" role="dialog" aria-modal="true">
+  <div class="overlay" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
     <div class="panel">
-      <h2>Cómo se juega</h2>
+      <h2 id="rulesTitle">Cómo se juega</h2>
       <div class="rules-body">
         <p>Baraja española de 40 cartas. Valores: 1–7, Sota 8, Caballo 9, Rey 10.</p>
         <ul>
           <li>En tu turno juegas <strong>una carta</strong> de la mano.</li>
           <li>Si con ella y cartas de la mesa sumas exactamente <strong>15</strong>, las capturas.</li>
           <li>Si no puedes (o no quieres), <strong>dejas</strong> la carta en la mesa.</li>
-          <li>Vaciar la mesa = <strong>escoba</strong> (+1 punto).</li>
+          <li>Vaciar la mesa = <strong>escoba</strong> (+1 punto). Se marca en el montón con una carta boca abajo y cruzada.</li>
         </ul>
         <p>Al final de la ronda (mazo vacío):</p>
         <ul>
