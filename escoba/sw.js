@@ -1,4 +1,4 @@
-const CACHE = 'escoba-v8';
+const CACHE = 'escoba-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -33,6 +33,20 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  // Network-first for JS/CSS so updates land immediately
+  if (/\.(js|css)$/.test(url.pathname) || url.pathname.endsWith('/escoba/') || url.pathname.endsWith('index.html')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cached) => {

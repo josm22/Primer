@@ -605,145 +605,10 @@ body::before {
 .card.is-oro { box-shadow: 0 0 0 1px rgba(224,179,77,0.55), 0 6px 16px rgba(0,0,0,0.32); }
 .card.is-siete { outline: 1px dashed rgba(255,255,255,0.25); outline-offset: 1px; }
 
-/* ---- Reveal overlay ---- */
-.reveal {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(4, 16, 12, 0.55);
-  backdrop-filter: blur(10px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-
-.reveal.open {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.reveal-panel {
-  position: relative;
-  width: min(420px, 100%);
-  text-align: center;
-  padding: 28px 18px 22px;
-  border-radius: 24px;
-  background:
-    radial-gradient(ellipse at top, rgba(224,179,77,0.18), transparent 55%),
-    linear-gradient(180deg, #1c6b47, #0d3a28);
-  border: 1px solid rgba(244,235,224,0.2);
-  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-  transform: scale(0.92) translateY(12px);
-  transition: transform 0.35s cubic-bezier(.22,.8,.3,1);
-  overflow: hidden;
-}
-
-.reveal.open .reveal-panel { transform: none; }
-
-.reveal.escoba .reveal-panel {
-  background:
-    radial-gradient(ellipse at center, rgba(224,179,77,0.35), transparent 60%),
-    linear-gradient(180deg, #2a8a55, #104830);
-  animation: sweep 0.7s ease;
-}
-
-.reveal.theirs .reveal-panel {
-  background:
-    radial-gradient(ellipse at top, rgba(120,160,220,0.2), transparent 55%),
-    linear-gradient(180deg, #1a4f5c, #0d2e38);
-}
-
-.reveal-burst {
-  position: absolute;
-  inset: -40%;
-  background: conic-gradient(from 0deg, transparent, rgba(224,179,77,0.12), transparent 30%);
-  animation: spinBurst 8s linear infinite;
-  opacity: 0;
-}
-
-.reveal.escoba .reveal-burst,
-.reveal.mine .reveal-burst { opacity: 1; }
-
-@keyframes spinBurst {
-  to { transform: rotate(360deg); }
-}
-
-.reveal-panel h2 {
-  position: relative;
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 7vw, 2.4rem);
-  margin: 0 0 16px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.reveal-cards {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 110px;
-  margin-bottom: 12px;
-}
-
-.reveal-card {
-  width: 72px;
-  height: 110px;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.4);
-  animation: dealIn 0.45s cubic-bezier(.22,.8,.3,1) both;
-  border: 1px solid rgba(255,255,255,0.15);
-}
-
-.reveal-card.is-oro {
-  box-shadow: 0 0 0 2px #e0b34d, 0 12px 28px rgba(0,0,0,0.4);
-}
-
-.reveal-card.is-siete {
-  box-shadow: 0 0 0 2px #ff6b5a, 0 12px 28px rgba(0,0,0,0.4);
-}
-
-.reveal-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.reveal-loot {
-  position: relative;
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--gold);
-}
-
-/* Home atmosphere */
-.hero::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 8%;
-  width: 140%;
-  height: 220px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, rgba(224,179,77,0.16), transparent 70%);
-  pointer-events: none;
-  z-index: -1;
-}
-
-.hero { position: relative; }
 
 @media (max-height: 780px) {
   .pile { width: 58px; }
   .pile-stack, .pile-stack .card.tiny { width: 40px; height: 60px; }
-  .reveal-card { width: 62px; height: 96px; }
   .live-stats { padding: 6px 8px; }
 }
 
@@ -918,24 +783,6 @@ body::before {
   transition: width 0.45s cubic-bezier(.22,.8,.3,1);
 }
 
-.card.legal-hint {
-  outline: 2px solid rgba(125, 255, 176, 0.85);
-  outline-offset: 2px;
-  transform: translateY(-4px);
-  z-index: 3;
-}
-.card.can-capture::after {
-  content: '';
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #7dffb0;
-  box-shadow: 0 0 8px rgba(125,255,176,0.8);
-  z-index: 3;
-}
 
 .move-feed {
   display: flex;
@@ -960,12 +807,6 @@ body::before {
 .feed-item.feed-escoba { color: var(--gold); font-weight: 700; }
 .feed-item.feed-cap { color: #b8f0d0; }
 
-.reveal-tip {
-  margin: 12px 0 0;
-  font-size: 0.78rem;
-  color: rgba(244,235,224,0.5);
-  letter-spacing: 0.04em;
-}
 
 .pile {
   cursor: pointer;
