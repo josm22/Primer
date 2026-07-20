@@ -822,6 +822,7 @@ function nextRound() {
   if (state.mode === 'online' && state.role === 'guest') return;
   state.game = startNextRound(state.game);
   state.lastSeenLog = 0;
+  state.feed = [];
   $('#roundOverlay').classList.remove('open');
   render();
   if (state.mode === 'online' && state.role === 'host') {
