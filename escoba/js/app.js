@@ -39,6 +39,9 @@ const state = {
   dealing: false,
   lastPileCount: [0, 0],
   netStatus: '',
+  moveWatch: null,
+  feltClearedUntil: 0,
+  heroIdle: null,
 };
 
 let audioCtx = null;
@@ -176,6 +179,8 @@ async function finishAfterMove() {
 
   if (g.message === 'Nueva mano repartida' && g.phase === 'play') {
     setMsg('Nueva mano');
+    render();
+    await sleep(320);
     requestDeal({ handsOnly: true });
     render();
     await runDealIfNeeded();
@@ -190,8 +195,50 @@ async function finishAfterMove() {
     return;
   }
 
+  const last = normalizeLogMove(lastMoveFrom(g));
+  if (last?.type === 'escoba') {
+    state.feltClearedUntil = Date.now() + 1200;
+  }
+
   render();
   maybeAiOrWait();
+}
+
+function normalizeLogMove(mv) {
+  if (!mv) return null;
+  return {
+    ...mv,
+    cardId: mv.cardId || mv.card,
+    captureIds: mv.captureIds || mv.capture || [],
+  };
+}
+
+function clearGhosts() {
+  document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
+}
+
+function requestStateFromHost() {
+  if (state.mode !== 'online' || state.role !== 'guest' || !state.net) return;
+  state.net.send({ type: 'ping' });
+}
+
+function armMoveWatch() {
+  clearTimeout(state.moveWatch);
+  state.moveWatch = setTimeout(() => {
+    if (!state.busy || state.role !== 'guest') return;
+    clearGhosts();
+    state.busy = false;
+    state.pendingSnap = null;
+    flashBad('Sin respuesta — reintentando');
+    setNetChip('Sincronizando', 'warn');
+    requestStateFromHost();
+    render();
+  }, 8000);
+}
+
+function clearMoveWatch() {
+  clearTimeout(state.moveWatch);
+  state.moveWatch = null;
 }
 
 function setNetChip(text, kind = '') {
@@ -228,7 +275,7 @@ function tally(captured) {
   };
 }
 
-function cardEl(card, { face = true, selectable = false, selected = false, capture = false, dim = false, tiny = false } = {}) {
+function cardEl(card, { face = true, selectable = false, selected = false, capture = false, dim = false, tiny = false, last = false } = {}) {
   const el = document.createElement(tiny ? 'div' : 'button');
   if (!tiny) el.type = 'button';
   el.className = `card ${face ? `face-up suit-${card?.suit || ''}` : 'face-down'}${tiny ? ' tiny' : ''}`;
@@ -236,6 +283,7 @@ function cardEl(card, { face = true, selectable = false, selected = false, captu
   if (selected) el.classList.add('selected');
   if (capture) el.classList.add('capture-target');
   if (dim) el.classList.add('dim');
+  if (last) el.classList.add('hand-last');
   if (!selectable && !tiny) el.tabIndex = -1;
 
   if (face && card) {
@@ -244,6 +292,15 @@ function cardEl(card, { face = true, selectable = false, selected = false, captu
   } else {
     el.innerHTML = buildCardBackHtml();
     el.setAttribute('aria-label', 'Carta oculta');
+  }
+
+  if (!tiny) {
+    const press = () => el.classList.add('pressed');
+    const release = () => el.classList.remove('pressed');
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointerleave', release);
+    el.addEventListener('pointercancel', release);
   }
   return el;
 }
@@ -278,15 +335,20 @@ function renderStats() {
 function renderScoreBars() {
   const g = state.game;
   if (!g) return;
-  const set = (id, score) => {
-    const el = $(id);
+  const set = (fillSel, trackSel, score) => {
+    const el = $(fillSel);
+    const track = $(trackSel);
     if (!el) return;
     const pct = Math.min(100, Math.round((score / WIN_SCORE) * 100));
     el.style.width = `${pct}%`;
-    el.parentElement?.setAttribute('aria-valuenow', String(score));
+    el.classList.toggle('near', score >= 15 && score < 18);
+    el.classList.toggle('clutch', score >= 18);
+    track?.setAttribute('aria-valuenow', String(score));
+    track?.classList.toggle('near', score >= 15 && score < 18);
+    track?.classList.toggle('clutch', score >= 18);
   };
-  set('#barMe', g.scores[state.me]);
-  set('#barOpp', g.scores[1 - state.me]);
+  set('#barMe', '#scoreMe .score-track', g.scores[state.me]);
+  set('#barOpp', '#scoreOpp .score-track', g.scores[1 - state.me]);
 }
 
 function renderFeed() {
@@ -307,14 +369,15 @@ function renderFeed() {
 
 function pushFeed(mv) {
   if (!mv) return;
-  const who = state.names[mv.player] || 'Jugador';
+  const m = normalizeLogMove(mv);
+  const who = state.names[m.player] || 'Jugador';
   let text = '';
   let cls = '';
-  if (mv.type === 'escoba') {
+  if (m.type === 'escoba') {
     text = 'hace ¡ESCOBA!';
     cls = 'feed-escoba';
-  } else if (mv.type === 'capture') {
-    const n = 1 + (mv.captureIds?.length || 0);
+  } else if (m.type === 'capture') {
+    const n = 1 + (m.captureIds?.length || 0);
     text = `captura ${n} carta${n > 1 ? 's' : ''}`;
     cls = 'feed-cap';
   } else {
@@ -424,16 +487,19 @@ function render() {
   $('#scoreOpp .who').textContent = state.names[opp];
   const ptsMe = $('#scoreMe .pts');
   const ptsOpp = $('#scoreOpp .pts');
+  const prevMe = state.prevScores[state.me] || 0;
+  const prevOpp = state.prevScores[1 - state.me] || 0;
   if (ptsMe) {
-    if (Number(ptsMe.textContent) !== g.scores[state.me] && g.scores[state.me] > (state.prevScores[state.me] || 0)) {
+    if (Number(ptsMe.textContent) !== g.scores[state.me] && g.scores[state.me] > prevMe) {
       ptsMe.classList.remove('bump');
       void ptsMe.offsetWidth;
       ptsMe.classList.add('bump');
+      if (g.scores[state.me] >= 15 && prevMe < 15) playSfx('select');
     }
     ptsMe.textContent = g.scores[state.me];
   }
   if (ptsOpp) {
-    if (Number(ptsOpp.textContent) !== g.scores[opp] && g.scores[opp] > (state.prevScores[opp] || 0)) {
+    if (Number(ptsOpp.textContent) !== g.scores[opp] && g.scores[opp] > prevOpp) {
       ptsOpp.classList.remove('bump');
       void ptsOpp.offsetWidth;
       ptsOpp.classList.add('bump');
@@ -464,7 +530,7 @@ function render() {
   oppHand.innerHTML = '';
   const oppLen = g.hands[opp].length;
   for (let i = 0; i < oppLen; i++) {
-    const el = cardEl(null, { face: false });
+    const el = cardEl(null, { face: false, last: oppLen === 1 });
     applyFan(el, i, oppLen);
     oppHand.appendChild(el);
   }
@@ -494,8 +560,18 @@ function render() {
   if (!g.table.length) {
     const empty = document.createElement('div');
     empty.className = 'felt-empty';
-    empty.textContent = 'Mesa limpia';
+    const cleared = Date.now() < (state.feltClearedUntil || 0);
+    if (cleared) {
+      felt.classList.add('felt-cleared');
+      empty.classList.add('cleared');
+      empty.textContent = '¡Mesa limpia!';
+    } else {
+      felt.classList.remove('felt-cleared');
+      empty.textContent = 'Mesa limpia';
+    }
     felt.appendChild(empty);
+  } else {
+    felt.classList.remove('felt-cleared');
   }
 
   g.table.forEach((c, i) => {
@@ -522,6 +598,7 @@ function render() {
       selectable: myTurn,
       selected,
       dim: myTurn && state.selectedHand && !selected,
+      last: myCards.length === 1,
     });
     applyFan(el, i, myCards.length);
     if (myTurn) el.addEventListener('click', () => selectHand(c.id));
@@ -637,6 +714,7 @@ function submitMove(move) {
     state.selectedHand = null;
     state.selectedTable.clear();
     setMsg('Enviando jugada…');
+    armMoveWatch();
     // Soft UI update without wiping ghosted cards from layout
     $('#btnCapture').disabled = true;
     $('#btnDiscard').disabled = true;
@@ -837,6 +915,8 @@ function leaveToHome() {
   state.dealHandsOnly = false;
   state.lastSeenLog = 0;
   state.feed = [];
+  state.feltClearedUntil = 0;
+  clearMoveWatch();
   clearFlyLayer();
   setNetChip('');
   $('#scoreOpp')?.classList.remove('thinking');
@@ -845,7 +925,10 @@ function leaveToHome() {
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
   $('#rulesOverlay')?.classList.remove('open');
+  $('#inviteStatus')?.classList.remove('waiting-pulse');
+  $('#joinWaitStatus')?.classList.remove('waiting-pulse');
   showScreen('screenHome');
+  startHeroIdle();
 }
 
 function startCpu() {
@@ -862,6 +945,7 @@ function startCpu() {
   state.prevScores = [0, 0];
   showScreen('screenGame');
   $('#roundOverlay').classList.remove('open');
+  stopHeroIdle();
   requestDeal();
   render();
   runDealIfNeeded();
@@ -902,11 +986,13 @@ async function startHost() {
     const { code } = await state.net.host();
     $('#inviteCode').textContent = code;
     $('#inviteStatus').textContent = 'Comparte el código con tu amigo';
+    $('#inviteStatus')?.classList.add('waiting-pulse');
     state.mode = 'online';
     state.role = 'host';
     state.me = 0;
     state.names = [myDisplayName(), 'Amigo'];
     state.game = null;
+    stopHeroIdle();
   } catch (err) {
     $('#inviteStatus').textContent = err.message || 'Error al crear sala';
   }
@@ -925,6 +1011,8 @@ async function startJoin() {
     wireNet(state.net);
     showScreen('screenJoinWait');
     $('#joinWaitStatus').textContent = 'Conectando…';
+    $('#joinWaitStatus')?.classList.add('waiting-pulse');
+    stopHeroIdle();
     await state.net.join(code);
     state.mode = 'online';
     state.role = 'guest';
@@ -939,12 +1027,14 @@ async function startJoin() {
 }
 
 async function ingestRemoteState(game) {
+  clearMoveWatch();
   const prevLog = state.lastSeenLog || 0;
   const wasPlaying = !!state.game;
   const prevGame = state.game;
   const log = game.moveLog || [];
-  const mv =
+  const rawMv =
     wasPlaying && log.length > prevLog ? log[log.length - 1] : null;
+  const mv = normalizeLogMove(rawMv);
 
   // Nueva ronda o primera llegada del estado: animar reparto
   const isFreshDeal =
@@ -975,6 +1065,7 @@ async function ingestRemoteState(game) {
     pushFeed(mv);
     state.busy = true;
     await playTableAnim(snap, mv.type, { onSfx: playSfx });
+    if (mv.type === 'escoba') state.feltClearedUntil = Date.now() + 1200;
   }
 
   state.lastSeenLog = log.length;
@@ -990,6 +1081,8 @@ async function ingestRemoteState(game) {
   // Mid-round redeal after a move
   if (mv && game.message === 'Nueva mano repartida' && game.phase === 'play') {
     setMsg('Nueva mano');
+    render();
+    await sleep(320);
     requestDeal({ handsOnly: true });
     render();
     await runDealIfNeeded();
@@ -1010,6 +1103,11 @@ async function ingestRemoteState(game) {
 function wireNet(net) {
   net.on('onPeerJoin', () => {
     if (state.role === 'host') beginHostMatch();
+  });
+
+  net.on('onReconnect', () => {
+    setNetChip('Sincronizando', 'warn');
+    if (state.role === 'guest') requestStateFromHost();
   });
 
   net.on('onMessage', (data) => {
@@ -1039,8 +1137,9 @@ function wireNet(net) {
     }
 
     if (data.type === 'reject' && state.role === 'guest') {
+      clearMoveWatch();
       state.busy = false;
-      document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
+      clearGhosts();
       const reason = data.reason || 'Jugada rechazada';
       if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
       else if (/inválida|sumar 15/i.test(reason)) flashBad('Esa captura no vale');
@@ -1062,10 +1161,16 @@ function wireNet(net) {
     else setMsg(msg);
   });
   net.on('onStatus', (s) => {
-    if ($('#inviteOverlay')?.classList.contains('open')) $('#inviteStatus').textContent = s;
-    if ($('#screenJoinWait')?.classList.contains('active')) $('#joinWaitStatus').textContent = s;
-    if (/listo|conectado|amigo|peer/i.test(s || '')) setNetChip('En línea', 'ok');
-    else if (/conect|espera|emparej/i.test(s || '')) setNetChip('Enlace…', 'warn');
+    if ($('#inviteOverlay')?.classList.contains('open')) {
+      $('#inviteStatus').textContent = s;
+      $('#inviteStatus')?.classList.add('waiting-pulse');
+    }
+    if ($('#screenJoinWait')?.classList.contains('active')) {
+      $('#joinWaitStatus').textContent = s;
+      $('#joinWaitStatus')?.classList.add('waiting-pulse');
+    }
+    if (/listo|conectado|amigo|peer|en línea|reconectado/i.test(s || '')) setNetChip('En línea', 'ok');
+    else if (/conect|espera|emparej|sincron|reconect/i.test(s || '')) setNetChip('Enlace…', 'warn');
   });
 }
 
@@ -1144,11 +1249,36 @@ function bindUi() {
   window.addEventListener('pointerdown', unlock);
 }
 
+function startHeroIdle() {
+  stopHeroIdle();
+  const art = $('#heroArt');
+  if (!art) return;
+  state.heroIdle = setInterval(() => {
+    if (!$('#screenHome')?.classList.contains('active')) return;
+    if (document.hidden) return;
+    art.classList.remove('restack');
+    void art.offsetWidth;
+    art.classList.add('restack');
+  }, 8000);
+}
+
+function stopHeroIdle() {
+  clearInterval(state.heroIdle);
+  state.heroIdle = null;
+  $('#heroArt')?.classList.remove('restack');
+}
+
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=12').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=13').then((reg) => {
     reg.update?.();
   }).catch(() => {});
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
 }
 
 loadSavedName();
@@ -1157,3 +1287,9 @@ registerSw();
 showScreen('screenHome');
 preloadDeckImages();
 applyInviteFromUrl();
+startHeroIdle();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.role === 'guest' && state.net?.ready) {
+    requestStateFromHost();
+  }
+});
