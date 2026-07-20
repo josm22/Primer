@@ -429,6 +429,9 @@ export function snapshotAnim(move, { me, game }) {
     pile: selRect(move.player === me ? '#pileMe' : '#pileOpp'),
     isRival: move.player !== me,
     meSide: move.player === me,
+    // Índice donde caerá la carta al dejar (antes de aplicar la jugada)
+    discardIndex: game.table.length,
+    tableRot: ((game.table.length * 17) % 11) - 5,
   };
 }
 
@@ -451,6 +454,7 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
   layer.classList.add('active', 'dim-table');
 
   const {
+    move,
     playedCard,
     tableTaken,
     fromPlayed,
@@ -459,6 +463,8 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
     pile,
     isRival,
     meSide,
+    discardIndex = 0,
+    tableRot = 0,
   } = snap;
 
   // Preload images so the flight isn't blank
@@ -471,6 +477,7 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
   if (type === 'discard') {
     onSfx?.('discard');
     const flyer = makeFlyer(playedCard, fromPlayed, { face: !isRival, z: 5 });
+    const cardId = playedCard?.id || move?.cardId;
 
     // Lift
     await animateTo(flyer, {
@@ -482,18 +489,44 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
 
     if (isRival && playedCard) setFace(flyer, playedCard);
 
-    // Arc into the felt (ENTER)
-    const land = feltLanding(felt, Math.floor(Math.random() * 3));
-    await animateTo(flyer, land, { ms: 650, rotate: isRival ? 4 : -3, easing: 'cubic-bezier(0.18, 0.7, 0.2, 1)' });
+    // Arc toward predicted mesa slot
+    const approx = feltLanding(felt, discardIndex);
+    await animateTo(
+      flyer,
+      { ...approx, top: approx.top - 36 },
+      { ms: 420, rotate: tableRot * 0.4, easing: 'cubic-bezier(0.18, 0.7, 0.2, 1)' }
+    );
 
-    // Soft settle bounce
-    await animateTo(flyer, { ...land, top: land.top + 6 }, { ms: 140, scale: 0.98 });
-    await animateTo(flyer, land, { ms: 120, scale: 1 });
+    // Pinta la carta real (oculta) y aterriza exactamente encima
+    await onBeforeClear?.();
+    const destEl = cardId
+      ? document.querySelector(`.card[data-id="${CSS.escape(String(cardId))}"]`)
+      : null;
+    if (destEl) destEl.classList.add('ghosting');
+
+    let land = approx;
+    let rot = tableRot;
+    if (destEl) {
+      const r = destEl.getBoundingClientRect();
+      if (r.width > 4) {
+        land = { left: r.left, top: r.top, width: r.width, height: r.height };
+        const cssRot = getComputedStyle(destEl).getPropertyValue('--table-rot').trim();
+        if (cssRot) rot = parseFloat(cssRot) || 0;
+      }
+    }
+
+    await animateTo(flyer, land, {
+      ms: 260,
+      rotate: rot,
+      easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
+    });
+    await animateTo(flyer, { ...land, top: land.top + 4 }, { ms: 120, scale: 0.98, rotate: rot });
+    await animateTo(flyer, land, { ms: 100, scale: 1, rotate: rot });
 
     toast('A la mesa', { ms: 650 });
-    await sleep(220);
-    await onBeforeClear?.();
+    await sleep(160);
     clearLayer();
+    destEl?.classList.remove('ghosting');
     return;
   }
 

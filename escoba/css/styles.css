@@ -422,6 +422,10 @@ body::before {
   letter-spacing: 0.08em;
   color: rgba(244, 235, 224, 0.55);
   font-weight: 600;
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .score-pill .pts {
@@ -888,6 +892,42 @@ body::before {
   .live-stats { padding: 6px 8px; }
 }
 
+@media (max-height: 720px) {
+  .live-stats {
+    padding: 4px 6px;
+    margin: 2px 0 4px;
+  }
+  .live-stats .stat-who { display: none; }
+  .live-stats .chip { padding: 2px 6px; font-size: 0.68rem; }
+  .move-feed {
+    max-height: 1.4em;
+    margin: 2px 0;
+  }
+  .feed-empty { display: none; }
+  .msg-bar {
+    margin: 0 0 4px;
+    font-size: 0.82rem;
+    min-height: 1.2em;
+  }
+  .top-bar { margin-bottom: 4px; gap: 6px; }
+  .score-pill { padding: 6px 8px; }
+  .score-pill .pts { font-size: 1.3rem; }
+  .felt {
+    min-height: 140px;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .table-area { gap: 8px; }
+  .play-bar { margin-top: 4px; }
+  .score-tip { display: none; }
+  .score-table th, .score-table td { padding: 7px 4px; }
+}
+
+@media (max-height: 640px) {
+  #statsOpp { display: none; }
+  .move-feed { display: none; }
+}
+
 /* ---- Overlays ---- */
 .overlay {
   position: fixed;
@@ -909,6 +949,9 @@ body::before {
 
 .panel {
   width: min(400px, 100%);
+  max-height: min(88dvh, 740px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(ellipse at top, rgba(224, 179, 77, 0.12), transparent 50%),
     linear-gradient(180deg, #1a6142, #0e3d2a);
@@ -946,6 +989,11 @@ body::before {
 }
 
 .score-table th:first-child, .score-table td:first-child { text-align: left; }
+.score-table th.me-col,
+.score-table td.me-col {
+  color: var(--gold);
+  background: rgba(224, 179, 77, 0.08);
+}
 .score-table .total { font-weight: 700; color: var(--gold); }
 .score-table .sum-row td {
   border-top: 1px solid rgba(224, 179, 77, 0.35);

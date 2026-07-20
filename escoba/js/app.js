@@ -154,6 +154,10 @@ function flashBad(msg) {
   bar?.classList.remove('flash-bad');
   void bar?.offsetWidth;
   bar?.classList.add('flash-bad');
+  if (bar) {
+    bar.setAttribute('aria-live', 'assertive');
+    setTimeout(() => bar.setAttribute('aria-live', 'polite'), 500);
+  }
   playSfx('bad');
   setTimeout(() => bar?.classList.remove('flash-bad'), 420);
 }
@@ -359,14 +363,14 @@ function armMoveWatch() {
   clearTimeout(state.moveWatch);
   state.moveWatch = setTimeout(() => {
     if (!state.busy || state.role !== 'guest') return;
+    // No borres pendingSnap: el state del host puede llegar justo después
     clearGhosts();
     state.busy = false;
-    state.pendingSnap = null;
     flashBad('Sin respuesta — reintentando');
     setNetChip('Sincronizando', 'warn');
     requestStateFromHost();
     render();
-  }, 8000);
+  }, 16000);
 }
 
 function clearMoveWatch() {
@@ -771,7 +775,11 @@ function render(opts = {}) {
     });
     const rot = ((i * 17) % 11) - 5;
     el.style.setProperty('--table-rot', `${rot}deg`);
-    if (selecting) el.addEventListener('click', () => toggleTable(c.id));
+    if (selecting) {
+      el.addEventListener('click', () => toggleTable(c.id));
+    } else if (myTurn) {
+      el.addEventListener('click', () => setMsg('Elige primero una carta de tu mano'));
+    }
     felt.appendChild(el);
   });
 
@@ -908,7 +916,16 @@ function submitMove(move) {
     // Keep DOM for flight anim when host echoes state
     state.pendingSnap = snapshotAnim(move, { me: state.me, game: state.game });
     ghostIds([move.cardId, ...(move.captureIds || [])]);
-    state.net.send({ type: 'move', move });
+    const ok = state.net.send({ type: 'move', move });
+    if (!ok) {
+      state.busy = false;
+      state.pendingSnap = null;
+      clearGhosts();
+      flashBad('Sin conexión — reinténtalo');
+      setNetChip('Sin red', 'bad');
+      render();
+      return;
+    }
     state.selectedHand = null;
     state.selectedTable.clear();
     setMsg('Enviando jugada…');
@@ -1011,15 +1028,19 @@ function showRoundPanel(g) {
 
   if (rs) {
     const c = rs.counts;
+    const me = state.me;
+    const opp = 1 - me;
     const hasSO = [
       g.captured[0].some((x) => x.suit === 'oros' && x.rank === 7),
       g.captured[1].some((x) => x.suit === 'oros' && x.rank === 7),
     ];
     const byKey = Object.fromEntries(rs.detail.map((d) => [d.key, d]));
+    const side = (d, p) => (p === 0 ? d.a : d.b);
+    const meLabel = state.names[me] === 'Tú' ? 'Tú' : `Tú · ${state.names[me]}`;
     const row = (label, countA, countB, ptsA, ptsB, tip) => `
       <tr>
         <td><div class="score-label">${label}</div><div class="score-tip">${tip}</div></td>
-        <td><div class="score-count">${countA}</div>${cellMark(ptsA)}</td>
+        <td class="me-col"><div class="score-count">${countA}</div>${cellMark(ptsA)}</td>
         <td><div class="score-count">${countB}</div>${cellMark(ptsB)}</td>
       </tr>`;
 
@@ -1027,15 +1048,15 @@ function showRoundPanel(g) {
       ${leftoverNote}
       <p class="score-intro">Así se suman los puntos de esta ronda:</p>
       <table class="score-table">
-        <thead><tr><th>Concepto</th><th>${state.names[0]}</th><th>${state.names[1]}</th></tr></thead>
+        <thead><tr><th>Concepto</th><th class="me-col">${meLabel}</th><th>${state.names[opp]}</th></tr></thead>
         <tbody>
-          ${row('Escobas', g.escobas[0], g.escobas[1], byKey.escobas.a, byKey.escobas.b, '1 punto por cada escoba')}
-          ${row('Cartas', c.cards[0], c.cards[1], byKey.cartas.a, byKey.cartas.b, '1 punto quien tenga más')}
-          ${row('Oros', c.oros[0], c.oros[1], byKey.oros.a, byKey.oros.b, '1 punto quien tenga más')}
-          ${row('Sietes', c.sietes[0], c.sietes[1], byKey.sietes.a, byKey.sietes.b, '1 punto quien tenga más')}
-          ${row('7 de oros', hasSO[0] ? 'Sí' : 'No', hasSO[1] ? 'Sí' : 'No', byKey.sieteOros.a, byKey.sieteOros.b, '1 punto quien lo capture')}
-          <tr class="sum-row"><td>Suma de la ronda</td><td><strong>+${rs.pts[0]}</strong></td><td><strong>+${rs.pts[1]}</strong></td></tr>
-          <tr class="total"><td>Marcador (a ${WIN_SCORE})</td><td><strong>${g.scores[0]}</strong></td><td><strong>${g.scores[1]}</strong></td></tr>
+          ${row('Escobas', g.escobas[me], g.escobas[opp], side(byKey.escobas, me), side(byKey.escobas, opp), '1 punto por cada escoba')}
+          ${row('Cartas', c.cards[me], c.cards[opp], side(byKey.cartas, me), side(byKey.cartas, opp), '1 punto quien tenga más')}
+          ${row('Oros', c.oros[me], c.oros[opp], side(byKey.oros, me), side(byKey.oros, opp), '1 punto quien tenga más')}
+          ${row('Sietes', c.sietes[me], c.sietes[opp], side(byKey.sietes, me), side(byKey.sietes, opp), '1 punto quien tenga más')}
+          ${row('7 de oros', hasSO[me] ? 'Sí' : 'No', hasSO[opp] ? 'Sí' : 'No', side(byKey.sieteOros, me), side(byKey.sieteOros, opp), '1 punto quien lo capture')}
+          <tr class="sum-row"><td>Suma de la ronda</td><td class="me-col"><strong>+${rs.pts[me]}</strong></td><td><strong>+${rs.pts[opp]}</strong></td></tr>
+          <tr class="total"><td>Marcador (a ${WIN_SCORE})</td><td class="me-col"><strong>${g.scores[me]}</strong></td><td><strong>${g.scores[opp]}</strong></td></tr>
         </tbody>
       </table>
       ${
@@ -1043,7 +1064,9 @@ function showRoundPanel(g) {
           ? `<p class="final-line">${
               g.winner == null
                 ? 'Misma puntuación final.'
-                : `Victoria de <strong>${state.names[g.winner]}</strong>: ${g.scores[0]}–${g.scores[1]}.`
+                : g.winner === state.me
+                  ? `¡Victoria! ${g.scores[me]}–${g.scores[opp]}.`
+                  : `Victoria de <strong>${state.names[g.winner]}</strong>: ${g.scores[0]}–${g.scores[1]}.`
             }</p>`
           : ''
       }
@@ -1395,7 +1418,17 @@ function wireNet(net) {
 
   net.on('onReconnect', () => {
     setNetChip('Sincronizando', 'warn');
-    if (state.role === 'guest') requestStateFromHost();
+    if (state.role === 'guest') {
+      requestStateFromHost();
+    } else if (state.role === 'host' && state.game) {
+      // qos 0: reenvía estado tras reconectar
+      net.send({
+        type: 'state',
+        game: serializeState(state.game),
+        names: state.names,
+      });
+      setNetChip('En línea', 'ok');
+    }
   });
 
   net.on('onMessage', (data) => {
@@ -1434,7 +1467,7 @@ function wireNet(net) {
       enqueueNet(async () => {
         // Espera a que termine animación/reparto en vez de rechazar
         let guard = 0;
-        while ((state.busy || state.dealing) && guard < 40) {
+        while ((state.busy || state.dealing) && guard < 70) {
           await sleep(200);
           guard++;
         }
@@ -1627,7 +1660,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=16').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=18').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
@@ -1646,7 +1679,13 @@ preloadDeckImages();
 applyInviteFromUrl();
 startHeroIdle();
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.role === 'guest' && state.net?.ready) {
-    requestStateFromHost();
+  if (document.visibilityState !== 'visible' || !state.net?.ready) return;
+  if (state.role === 'guest') requestStateFromHost();
+  else if (state.role === 'host' && state.game) {
+    state.net.send({
+      type: 'state',
+      game: serializeState(state.game),
+      names: state.names,
+    });
   }
 });
