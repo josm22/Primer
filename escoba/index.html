@@ -64,8 +64,20 @@
     <section id="screenGame" class="screen">
       <div class="top-bar">
         <div class="scoreboard">
-          <div class="score-pill" id="scoreMe"><span class="who">Tú</span><span class="pts">0</span></div>
-          <div class="score-pill" id="scoreOpp"><span class="who">Rival</span><span class="pts">0</span></div>
+          <div class="score-pill" id="scoreMe">
+            <span class="who">Tú</span>
+            <span class="pts">0</span>
+            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+              <div class="score-fill" id="barMe"></div>
+            </div>
+          </div>
+          <div class="score-pill" id="scoreOpp">
+            <span class="who">Rival</span>
+            <span class="pts">0</span>
+            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+              <div class="score-fill" id="barOpp"></div>
+            </div>
+          </div>
         </div>
         <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
         <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
@@ -91,9 +103,12 @@
         </div>
       </div>
 
+      <div class="move-feed" id="moveFeed" aria-live="polite"></div>
+
       <div class="live-stats" id="statsMe"></div>
 
       <div class="play-bar">
+        <button type="button" class="btn btn-ghost" id="btnHint" disabled>Pista</button>
         <button type="button" class="btn btn-ghost" id="btnDiscard" disabled>Dejar</button>
         <button type="button" class="btn btn-ghost" id="btnAuto" disabled>Auto</button>
         <button type="button" class="btn btn-gold" id="btnCapture" disabled>Capturar</button>
@@ -108,6 +123,16 @@
       <h2 id="revealTitle">Captura</h2>
       <div class="reveal-cards" id="revealCards"></div>
       <p class="reveal-loot" id="revealLoot"></p>
+      <p class="reveal-tip" id="revealTip">Toca para continuar</p>
+    </div>
+  </div>
+
+  <!-- Peek captures -->
+  <div class="overlay" id="peekOverlay" role="dialog" aria-modal="true">
+    <div class="panel peek-panel">
+      <h2 id="peekTitle">Capturas</h2>
+      <div id="peekBody"></div>
+      <button type="button" class="btn btn-primary" id="btnClosePeek">Cerrar</button>
     </div>
   </div>
 

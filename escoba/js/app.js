@@ -26,7 +26,55 @@ const state = {
   net: null,
   busy: false,
   lastSeenLog: 0,
+  revealSkip: null,
+  legalTableIds: new Set(),
+  feed: [],
 };
+
+let audioCtx = null;
+
+function buzz(pattern = 12) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch (_) {}
+}
+
+function tone(freq = 440, dur = 0.08, type = 'sine', gain = 0.04) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(gain, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur);
+  } catch (_) {}
+}
+
+function playSfx(kind) {
+  if (kind === 'select') {
+    buzz(8);
+    tone(520, 0.05, 'triangle', 0.03);
+  } else if (kind === 'capture') {
+    buzz([18, 40, 18]);
+    tone(380, 0.09, 'sine', 0.05);
+    setTimeout(() => tone(560, 0.1, 'sine', 0.04), 70);
+  } else if (kind === 'escoba') {
+    buzz([30, 40, 30, 40, 50]);
+    tone(300, 0.12, 'sine', 0.06);
+    setTimeout(() => tone(450, 0.12, 'sine', 0.05), 90);
+    setTimeout(() => tone(680, 0.18, 'triangle', 0.05), 180);
+  } else if (kind === 'discard') {
+    buzz(10);
+    tone(220, 0.07, 'sine', 0.03);
+  }
+}
 
 function showScreen(id) {
   $$('.screen').forEach((el) => el.classList.toggle('active', el.id === id));
@@ -127,22 +175,86 @@ function renderSumPreview() {
     : `${parts.join(' + ')} = ${sum} · ${sum < 15 ? `faltan ${15 - sum}` : `sobran ${sum - 15}`}`;
 }
 
+function renderScoreBars() {
+  const g = state.game;
+  if (!g) return;
+  const set = (id, score) => {
+    const el = $(id);
+    if (!el) return;
+    const pct = Math.min(100, Math.round((score / WIN_SCORE) * 100));
+    el.style.width = `${pct}%`;
+    el.parentElement?.setAttribute('aria-valuenow', String(score));
+  };
+  set('#barMe', g.scores[state.me]);
+  set('#barOpp', g.scores[1 - state.me]);
+}
+
+function renderFeed() {
+  const el = $('#moveFeed');
+  if (!el) return;
+  if (!state.feed.length) {
+    el.innerHTML = `<span class="feed-empty">Las capturas aparecerán aquí</span>`;
+    return;
+  }
+  el.innerHTML = state.feed
+    .slice(0, 5)
+    .map(
+      (f) =>
+        `<div class="feed-item ${f.cls || ''}"><strong>${f.who}</strong> ${f.text}</div>`
+    )
+    .join('');
+}
+
+function pushFeed(mv) {
+  if (!mv) return;
+  const who = state.names[mv.player] || 'Jugador';
+  let text = '';
+  let cls = '';
+  if (mv.type === 'escoba') {
+    text = 'hace ¡ESCOBA!';
+    cls = 'feed-escoba';
+  } else if (mv.type === 'capture') {
+    const n = 1 + (mv.captureIds?.length || 0);
+    text = `captura ${n} carta${n > 1 ? 's' : ''}`;
+    cls = 'feed-cap';
+  } else {
+    text = 'deja una carta';
+  }
+  state.feed.unshift({ who, text, cls });
+  state.feed = state.feed.slice(0, 8);
+}
+
+function legalIdsForHand(card, table) {
+  const caps = findCaptures(card, table);
+  const ids = new Set();
+  for (const group of caps) group.forEach((c) => ids.add(c.id));
+  return { caps, ids };
+}
+
+function autoPickCapture(card, table) {
+  const { caps } = legalIdsForHand(card, table);
+  if (!caps.length) return [];
+  // Prefer escoba, then bestCapture order
+  const best = bestCapture(card, table) || caps[0];
+  return best.map((c) => c.id);
+}
+
+
 function renderPiles() {
   const g = state.game;
   const me = state.me;
   const opp = 1 - me;
 
-  const paint = (el, cards, side) => {
+  const paint = (el, cards, side, playerIdx) => {
     if (!el) return;
     el.innerHTML = '';
+    el.onclick = () => openPeek(playerIdx);
     if (!cards.length) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       return;
     }
-    const top = cards[cards.length - 1];
     const wrap = document.createElement('div');
     wrap.className = 'pile-stack';
-    // show last 3 face-up slightly offset
     const show = cards.slice(-3);
     show.forEach((c, i) => {
       const card = cardEl(c, { face: true, tiny: true });
@@ -152,12 +264,59 @@ function renderPiles() {
     el.appendChild(wrap);
     const meta = document.createElement('div');
     meta.className = 'pile-meta';
-    meta.textContent = `${cards.length} · ${side}`;
+    meta.textContent = `${cards.length} · ver`;
     el.appendChild(meta);
   };
 
-  paint($('#pileOpp'), g.captured[opp], state.names[opp]);
-  paint($('#pileMe'), g.captured[me], state.names[me]);
+  paint($('#pileOpp'), g.captured[opp], state.names[opp], opp);
+  paint($('#pileMe'), g.captured[me], state.names[me], me);
+}
+
+function openPeek(playerIdx) {
+  const g = state.game;
+  if (!g) return;
+  const cards = g.captured[playerIdx];
+  const overlay = $('#peekOverlay');
+  const body = $('#peekBody');
+  const title = $('#peekTitle');
+  title.textContent = `Capturas de ${state.names[playerIdx]}`;
+  if (!cards.length) {
+    body.innerHTML = `<p class="peek-empty">Todavía no hay cartas.</p>`;
+  } else {
+    const t = tally(cards);
+    const oros = cards.filter((c) => c.suit === 'oros');
+    const sietes = cards.filter((c) => c.rank === 7);
+    body.innerHTML = `
+      <div class="peek-summary">
+        <span>${t.cards} cartas</span>
+        <span class="chip-oro">${t.oros} oros</span>
+        <span>${t.sietes} sietes</span>
+        <span class="${t.sieteOros ? 'chip-hot-inline' : ''}">${t.sieteOros ? '★ 7 de oros' : 'Sin 7♦'}</span>
+        <span>${g.escobas[playerIdx]} escobas</span>
+      </div>
+      <div class="peek-section"><h3>Oros</h3><div class="peek-grid" id="peekOros"></div></div>
+      <div class="peek-section"><h3>Sietes</h3><div class="peek-grid" id="peekSietes"></div></div>
+      <div class="peek-section"><h3>Todas</h3><div class="peek-grid" id="peekAll"></div></div>
+    `;
+    const fill = (sel, list) => {
+      const box = body.querySelector(sel);
+      if (!list.length) {
+        box.innerHTML = `<span class="peek-empty">—</span>`;
+        return;
+      }
+      list.forEach((c) => {
+        const d = document.createElement('div');
+        d.className = 'peek-card';
+        d.innerHTML = `<img src="${cardImageUrl(c)}" alt="${c.label}">`;
+        box.appendChild(d);
+      });
+    };
+    fill('#peekOros', oros);
+    fill('#peekSietes', sietes);
+    fill('#peekAll', cards);
+  }
+  overlay.classList.add('open');
+  playSfx('select');
 }
 
 function render() {
@@ -177,15 +336,26 @@ function render() {
     setMsg(
       g.phase === 'play'
         ? myTurn
-          ? 'Tu turno — elige una carta y suma 15'
+          ? state.selectedHand
+            ? 'Toca la mesa para sumar 15 (o Dejar)'
+            : 'Tu turno — toca una carta de tu mano'
           : 'Turno del rival…'
         : g.message
     );
   }
 
+  // Legal table highlights for selected hand card
+  state.legalTableIds = new Set();
+  if (myTurn && state.selectedHand) {
+    const hand = g.hands[state.me].find((c) => c.id === state.selectedHand);
+    if (hand) state.legalTableIds = legalIdsForHand(hand, g.table).ids;
+  }
+
   renderStats();
+  renderScoreBars();
   renderPiles();
   renderSumPreview();
+  renderFeed();
 
   const oppHand = $('#oppHand');
   oppHand.innerHTML = '';
@@ -194,26 +364,26 @@ function render() {
   }
 
   const felt = $('#felt');
-  const keepBadge = felt.querySelector('.deck-badge');
   felt.innerHTML = '';
   const deckBadge = document.createElement('div');
   deckBadge.className = 'deck-badge';
   deckBadge.textContent = `Mazo ${g.deck.length}`;
   felt.appendChild(deckBadge);
-  if (keepBadge) {/* noop */}
 
   for (const c of g.table) {
     const selected = state.selectedTable.has(c.id);
+    const legal = state.legalTableIds.has(c.id);
+    const hinting = myTurn && !!state.selectedHand;
     const el = cardEl(c, {
       face: true,
-      selectable: myTurn && !!state.selectedHand,
+      selectable: hinting,
       capture: selected,
+      dim: hinting && state.legalTableIds.size > 0 && !legal && !selected,
     });
+    if (legal && hinting) el.classList.add('legal-hint');
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
-    if (myTurn && state.selectedHand) {
-      el.addEventListener('click', () => toggleTable(c.id));
-    }
+    if (hinting) el.addEventListener('click', () => toggleTable(c.id));
     felt.appendChild(el);
   }
 
@@ -229,19 +399,39 @@ function render() {
     });
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
-    if (myTurn) el.addEventListener('click', () => selectHand(c.id));
+    // Can this card capture something?
+    if (myTurn && findCaptures(c, g.table).length) el.classList.add('can-capture');
+    if (myTurn) {
+      el.addEventListener('click', () => selectHand(c.id));
+      el.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        quickPlay(c.id);
+      });
+    }
     myHand.appendChild(el);
   }
 
   const canPlay = myTurn && !!state.selectedHand;
   let canDiscard = canPlay;
+  let handCard = null;
   if (canPlay) {
-    const card = g.hands[state.me].find((c) => c.id === state.selectedHand);
-    if (card && findCaptures(card, g.table).length > 0) canDiscard = false;
+    handCard = g.hands[state.me].find((c) => c.id === state.selectedHand);
+    if (handCard && findCaptures(handCard, g.table).length > 0) canDiscard = false;
   }
-  $('#btnCapture').disabled = !canPlay || state.selectedTable.size === 0;
+  const sumOk =
+    canPlay &&
+    handCard &&
+    state.selectedTable.size > 0 &&
+    handCard.value +
+      g.table
+        .filter((c) => state.selectedTable.has(c.id))
+        .reduce((s, c) => s + c.value, 0) ===
+      15;
+
+  $('#btnCapture').disabled = !sumOk;
   $('#btnDiscard').disabled = !canDiscard;
   $('#btnAuto').disabled = !canPlay;
+  $('#btnHint').disabled = !myTurn;
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
     showRoundPanel(g);
@@ -255,14 +445,60 @@ function selectHand(id) {
   } else {
     state.selectedHand = id;
     state.selectedTable.clear();
+    const card = state.game.hands[state.me].find((c) => c.id === id);
+    if (card) {
+      const picks = autoPickCapture(card, state.game.table);
+      picks.forEach((cid) => state.selectedTable.add(cid));
+    }
+    playSfx('select');
   }
   render();
 }
 
 function toggleTable(id) {
+  // Only allow legal cards when a hand card is selected with captures
+  if (state.selectedHand && state.legalTableIds.size > 0 && !state.legalTableIds.has(id)) {
+    setMsg('Esa carta no entra en ninguna suma a 15');
+    buzz(20);
+    return;
+  }
   if (state.selectedTable.has(id)) state.selectedTable.delete(id);
   else state.selectedTable.add(id);
+  playSfx('select');
   render();
+}
+
+function quickPlay(cardId) {
+  if (state.busy || !state.game) return;
+  if (state.game.currentPlayer !== state.me) return;
+  const card = state.game.hands[state.me].find((c) => c.id === cardId);
+  if (!card) return;
+  const best = bestCapture(card, state.game.table);
+  if (best) {
+    submitMove({
+      player: state.me,
+      cardId,
+      captureIds: best.map((c) => c.id),
+    });
+  } else if (!findCaptures(card, state.game.table).length) {
+    submitMove({ player: state.me, cardId, captureIds: [] });
+  }
+}
+
+function doHint() {
+  if (state.busy || !state.game) return;
+  if (state.game.currentPlayer !== state.me) return;
+  const move = chooseAiMove(state.game, state.me);
+  if (!move) return;
+  state.selectedHand = move.cardId;
+  state.selectedTable = new Set(move.captureIds || []);
+  playSfx('select');
+  render();
+  setMsg(
+    move.captureIds?.length
+      ? 'Pista: captura sugerida (revisa y pulsa Capturar)'
+      : 'Pista: deja esta carta en la mesa'
+  );
 }
 
 function describeLoot(cards) {
@@ -320,21 +556,41 @@ async function showReveal({ player, type, cardId, captureIds = [] }) {
     title.textContent = isMe ? '¡ESCOBA!' : `¡Escoba de ${who}!`;
     overlay.classList.add('escoba');
     loot.textContent = describeLoot(shown) + ' · mesa limpia';
+    playSfx('escoba');
   } else if (type === 'capture') {
     title.textContent = isMe ? 'Capturas' : `${who} captura`;
     overlay.classList.add(isMe ? 'mine' : 'theirs');
     loot.textContent = describeLoot(shown);
+    playSfx('capture');
   } else {
     title.textContent = isMe ? 'Dejas en la mesa' : `${who} deja carta`;
     loot.textContent = played ? played.label : '';
+    playSfx('discard');
   }
 
+  const tip = $('#revealTip');
+  if (tip) tip.textContent = 'Toca para continuar';
+
   overlay.classList.add('open');
-  const wait =
-    type === 'escoba' ? 3200 : type === 'capture' ? 2600 : 1400;
-  await sleep(wait);
+  const wait = type === 'escoba' ? 3400 : type === 'capture' ? 2800 : 1500;
+
+  await new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      overlay.removeEventListener('click', finish);
+      state.revealSkip = null;
+      resolve();
+    };
+    state.revealSkip = finish;
+    const timer = setTimeout(finish, wait);
+    overlay.addEventListener('click', finish);
+  });
+
   overlay.classList.remove('open');
-  await sleep(220);
+  await sleep(200);
 }
 
 function lastMoveFrom(game) {
@@ -362,6 +618,7 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
 
   const mv = lastMoveFrom(state.game);
   if (mv && (state.game.moveLog || []).length > beforeLen) {
+    pushFeed(mv);
     setMsg(mv.type === 'escoba' ? '¡Escoba!' : mv.type === 'capture' ? 'Capturando…' : '…');
     render();
     await showReveal(mv);
@@ -565,6 +822,7 @@ function nextRound() {
   if (state.mode === 'online' && state.role === 'guest') return;
   state.game = startNextRound(state.game);
   state.lastSeenLog = 0;
+  state.feed = [];
   $('#roundOverlay').classList.remove('open');
   render();
   if (state.mode === 'online' && state.role === 'host') {
@@ -580,9 +838,11 @@ function leaveToHome() {
   state.mode = null;
   state.busy = false;
   state.lastSeenLog = 0;
+  state.feed = [];
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
   $('#revealOverlay')?.classList.remove('open');
+  $('#peekOverlay')?.classList.remove('open');
   showScreen('screenHome');
 }
 
@@ -593,6 +853,7 @@ function startCpu() {
   state.names = ['Tú', 'CPU'];
   state.game = createMatch({ firstPlayer: Math.random() < 0.5 ? 0 : 1 });
   state.lastSeenLog = 0;
+  state.feed = [];
   state.selectedHand = null;
   state.selectedTable.clear();
   showScreen('screenGame');
@@ -674,6 +935,7 @@ async function ingestRemoteState(game) {
   const log = game.moveLog || [];
   if (wasPlaying && log.length > prevLog) {
     const mv = log[log.length - 1];
+    pushFeed(mv);
     state.busy = true;
     render();
     await showReveal(mv);
@@ -777,13 +1039,23 @@ function bindUi() {
   $('#btnCapture').addEventListener('click', doCapture);
   $('#btnDiscard').addEventListener('click', doDiscard);
   $('#btnAuto').addEventListener('click', doAuto);
+  $('#btnHint')?.addEventListener('click', doHint);
   $('#btnLeave').addEventListener('click', leaveToHome);
   $('#btnRules').addEventListener('click', openRules);
   $('#btnRulesHome').addEventListener('click', openRules);
   $('#btnCloseRules').addEventListener('click', closeRules);
+  $('#btnClosePeek')?.addEventListener('click', () => $('#peekOverlay')?.classList.remove('open'));
+  $('#peekOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'peekOverlay') $('#peekOverlay').classList.remove('open');
+  });
   $('#joinCode').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') startJoin();
   });
+  const unlock = () => {
+    tone(1, 0.01, 'sine', 0.0001);
+    window.removeEventListener('pointerdown', unlock);
+  };
+  window.addEventListener('pointerdown', unlock);
 }
 
 function registerSw() {
