@@ -1019,7 +1019,11 @@ function showRoundPanel(g) {
         state.selectedHand = null;
         state.selectedTable.clear();
         state.prevScores = [0, 0];
-        state.net.send({ type: 'state', game: serializeState(state.game) });
+        state.net.send({
+          type: 'state',
+          game: serializeState(state.game),
+          names: state.names,
+        });
         $('#roundOverlay').classList.remove('open');
         showScreen('screenGame');
         requestDeal();
@@ -1061,7 +1065,11 @@ function nextRound() {
   requestDeal();
   render();
   if (state.mode === 'online' && state.role === 'host') {
-    state.net.send({ type: 'state', game: serializeState(state.game) });
+    state.net.send({
+      type: 'state',
+      game: serializeState(state.game),
+      names: state.names,
+    });
   }
   runDealIfNeeded();
 }
