@@ -1,15 +1,26 @@
 /**
- * Multijugador por invitación con PeerJS (WebRTC).
+ * Multijugador por invitación vía MQTT (WebSocket).
+ * Más fiable que WebRTC en redes móviles (sin NAT/TURN).
  * El anfitrión es autoridad del estado; el invitado envía jugadas.
  */
 
-const PEER_PREFIX = 'escoba15-';
+const BROKERS = [
+  'wss://broker.emqx.io:8084/mqtt',
+  'wss://broker.hivemq.com:8884/mqtt',
+  'wss://test.mosquitto.org:8081',
+];
+
+const TOPIC_PREFIX = 'escoba15/v2';
 
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
   for (let i = 0; i < 6; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
   return s;
+}
+
+function randomId() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
 
 export function normalizeCode(raw) {
@@ -22,16 +33,21 @@ export function normalizeCode(raw) {
 
 export class EscobaNet {
   constructor() {
-    this.peer = null;
-    this.conn = null;
+    this.client = null;
     this.role = null; // 'host' | 'guest'
     this.code = null;
+    this.clientId = null;
+    this.topic = null;
+    this.ready = false;
+    this._joinTimer = null;
+    this._destroyed = false;
     this.handlers = {
       onStatus: () => {},
       onReady: () => {},
       onMessage: () => {},
       onDisconnect: () => {},
       onError: () => {},
+      onPeerJoin: () => {},
     };
   }
 
@@ -40,117 +56,183 @@ export class EscobaNet {
   }
 
   async host() {
-    await this._ensurePeerJs();
     this.role = 'host';
     this.code = randomCode();
-    const id = PEER_PREFIX + this.code;
-
-    this.peer = new Peer(id, {
-      debug: 1,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-        ],
-      },
-    });
-
-    return new Promise((resolve, reject) => {
-      const fail = (err) => {
-        this.handlers.onError(err);
-        reject(err);
-      };
-
-      this.peer.on('open', (peerId) => {
-        this.handlers.onStatus('Esperando a tu amigo…');
-        resolve({ code: this.code, peerId });
-      });
-
-      this.peer.on('connection', (conn) => {
-        if (this.conn && this.conn.open) {
-          conn.close();
-          return;
-        }
-        this._bindConn(conn);
-      });
-
-      this.peer.on('error', (err) => {
-        if (String(err?.type) === 'unavailable-id') {
-          this.destroy();
-          this.host().then(resolve).catch(reject);
-          return;
-        }
-        fail(err);
-      });
-    });
+    await this._connect();
+    this.handlers.onStatus('Esperando a tu amigo…');
+    return { code: this.code };
   }
 
   async join(code) {
-    await this._ensurePeerJs();
     this.role = 'guest';
     this.code = normalizeCode(code);
     if (this.code.length !== 6) throw new Error('Código inválido (6 caracteres)');
-
-    this.peer = new Peer({
-      debug: 1,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-        ],
-      },
-    });
-
-    return new Promise((resolve, reject) => {
-      this.peer.on('open', () => {
-        this.handlers.onStatus('Conectando…');
-        const conn = this.peer.connect(PEER_PREFIX + this.code, { reliable: true });
-        this._bindConn(conn);
-        conn.on('open', () => resolve({ code: this.code }));
-        conn.on('error', reject);
-      });
-      this.peer.on('error', reject);
-    });
+    await this._connect();
+    this.handlers.onStatus('Buscando la partida…');
+    this._announceJoin();
+    this._joinTimer = setInterval(() => {
+      if (this.ready || this._destroyed) {
+        clearInterval(this._joinTimer);
+        this._joinTimer = null;
+        return;
+      }
+      this._announceJoin();
+    }, 2000);
+    return { code: this.code };
   }
 
   send(payload) {
-    if (!this.conn || !this.conn.open) return false;
-    this.conn.send(payload);
+    if (!this.client || !this.client.connected || !this.topic) return false;
+    const msg = {
+      ...payload,
+      from: this.role,
+      clientId: this.clientId,
+      ts: Date.now(),
+    };
+    this.client.publish(this.topic, JSON.stringify(msg), { qos: 0 });
     return true;
   }
 
+  markReady() {
+    this.ready = true;
+    if (this._joinTimer) {
+      clearInterval(this._joinTimer);
+      this._joinTimer = null;
+    }
+  }
+
   destroy() {
+    this._destroyed = true;
+    if (this._joinTimer) {
+      clearInterval(this._joinTimer);
+      this._joinTimer = null;
+    }
     try {
-      this.conn?.close();
+      this.client?.end(true);
     } catch (_) {}
-    try {
-      this.peer?.destroy();
-    } catch (_) {}
-    this.conn = null;
-    this.peer = null;
+    this.client = null;
   }
 
-  _bindConn(conn) {
-    this.conn = conn;
-    conn.on('open', () => {
-      this.handlers.onStatus('Conectado');
-      this.handlers.onReady({ role: this.role, code: this.code });
-    });
-    conn.on('data', (data) => this.handlers.onMessage(data));
-    conn.on('close', () => {
-      this.handlers.onStatus('Desconectado');
-      this.handlers.onDisconnect();
-    });
-    conn.on('error', (err) => this.handlers.onError(err));
+  _announceJoin() {
+    this.send({ type: 'join' });
   }
 
-  _ensurePeerJs() {
-    if (typeof Peer !== 'undefined') return Promise.resolve();
+  async _connect() {
+    await this._ensureMqtt();
+    this._destroyed = false;
+    this.clientId = `esc_${this.role}_${randomId()}`;
+    this.topic = `${TOPIC_PREFIX}/${this.code}`;
+
+    let lastError = null;
+    for (const url of BROKERS) {
+      if (this._destroyed) throw new Error('Cancelado');
+      this.handlers.onStatus('Conectando al servidor…');
+      try {
+        await this._connectBroker(url);
+        return;
+      } catch (err) {
+        lastError = err;
+        try {
+          this.client?.end(true);
+        } catch (_) {}
+        this.client = null;
+      }
+    }
+    throw lastError || new Error('No se pudo conectar. Revisa la red e inténtalo otra vez.');
+  }
+
+  _connectBroker(url) {
+    return new Promise((resolve, reject) => {
+      const client = mqtt.connect(url, {
+        clientId: this.clientId,
+        clean: true,
+        connectTimeout: 10000,
+        reconnectPeriod: 3000,
+        protocolVersion: 4,
+      });
+      this.client = client;
+
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        try {
+          client.end(true);
+        } catch (_) {}
+        reject(new Error('Tiempo de espera agotado'));
+      }, 12000);
+
+      client.on('connect', () => {
+        client.subscribe(this.topic, { qos: 0 }, (err) => {
+          if (settled) return;
+          if (err) {
+            settled = true;
+            clearTimeout(timer);
+            reject(err);
+            return;
+          }
+          settled = true;
+          clearTimeout(timer);
+          this.handlers.onStatus(
+            this.role === 'host' ? 'Sala lista — comparte el código' : 'En sala — emparejando…'
+          );
+          resolve();
+        });
+      });
+
+      client.on('message', (_topic, buf) => {
+        let data;
+        try {
+          data = JSON.parse(String(buf));
+        } catch (_) {
+          return;
+        }
+        if (!data || data.clientId === this.clientId) return;
+
+        if (data.type === 'join' && this.role === 'host') {
+          this.handlers.onPeerJoin(data);
+          return;
+        }
+
+        if (data.type === 'ping' && this.role === 'host' && this.ready) {
+          // guest pide estado de nuevo
+          this.handlers.onMessage({ type: 'requestState' });
+          return;
+        }
+
+        this.handlers.onMessage(data);
+      });
+
+      client.on('reconnect', () => {
+        this.handlers.onStatus('Reconectando…');
+      });
+
+      client.on('close', () => {
+        if (!this._destroyed && this.ready) {
+          this.handlers.onStatus('Conexión perdida…');
+          this.handlers.onDisconnect();
+        }
+      });
+
+      client.on('error', (err) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        } else {
+          this.handlers.onError(err);
+        }
+      });
+    });
+  }
+
+  _ensureMqtt() {
+    if (typeof mqtt !== 'undefined') return Promise.resolve();
     return new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      s.src = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
       s.onload = resolve;
-      s.onerror = () => reject(new Error('No se pudo cargar PeerJS'));
+      s.onerror = () => reject(new Error('No se pudo cargar la librería de red'));
       document.head.appendChild(s);
     });
   }

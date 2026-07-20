@@ -1,4 +1,4 @@
-const CACHE = 'escoba-v1';
+const CACHE = 'escoba-v2';
 const ASSETS = [
   './',
   './index.html',

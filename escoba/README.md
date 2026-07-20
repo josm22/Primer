@@ -16,7 +16,7 @@ En iPhone: Safari → Compartir → **Añadir a pantalla de inicio** para usarla
 2. El otro pulsa **Unirme con código** e introduce el código.
 3. La partida empieza sola (primeros en llegar a 21 puntos).
 
-Ambos necesitan internet (WebRTC vía PeerJS). La lógica de la partida la lleva el anfitrión.
+Ambos necesitan internet (sincronización por MQTT). La lógica de la partida la lleva el anfitrión.
 
 ### Contra la CPU
 
