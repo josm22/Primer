@@ -71,18 +71,19 @@
           <div class="score-pill" id="scoreMe">
             <span class="who">Tú</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Tu puntuación">
               <div class="score-fill" id="barMe"></div>
             </div>
           </div>
           <div class="score-pill" id="scoreOpp">
             <span class="who">Rival</span>
             <span class="pts">0</span>
-            <div class="score-track" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0">
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="21" aria-valuenow="0" aria-label="Puntuación rival">
               <div class="score-fill" id="barOpp"></div>
             </div>
           </div>
         </div>
+        <span class="net-chip" id="netChip" hidden></span>
         <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
         <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
       </div>

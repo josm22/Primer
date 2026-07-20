@@ -13,7 +13,7 @@ import {
   cardImageUrl,
   preloadDeckImages,
 } from './cards-ui.js';
-import { snapshotAnim, playTableAnim, playDealAnim } from './anim.js';
+import { snapshotAnim, playTableAnim, playDealAnim, clearFlyLayer } from './anim.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -31,13 +31,14 @@ const state = {
   net: null,
   busy: false,
   lastSeenLog: 0,
-  revealSkip: null,
   feed: [],
   pendingSnap: null,
   needDeal: false,
+  dealHandsOnly: false,
   prevScores: [0, 0],
   dealing: false,
   lastPileCount: [0, 0],
+  netStatus: '',
 };
 
 let audioCtx = null;
@@ -129,8 +130,9 @@ function flashBad(msg) {
   setTimeout(() => bar?.classList.remove('flash-bad'), 420);
 }
 
-function requestDeal() {
+function requestDeal({ handsOnly = false } = {}) {
   state.needDeal = true;
+  state.dealHandsOnly = handsOnly;
 }
 
 async function runDealIfNeeded() {
@@ -138,10 +140,13 @@ async function runDealIfNeeded() {
     return;
   }
   state.needDeal = false;
+  const handsOnly = !!state.dealHandsOnly;
+  state.dealHandsOnly = false;
   state.dealing = true;
   state.busy = true;
   const screen = $('#screenGame');
   screen?.classList.add('dealing');
+  if (handsOnly) screen?.classList.add('dealing-hands');
   render();
   await sleep(40);
   const g = state.game;
@@ -149,19 +154,59 @@ async function runDealIfNeeded() {
   const opp = 1 - me;
   try {
     await playDealAnim({
-      tableCards: g.table.slice(),
+      tableCards: handsOnly ? [] : g.table.slice(),
       myCards: g.hands[me].slice(),
       oppCount: g.hands[opp].length,
       me,
+      handsOnly,
       onSfx: playSfx,
     });
   } catch (_) {}
-  screen?.classList.remove('dealing');
+  screen?.classList.remove('dealing', 'dealing-hands');
   state.dealing = false;
   state.busy = false;
   state.prevScores = [...g.scores];
   render();
   maybeAiOrWait();
+}
+
+async function finishAfterMove() {
+  const g = state.game;
+  if (!g) return;
+
+  if (g.message === 'Nueva mano repartida' && g.phase === 'play') {
+    setMsg('Nueva mano');
+    requestDeal({ handsOnly: true });
+    render();
+    await runDealIfNeeded();
+    return;
+  }
+
+  if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
+    setMsg(g.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
+    render();
+    await sleep(850);
+    if (state.game === g) showRoundPanel(g);
+    return;
+  }
+
+  render();
+  maybeAiOrWait();
+}
+
+function setNetChip(text, kind = '') {
+  const el = $('#netChip');
+  if (!el) return;
+  state.netStatus = text || '';
+  if (!text) {
+    el.hidden = true;
+    el.textContent = '';
+    el.className = 'net-chip';
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+  el.className = `net-chip${kind ? ` ${kind}` : ''}`;
 }
 
 function showScreen(id) {
@@ -288,7 +333,15 @@ function renderPiles() {
     if (!el) return;
     const prev = state.lastPileCount[playerIdx] || 0;
     el.innerHTML = '';
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
     el.onclick = () => openPeek(playerIdx);
+    el.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openPeek(playerIdx);
+      }
+    };
     if (!cards.length) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       state.lastPileCount[playerIdx] = 0;
@@ -418,10 +471,25 @@ function render() {
 
   const felt = $('#felt');
   felt.innerHTML = '';
-  const deckBadge = document.createElement('div');
-  deckBadge.className = 'deck-badge';
-  deckBadge.textContent = `Mazo ${g.deck.length}`;
-  felt.appendChild(deckBadge);
+  felt.classList.toggle('deck-low', g.deck.length > 0 && g.deck.length <= 6);
+  felt.classList.toggle('deck-empty', g.deck.length === 0);
+
+  const deckStack = document.createElement('div');
+  deckStack.className = 'deck-stack';
+  deckStack.setAttribute('aria-label', `Mazo: ${g.deck.length} cartas`);
+  const layers = Math.min(4, Math.max(0, Math.ceil(g.deck.length / 8)));
+  for (let i = 0; i < layers; i++) {
+    const layer = document.createElement('div');
+    layer.className = 'deck-layer';
+    layer.style.setProperty('--i', String(i));
+    deckStack.appendChild(layer);
+  }
+  if (!layers) deckStack.classList.add('empty');
+  const deckCount = document.createElement('span');
+  deckCount.className = 'deck-count';
+  deckCount.textContent = String(g.deck.length);
+  deckStack.appendChild(deckCount);
+  felt.appendChild(deckStack);
 
   if (!g.table.length) {
     const empty = document.createElement('div');
@@ -466,10 +534,6 @@ function render() {
   // Sin adelantar si la jugada es válida: el motor decide al confirmar
   $('#btnCapture').disabled = !canTryCapture;
   $('#btnDiscard').disabled = !canPlay;
-
-  if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
-    showRoundPanel(g);
-  }
 }
 
 function selectHand(id) {
@@ -491,64 +555,10 @@ function toggleTable(id) {
   render();
 }
 
-async function showReveal(mv) {
-  // Fallback path: build snapshot from current DOM + pre-move reconstruction
-  const before = reconstructBefore(mv);
-  const snap = snapshotAnim(
-    { player: mv.player, cardId: mv.cardId, captureIds: mv.captureIds || [] },
-    { me: state.me, game: before }
-  );
-  ghostIds([mv.cardId, ...(mv.captureIds || [])]);
-  await playTableAnim(snap, mv.type, { onSfx: playSfx });
-}
-
 function lastMoveFrom(game) {
   const log = game?.moveLog || [];
   if (!log.length) return null;
   return log[log.length - 1];
-}
-
-/** Best-effort previous hands/table for remote replay. */
-function reconstructBefore(mv) {
-  const g = state.game;
-  const hands = [
-    g.hands[0].map((c) => ({ ...c })),
-    g.hands[1].map((c) => ({ ...c })),
-  ];
-  const table = g.table.map((c) => ({ ...c }));
-  const captured = [
-    g.captured[0].map((c) => ({ ...c })),
-    g.captured[1].map((c) => ({ ...c })),
-  ];
-
-  const ids = new Set([mv.cardId, ...(mv.captureIds || [])]);
-  const pulled = [];
-  for (const p of [0, 1]) {
-    captured[p] = captured[p].filter((c) => {
-      if (ids.has(c.id)) {
-        pulled.push(c);
-        return false;
-      }
-      return true;
-    });
-  }
-
-  if (mv.type === 'discard') {
-    const idx = table.findIndex((c) => c.id === mv.cardId);
-    if (idx >= 0) {
-      const [c] = table.splice(idx, 1);
-      hands[mv.player].push(c);
-    }
-  } else {
-    const played = pulled.find((c) => c.id === mv.cardId);
-    if (played) hands[mv.player].push(played);
-    for (const id of mv.captureIds || []) {
-      const c = pulled.find((x) => x.id === id);
-      if (c && c.id !== mv.cardId) table.push(c);
-    }
-  }
-
-  return { ...g, hands, table, captured };
 }
 
 function ghostIds(ids) {
@@ -596,8 +606,7 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
 
   state.lastSeenLog = (state.game.moveLog || []).length;
   state.busy = false;
-  render();
-  maybeAiOrWait();
+  await finishAfterMove();
 }
 
 async function commitLocalMove(move) {
@@ -623,7 +632,6 @@ function submitMove(move) {
     state.busy = true;
     // Keep DOM for flight anim when host echoes state
     state.pendingSnap = snapshotAnim(move, { me: state.me, game: state.game });
-    state.pendingMoveType = null;
     ghostIds([move.cardId, ...(move.captureIds || [])]);
     state.net.send({ type: 'move', move });
     state.selectedHand = null;
@@ -664,16 +672,23 @@ async function maybeAiOrWait() {
   if (!g || g.phase !== 'play') return;
   if (state.mode === 'cpu' && g.currentPlayer !== state.me && !state.busy) {
     state.busy = true;
-    setMsg('El rival piensa…');
+    const oppName = state.names[1 - state.me] || 'Rival';
+    setMsg(`${oppName} piensa…`);
+    $('#scoreOpp')?.classList.add('thinking');
     render();
-    await sleep(1100);
+    await sleep(650 + Math.floor(Math.random() * 450));
     const move = chooseAiMove(state.game, 1 - state.me);
     if (!move) {
+      $('#scoreOpp')?.classList.remove('thinking');
       state.busy = false;
       return;
     }
-    // small pause so you see whose turn
-    await sleep(400);
+    const clearing =
+      move.captureIds?.length &&
+      move.captureIds.length === state.game.table.length;
+    const pause = clearing ? 720 : move.captureIds?.length ? 480 : 260;
+    await sleep(pause);
+    $('#scoreOpp')?.classList.remove('thinking');
     state.busy = false;
     await applyAndReveal(move);
   }
@@ -789,6 +804,12 @@ function showRoundPanel(g) {
   home.onclick = () => leaveToHome();
   actions.appendChild(home);
   panel.classList.add('open');
+  const inner = panel.querySelector('.panel');
+  if (inner) {
+    inner.classList.remove('reveal-score');
+    void inner.offsetWidth;
+    inner.classList.add('reveal-score');
+  }
 }
 
 function nextRound() {
@@ -813,12 +834,17 @@ function leaveToHome() {
   state.busy = false;
   state.dealing = false;
   state.needDeal = false;
+  state.dealHandsOnly = false;
   state.lastSeenLog = 0;
   state.feed = [];
-  $('#screenGame')?.classList.remove('dealing');
+  clearFlyLayer();
+  setNetChip('');
+  $('#scoreOpp')?.classList.remove('thinking');
+  $('#screenGame')?.classList.remove('dealing', 'dealing-hands');
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
+  $('#rulesOverlay')?.classList.remove('open');
   showScreen('screenHome');
 }
 
@@ -859,6 +885,7 @@ function beginHostMatch() {
   state.net.send({ type: 'state', game: serializeState(state.game) });
   $('#inviteOverlay').classList.remove('open');
   showScreen('screenGame');
+  setNetChip('En línea', 'ok');
   requestDeal();
   render();
   runDealIfNeeded();
@@ -904,8 +931,10 @@ async function startJoin() {
     state.me = 1;
     state.names = ['Anfitrión', myDisplayName()];
     $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
+    setNetChip('Enlace…', 'warn');
   } catch (err) {
     $('#joinWaitStatus').textContent = err.message || 'No se pudo unir';
+    setNetChip('Sin red', 'bad');
   }
 }
 
@@ -938,6 +967,7 @@ async function ingestRemoteState(game) {
   state.selectedHand = null;
   state.selectedTable.clear();
   state.net?.markReady();
+  setNetChip('En línea', 'ok');
   $('#roundOverlay').classList.remove('open');
   showScreen('screenGame');
 
@@ -954,6 +984,23 @@ async function ingestRemoteState(game) {
     requestDeal();
     render();
     await runDealIfNeeded();
+    return;
+  }
+
+  // Mid-round redeal after a move
+  if (mv && game.message === 'Nueva mano repartida' && game.phase === 'play') {
+    setMsg('Nueva mano');
+    requestDeal({ handsOnly: true });
+    render();
+    await runDealIfNeeded();
+    return;
+  }
+
+  if (game.phase === 'roundEnd' || game.phase === 'matchEnd') {
+    setMsg(game.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
+    render();
+    await sleep(850);
+    if (state.game === game) showRoundPanel(game);
     return;
   }
 
@@ -1002,10 +1049,14 @@ function wireNet(net) {
     }
   });
 
-  net.on('onDisconnect', () => setMsg('Conexión interrumpida. Reintentando…'));
+  net.on('onDisconnect', () => {
+    setMsg('Conexión interrumpida…');
+    setNetChip('Reconectando', 'warn');
+  });
   net.on('onError', (err) => {
     console.error(err);
     const msg = err?.message || 'Error de conexión';
+    setNetChip('Sin red', 'bad');
     if ($('#inviteOverlay')?.classList.contains('open')) $('#inviteStatus').textContent = msg;
     else if ($('#screenJoinWait')?.classList.contains('active')) $('#joinWaitStatus').textContent = msg;
     else setMsg(msg);
@@ -1013,6 +1064,8 @@ function wireNet(net) {
   net.on('onStatus', (s) => {
     if ($('#inviteOverlay')?.classList.contains('open')) $('#inviteStatus').textContent = s;
     if ($('#screenJoinWait')?.classList.contains('active')) $('#joinWaitStatus').textContent = s;
+    if (/listo|conectado|amigo|peer/i.test(s || '')) setNetChip('En línea', 'ok');
+    else if (/conect|espera|emparej/i.test(s || '')) setNetChip('Enlace…', 'warn');
   });
 }
 
@@ -1070,6 +1123,20 @@ function bindUi() {
   });
   $('#playerName')?.addEventListener('change', saveName);
   $('#playerName')?.addEventListener('blur', saveName);
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('#peekOverlay')?.classList.contains('open')) {
+      $('#peekOverlay').classList.remove('open');
+      return;
+    }
+    if ($('#rulesOverlay')?.classList.contains('open')) {
+      closeRules();
+      return;
+    }
+    if ($('#inviteOverlay')?.classList.contains('open') && !state.game) {
+      leaveToHome();
+    }
+  });
   const unlock = () => {
     tone(1, 0.01, 'sine', 0.0001);
     window.removeEventListener('pointerdown', unlock);
@@ -1079,7 +1146,7 @@ function bindUi() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=11').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=12').then((reg) => {
     reg.update?.();
   }).catch(() => {});
 }

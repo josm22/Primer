@@ -7,6 +7,14 @@ import { cardImageUrl, cardBackUrl } from './cards-ui.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+export function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (_) {
+    return false;
+  }
+}
+
 function ensureLayer() {
   let el = document.getElementById('flyLayer');
   if (!el) {
@@ -22,6 +30,11 @@ function clearLayer() {
   const el = ensureLayer();
   el.innerHTML = '';
   el.classList.remove('active', 'dim-table');
+}
+
+/** Limpia flyers al salir de la partida. */
+export function clearFlyLayer() {
+  clearLayer();
 }
 
 function cardElRect(id) {
@@ -217,13 +230,20 @@ export async function playDealAnim({
   oppCount = 0,
   me = 0,
   onSfx,
+  handsOnly = false,
 } = {}) {
+  if (prefersReducedMotion()) {
+    onSfx?.('deal');
+    await sleep(180);
+    return;
+  }
+
   clearLayer();
   const layer = ensureLayer();
   layer.classList.add('active');
 
   const felt = selRect('#felt');
-  const deck = selRect('.deck-badge') || felt;
+  const deck = selRect('.deck-stack') || selRect('.deck-badge') || felt;
   const origin = {
     left: (deck?.left ?? window.innerWidth / 2) + (deck?.width ?? 0) / 2 - 24,
     top: (deck?.top ?? window.innerHeight / 2) + (deck?.height ?? 0) / 2 - 36,
@@ -232,16 +252,17 @@ export async function playDealAnim({
   };
 
   await preload(cardBackUrl());
-  await Promise.all(tableCards.map((c) => preload(cardImageUrl(c))));
+  if (!handsOnly) await Promise.all(tableCards.map((c) => preload(cardImageUrl(c))));
   await Promise.all(myCards.map((c) => preload(cardImageUrl(c))));
 
   onSfx?.('deal');
-  toast('Repartiendo…', { ms: 700 });
+  toast(handsOnly ? 'Nueva mano' : 'Repartiendo…', { ms: 700 });
 
   const flyers = [];
+  const table = handsOnly ? [] : tableCards;
 
   // Mesa (cara arriba)
-  for (let i = 0; i < tableCards.length; i++) {
+  for (let i = 0; i < table.length; i++) {
     const land = feltLanding(felt, i);
     const node = makeFlyer(null, origin, { face: false, z: 1 + i });
     flyers.push(
@@ -252,7 +273,7 @@ export async function playDealAnim({
           rotate: (i - 1.5) * 3,
           easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
         });
-        setFace(node, tableCards[i]);
+        setFace(node, table[i]);
         await animateTo(node, land, { ms: 120, scale: 1.02 });
       })()
     );
@@ -405,6 +426,12 @@ export function snapshotAnim(move, { me, game }) {
  * escoba   → igual + barrido
  */
 export async function playTableAnim(snap, type, { onSfx } = {}) {
+  if (prefersReducedMotion()) {
+    onSfx?.(type === 'escoba' ? 'escoba' : type === 'capture' ? 'capture' : 'discard');
+    await sleep(220);
+    return;
+  }
+
   clearLayer();
   const layer = ensureLayer();
   layer.classList.add('active', 'dim-table');
