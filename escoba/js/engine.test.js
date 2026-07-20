@@ -104,6 +104,32 @@ assert(state.escobas[0] === 1, 'escoba al vaciar mesa');
 assert(state.table.length === 0, 'mesa vacía');
 assert(state.captured[0].length === 2, '2 cartas capturadas');
 assert(state.currentPlayer === 1, 'pasa turno');
+const lastLog = state.moveLog[state.moveLog.length - 1];
+assert(lastLog.cardId === 'copas-12', 'moveLog cardId');
+assert(Array.isArray(lastLog.captureIds), 'moveLog captureIds');
+
+console.log('Restos de mesa al fin de ronda');
+{
+  let m = createMatch({ seedRng: () => 0.2, firstPlayer: 0 });
+  m.deck = [];
+  m.hands = [[makeCard('oros', 1)], []];
+  m.table = [makeCard('copas', 4), makeCard('espadas', 5)];
+  m.lastCapturer = 0;
+  m.captured = [[], []];
+  m.phase = 'play';
+  m.currentPlayer = 0;
+  // Dejar el as (no captura con 4/5) → manos vacías + mazo vacío → endRound
+  try {
+    m = applyMove(m, { player: 0, cardId: 'oros-1', captureIds: [] });
+    assert(m.phase === 'roundEnd' || m.phase === 'matchEnd', 'fin de ronda');
+    assert(m.table.length === 0, 'mesa vaciada');
+    assert(m.roundLeftovers?.player === 0, 'restos al último capturador');
+    assert(m.roundLeftovers?.cards?.length === 3, '3 cartas de resto (mesa+dejada)');
+    assert(m.captured[0].length === 3, 'restos en capturas p0');
+  } catch (e) {
+    assert(false, `endRound leftovers: ${e.message}`);
+  }
+}
 
 console.log('Puntuación');
 const scored = scoreRound({

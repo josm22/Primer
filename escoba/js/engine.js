@@ -115,6 +115,7 @@ export function createMatch({ seedRng, firstPlayer = 0 } = {}) {
     escobas: [0, 0],
     scores: [0, 0],
     roundScores: null,
+    roundLeftovers: null,
     currentPlayer: firstPlayer,
     lastCapturer: null,
     message: 'Nueva ronda',
@@ -269,8 +270,16 @@ export function scoreRound(state) {
 function endRound(state) {
   const next = serializeState(state);
   // Cartas restantes van al último que capturó (sin escoba extra)
-  if (next.table.length && next.lastCapturer != null) {
-    next.captured[next.lastCapturer].push(...next.table);
+  next.roundLeftovers = null;
+  if (next.table.length) {
+    const cards = next.table.map((c) => ({ ...c }));
+    if (next.lastCapturer != null) {
+      next.captured[next.lastCapturer].push(...next.table);
+      next.roundLeftovers = { player: next.lastCapturer, cards };
+    } else {
+      // Nadie capturó en toda la ronda: las cartas se retiran sin punto
+      next.roundLeftovers = { player: null, cards };
+    }
     next.table = [];
   }
 

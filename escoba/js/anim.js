@@ -476,8 +476,8 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
     await animateTo(flyer, { ...land, top: land.top + 6 }, { ms: 140, scale: 0.98 });
     await animateTo(flyer, land, { ms: 120, scale: 1 });
 
-    toast('A la mesa', { ms: 700 });
-    await sleep(500);
+    toast('A la mesa', { ms: 650 });
+    await sleep(220);
     clearLayer();
     return;
   }
@@ -551,17 +551,16 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
     })
   );
 
-  await sleep(220);
+  await sleep(180);
 
   const loot = lootText([playedCard, ...tableTaken]);
-    toast(type === 'escoba' ? '¡ESCOBA!' : 'Captura', { escoba: type === 'escoba', ms: type === 'escoba' ? 1200 : 800 });
-    if (type === 'escoba') {
-      document.getElementById('felt')?.classList.add('sweep');
-      burstSparks(cx, cy);
-    } else if (loot) {
-      // Solo loot tras capturar (resultado), no ayuda previa
-      toast(loot, { ms: 900 });
-    }
+  if (type === 'escoba') {
+    document.getElementById('felt')?.classList.add('sweep');
+    burstSparks(cx, cy);
+    toast('¡ESCOBA!', { escoba: true, ms: 1100 });
+  } else {
+    toast(loot || 'Captura', { ms: 850 });
+  }
 
   // LEAVE: whole stack flies off the table into the capture pile
   const dest = pileLanding(pile, felt, meSide);
@@ -586,7 +585,85 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
     )
   );
 
-  await sleep(type === 'escoba' ? 750 : 420);
+  await sleep(type === 'escoba' ? 650 : 320);
   document.getElementById('felt')?.classList.remove('sweep');
+  clearLayer();
+}
+
+/**
+ * Fin de ronda: cartas que quedaban en la mesa van al montón del último
+ * que capturó (o se retiran si nadie capturó).
+ */
+export async function playLeftoverSweep(leftovers, { me, onSfx, whoName } = {}) {
+  if (!leftovers?.cards?.length) return;
+  if (prefersReducedMotion()) {
+    onSfx?.('discard');
+    await sleep(160);
+    return;
+  }
+
+  clearLayer();
+  const layer = ensureLayer();
+  layer.classList.add('active', 'dim-table');
+  const felt = selRect('#felt');
+  const toPlayer = leftovers.player;
+  const meSide = toPlayer === me;
+  const pile = toPlayer == null ? null : selRect(meSide ? '#pileMe' : '#pileOpp');
+
+  await Promise.all(leftovers.cards.map((c) => preload(cardImageUrl(c))));
+
+  const flyers = leftovers.cards.map((c, i) => {
+    const r = cardElRect(c.id) || feltLanding(felt, i);
+    return makeFlyer(c, copyRect(r), { face: true, z: 2 + i });
+  });
+
+  // Ghost underlying DOM cards
+  for (const c of leftovers.cards) {
+    document
+      .querySelector(`.card[data-id="${CSS.escape(c.id)}"]`)
+      ?.classList.add('ghosting');
+  }
+
+  onSfx?.('discard');
+  if (toPlayer == null) {
+    toast('Sin baza', { ms: 800 });
+    await Promise.all(
+      flyers.map((node, i) =>
+        animateTo(
+          node,
+          {
+            left: (felt?.left ?? 0) + (felt?.width ?? window.innerWidth) / 2 - 20,
+            top: (felt?.top ?? 0) - 40,
+            width: 40,
+            height: 60,
+          },
+          { ms: 480, opacity: 0, rotate: (i - 1) * 8 }
+        )
+      )
+    );
+  } else {
+    const n = leftovers.cards.length;
+    toast(
+      `${n} carta${n > 1 ? 's' : ''} → ${whoName || 'montón'}`,
+      { ms: 900 }
+    );
+    const dest = pileLanding(pile, felt, meSide);
+    await Promise.all(
+      flyers.map((node, i) =>
+        animateTo(
+          node,
+          {
+            left: dest.left + i * 3,
+            top: dest.top - i * 3,
+            width: dest.width,
+            height: dest.height,
+          },
+          { ms: 580, rotate: (i - 1) * 4, easing: 'cubic-bezier(0.25, 0.8, 0.2, 1)' }
+        )
+      )
+    );
+  }
+
+  await sleep(280);
   clearLayer();
 }

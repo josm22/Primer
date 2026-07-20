@@ -13,7 +13,7 @@ import {
   cardImageUrl,
   preloadDeckImages,
 } from './cards-ui.js';
-import { snapshotAnim, playTableAnim, playDealAnim, clearFlyLayer } from './anim.js';
+import { snapshotAnim, playTableAnim, playDealAnim, clearFlyLayer, playLeftoverSweep } from './anim.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -94,6 +94,26 @@ function playSfx(kind) {
   } else if (kind === 'bad') {
     buzz([25, 40, 25]);
     tone(160, 0.1, 'sawtooth', 0.025);
+  } else if (kind === 'round') {
+    buzz([12, 30, 12]);
+    tone(340, 0.1, 'sine', 0.04);
+    setTimeout(() => tone(420, 0.12, 'triangle', 0.035), 90);
+  } else if (kind === 'win') {
+    buzz([30, 40, 30, 40, 60]);
+    tone(392, 0.12, 'sine', 0.05);
+    setTimeout(() => tone(523, 0.14, 'sine', 0.05), 100);
+    setTimeout(() => tone(659, 0.22, 'triangle', 0.055), 220);
+  } else if (kind === 'lose') {
+    buzz([40, 60, 40]);
+    tone(280, 0.14, 'sine', 0.04);
+    setTimeout(() => tone(220, 0.18, 'triangle', 0.035), 120);
+  } else if (kind === 'clutch') {
+    buzz([16, 28, 16]);
+    tone(600, 0.08, 'triangle', 0.04);
+    setTimeout(() => tone(720, 0.1, 'sine', 0.035), 70);
+  } else if (kind === 'peek') {
+    buzz(6);
+    tone(480, 0.04, 'triangle', 0.025);
   }
 }
 
@@ -170,7 +190,23 @@ async function runDealIfNeeded() {
   state.busy = false;
   state.prevScores = [...g.scores];
   render();
+  // Deja asentar la mesa antes de que la CPU “piense”
+  if (state.mode === 'cpu' && g.currentPlayer !== state.me) {
+    await sleep(520);
+  }
   maybeAiOrWait();
+}
+
+async function sweepRoundLeftovers(g) {
+  const left = g.roundLeftovers;
+  if (!left?.cards?.length) return;
+  const who =
+    left.player == null ? null : state.names[left.player] || 'Jugador';
+  await playLeftoverSweep(left, {
+    me: state.me,
+    onSfx: playSfx,
+    whoName: who,
+  });
 }
 
 async function finishAfterMove() {
@@ -189,8 +225,10 @@ async function finishAfterMove() {
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
     setMsg(g.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
+    // Mantener cartas en el DOM para el barrido de restos
+    await sweepRoundLeftovers(g);
     render();
-    await sleep(850);
+    await sleep(550);
     if (state.game === g) showRoundPanel(g);
     return;
   }
@@ -440,11 +478,16 @@ function openPeek(playerIdx) {
   const title = $('#peekTitle');
   title.textContent = `Capturas de ${state.names[playerIdx]}`;
   if (!cards.length) {
-    body.innerHTML = `<p class="peek-empty">Todavía no hay cartas.</p>`;
+    body.innerHTML = `<p class="peek-empty">Todavía no hay cartas. Toca el montón cuando haya capturas.</p>`;
   } else {
     const t = tally(cards);
-    const oros = cards.filter((c) => c.suit === 'oros');
-    const sietes = cards.filter((c) => c.rank === 7);
+    const suitOrder = { oros: 0, copas: 1, espadas: 2, bastos: 3 };
+    const sorted = cards.slice().sort((a, b) => {
+      const s = (suitOrder[a.suit] ?? 9) - (suitOrder[b.suit] ?? 9);
+      return s || a.rank - b.rank;
+    });
+    const oros = sorted.filter((c) => c.suit === 'oros');
+    const sietes = sorted.filter((c) => c.rank === 7);
     body.innerHTML = `
       <div class="peek-summary">
         <span>${t.cards} cartas</span>
@@ -453,29 +496,27 @@ function openPeek(playerIdx) {
         <span class="${t.sieteOros ? 'chip-hot-inline' : ''}">${t.sieteOros ? '★ 7 de oros' : 'Sin 7♦'}</span>
         <span>${g.escobas[playerIdx]} escobas</span>
       </div>
-      <div class="peek-section"><h3>Oros</h3><div class="peek-grid" id="peekOros"></div></div>
-      <div class="peek-section"><h3>Sietes</h3><div class="peek-grid" id="peekSietes"></div></div>
+      ${oros.length ? `<div class="peek-section"><h3>Oros</h3><div class="peek-grid" id="peekOros"></div></div>` : ''}
+      ${sietes.length ? `<div class="peek-section"><h3>Sietes</h3><div class="peek-grid" id="peekSietes"></div></div>` : ''}
       <div class="peek-section"><h3>Todas</h3><div class="peek-grid" id="peekAll"></div></div>
     `;
     const fill = (sel, list) => {
       const box = body.querySelector(sel);
-      if (!list.length) {
-        box.innerHTML = `<span class="peek-empty">—</span>`;
-        return;
-      }
+      if (!box) return;
       list.forEach((c) => {
         const d = document.createElement('div');
         d.className = 'peek-card';
+        if (c.suit === 'oros' && c.rank === 7) d.classList.add('hot');
         d.innerHTML = `<img src="${cardImageUrl(c)}" alt="${c.label}">`;
         box.appendChild(d);
       });
     };
     fill('#peekOros', oros);
     fill('#peekSietes', sietes);
-    fill('#peekAll', cards);
+    fill('#peekAll', sorted);
   }
   overlay.classList.add('open');
-  playSfx('select');
+  playSfx('peek');
 }
 
 function render() {
@@ -494,7 +535,8 @@ function render() {
       ptsMe.classList.remove('bump');
       void ptsMe.offsetWidth;
       ptsMe.classList.add('bump');
-      if (g.scores[state.me] >= 15 && prevMe < 15) playSfx('select');
+      if (g.scores[state.me] >= 18 && prevMe < 18) playSfx('clutch');
+      else if (g.scores[state.me] >= 15 && prevMe < 15) playSfx('clutch');
     }
     ptsMe.textContent = g.scores[state.me];
   }
@@ -503,6 +545,7 @@ function render() {
       ptsOpp.classList.remove('bump');
       void ptsOpp.offsetWidth;
       ptsOpp.classList.add('bump');
+      if (g.scores[opp] >= 18 && prevOpp < 18) playSfx('clutch');
     }
     ptsOpp.textContent = g.scores[opp];
   }
@@ -754,7 +797,8 @@ async function maybeAiOrWait() {
     setMsg(`${oppName} piensa…`);
     $('#scoreOpp')?.classList.add('thinking');
     render();
-    await sleep(650 + Math.floor(Math.random() * 450));
+    const firstBeat = (g.moveLog || []).length === 0 ? 380 : 0;
+    await sleep(firstBeat + 700 + Math.floor(Math.random() * 420));
     const move = chooseAiMove(state.game, 1 - state.me);
     if (!move) {
       $('#scoreOpp')?.classList.remove('thinking');
@@ -764,11 +808,13 @@ async function maybeAiOrWait() {
     const clearing =
       move.captureIds?.length &&
       move.captureIds.length === state.game.table.length;
-    const pause = clearing ? 720 : move.captureIds?.length ? 480 : 260;
+    const pause = clearing ? 640 : move.captureIds?.length ? 420 : 240;
     await sleep(pause);
-    $('#scoreOpp')?.classList.remove('thinking');
+    // Mantener “thinking” hasta que arranque el vuelo
     state.busy = false;
-    await applyAndReveal(move);
+    const flying = applyAndReveal(move);
+    $('#scoreOpp')?.classList.remove('thinking');
+    await flying;
   }
 }
 
@@ -790,11 +836,24 @@ function showRoundPanel(g) {
         : g.winner === state.me
           ? '¡Has ganado!'
           : 'Has perdido';
+    if (g.winner === state.me) playSfx('win');
+    else if (g.winner == null) playSfx('round');
+    else playSfx('lose');
   } else {
     title.textContent = 'Recuento de la ronda';
+    playSfx('round');
   }
 
   const rs = g.roundScores;
+  const left = g.roundLeftovers;
+  let leftoverNote = '';
+  if (left?.cards?.length) {
+    leftoverNote =
+      left.player == null
+        ? `<p class="leftover-note">Las ${left.cards.length} cartas de la mesa se retiraron (nadie había capturado).</p>`
+        : `<p class="leftover-note">${left.cards.length} carta${left.cards.length > 1 ? 's' : ''} de la mesa → <strong>${state.names[left.player]}</strong></p>`;
+  }
+
   if (rs) {
     const c = rs.counts;
     const hasSO = [
@@ -810,6 +869,7 @@ function showRoundPanel(g) {
       </tr>`;
 
     body.innerHTML = `
+      ${leftoverNote}
       <p class="score-intro">Así se suman los puntos de esta ronda:</p>
       <table class="score-table">
         <thead><tr><th>Concepto</th><th>${state.names[0]}</th><th>${state.names[1]}</th></tr></thead>
@@ -834,7 +894,7 @@ function showRoundPanel(g) {
       }
     `;
   } else {
-    body.innerHTML = `<p>${g.message}</p>`;
+    body.innerHTML = `${leftoverNote}<p>${g.message}</p>`;
   }
 
   actions.innerHTML = '';
@@ -884,9 +944,14 @@ function showRoundPanel(g) {
   panel.classList.add('open');
   const inner = panel.querySelector('.panel');
   if (inner) {
-    inner.classList.remove('reveal-score');
+    inner.classList.remove('reveal-score', 'match-win', 'match-lose', 'match-draw');
     void inner.offsetWidth;
     inner.classList.add('reveal-score');
+    if (g.phase === 'matchEnd') {
+      if (g.winner === state.me) inner.classList.add('match-win');
+      else if (g.winner == null) inner.classList.add('match-draw');
+      else inner.classList.add('match-lose');
+    }
   }
 }
 
@@ -1091,8 +1156,9 @@ async function ingestRemoteState(game) {
 
   if (game.phase === 'roundEnd' || game.phase === 'matchEnd') {
     setMsg(game.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
+    await sweepRoundLeftovers(game);
     render();
-    await sleep(850);
+    await sleep(550);
     if (state.game === game) showRoundPanel(game);
     return;
   }
@@ -1178,14 +1244,41 @@ async function shareInvite() {
   const code = $('#inviteCode').textContent;
   const base = location.href.split('?')[0].split('#')[0];
   const url = `${base}?code=${encodeURIComponent(code)}`;
-  const text = `¡Juguemos a la Escoba! Código: ${code}\n${url}`;
+  const text = `¡Juguemos a la Escoba! Código: ${code}`;
   try {
-    if (navigator.share) await navigator.share({ title: 'Escoba', text, url });
-    else {
-      await navigator.clipboard.writeText(text);
+    if (navigator.share) {
+      await navigator.share({ title: 'Escoba', text, url });
+      $('#inviteStatus').textContent = 'Invitación enviada';
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
       $('#inviteStatus').textContent = 'Código y enlace copiados';
     }
-  } catch (_) {}
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      $('#inviteStatus').textContent = 'Comparte el código cuando quieras';
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      $('#inviteStatus').textContent = 'Código y enlace copiados';
+    } catch (_) {
+      $('#inviteStatus').textContent = `Código: ${code}`;
+    }
+  }
+}
+
+async function copyInviteCode() {
+  const code = $('#inviteCode').textContent?.trim();
+  if (!code || code.includes('·')) return;
+  const base = location.href.split('?')[0].split('#')[0];
+  const url = `${base}?code=${encodeURIComponent(code)}`;
+  try {
+    await navigator.clipboard.writeText(`${code}\n${url}`);
+    $('#inviteStatus').textContent = 'Código copiado';
+    playSfx('peek');
+  } catch (_) {
+    $('#inviteStatus').textContent = `Código: ${code}`;
+  }
 }
 
 function applyInviteFromUrl() {
@@ -1194,6 +1287,11 @@ function applyInviteFromUrl() {
   if (code.length === 6) {
     showScreen('screenJoin');
     $('#joinCode').value = code;
+    const btn = $('#btnJoin');
+    if (btn) {
+      btn.textContent = `Unirme con ${code}`;
+      setTimeout(() => btn.focus(), 80);
+    }
   }
 }
 
@@ -1212,6 +1310,14 @@ function bindUi() {
   $('#btnJoin').addEventListener('click', startJoin);
   $('#btnJoinWaitHome').addEventListener('click', leaveToHome);
   $('#btnShare').addEventListener('click', shareInvite);
+  $('#btnCopyCode')?.addEventListener('click', copyInviteCode);
+  $('#inviteCode')?.addEventListener('click', copyInviteCode);
+  $('#inviteCode')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      copyInviteCode();
+    }
+  });
   $('#btnCancelInvite').addEventListener('click', leaveToHome);
   $('#btnCapture').addEventListener('click', doCapture);
   $('#btnDiscard').addEventListener('click', doDiscard);
@@ -1270,7 +1376,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=13').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=14').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
