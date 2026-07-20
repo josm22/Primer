@@ -527,14 +527,14 @@ export async function playTableAnim(snap, type, { onSfx } = {}) {
   await sleep(220);
 
   const loot = lootText([playedCard, ...tableTaken]);
-  if (type === 'escoba') {
-    document.getElementById('felt')?.classList.add('sweep');
-    burstSparks(cx, cy);
-    toast('¡ESCOBA!', { escoba: true, ms: 1200 });
-    if (loot) toast(loot, { ms: 1100 });
-  } else {
-    toast(loot || 'Captura', { ms: 900 });
-  }
+    toast(type === 'escoba' ? '¡ESCOBA!' : 'Captura', { escoba: type === 'escoba', ms: type === 'escoba' ? 1200 : 800 });
+    if (type === 'escoba') {
+      document.getElementById('felt')?.classList.add('sweep');
+      burstSparks(cx, cy);
+    } else if (loot) {
+      // Solo loot tras capturar (resultado), no ayuda previa
+      toast(loot, { ms: 900 });
+    }
 
   // LEAVE: whole stack flies off the table into the capture pile
   const dest = pileLanding(pile, felt, meSide);

@@ -430,6 +430,18 @@ body::before {
 
 .felt.sweep { animation: sweep 0.55s ease; }
 
+.felt-empty {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  color: rgba(244, 235, 224, 0.28);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: fadeIn 0.5s ease both;
+}
+
 .deck-badge {
   position: absolute;
   top: 14px;
@@ -502,15 +514,6 @@ body::before {
 }
 
 .play-bar .btn { flex: 1; }
-
-#btnCapture.sum-ready {
-  box-shadow: 0 0 0 2px rgba(125, 255, 176, 0.55), 0 8px 22px rgba(184, 135, 42, 0.35);
-}
-
-#btnCapture.sum-bad:not(:disabled) {
-  filter: saturate(0.7);
-  opacity: 0.85;
-}
 
 
 
@@ -622,36 +625,20 @@ body::before {
   text-align: center;
 }
 
-.sum-preview {
-  text-align: center;
-  min-height: 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  color: rgba(244,235,224,0.75);
-  margin: 2px 0;
+@keyframes pilePulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
-.sum-preview.show {
-  opacity: 1;
-  transform: none;
-  min-height: 1.3em;
+.pile-stack.pile-pulse {
+  animation: pilePulse 0.45s cubic-bezier(.22,.8,.3,1);
 }
-
-.sum-preview.ok { color: #7dffb0; }
-.sum-preview.bad { color: #ffb4a8; }
-.sum-preview.shake { animation: shakeX 0.4s ease; }
 
 .msg-bar.flash-bad {
   color: #ffb4a8;
   animation: shakeX 0.4s ease;
 }
-
-.card.is-oro { box-shadow: 0 0 0 1px rgba(224,179,77,0.55), 0 6px 16px rgba(0,0,0,0.32); }
-.card.is-siete { outline: 1px dashed rgba(255,255,255,0.25); outline-offset: 1px; }
-
 
 @media (max-height: 780px) {
   .pile { width: 58px; }
@@ -814,7 +801,7 @@ body::before {
 }
 
 
-/* ---- Polish: progress, feed, hints, peek ---- */
+/* ---- Polish: progress, feed, peek ---- */
 .score-track {
   margin-top: 6px;
   height: 5px;

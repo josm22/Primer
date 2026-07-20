@@ -2,7 +2,6 @@ import {
   createMatch,
   applyMove,
   startNextRound,
-  findCaptures,
   chooseAiMove,
   serializeState,
   WIN_SCORE,
@@ -33,12 +32,12 @@ const state = {
   busy: false,
   lastSeenLog: 0,
   revealSkip: null,
-  legalTableIds: new Set(),
   feed: [],
   pendingSnap: null,
   needDeal: false,
   prevScores: [0, 0],
   dealing: false,
+  lastPileCount: [0, 0],
 };
 
 let audioCtx = null;
@@ -123,17 +122,11 @@ function applyFan(el, index, total) {
 function flashBad(msg) {
   setMsg(msg);
   const bar = $('#msgBar');
-  const sum = $('#sumPreview');
   bar?.classList.remove('flash-bad');
-  sum?.classList.remove('shake');
   void bar?.offsetWidth;
   bar?.classList.add('flash-bad');
-  sum?.classList.add('shake');
   playSfx('bad');
-  setTimeout(() => {
-    bar?.classList.remove('flash-bad');
-    sum?.classList.remove('shake');
-  }, 420);
+  setTimeout(() => bar?.classList.remove('flash-bad'), 420);
 }
 
 function requestDeal() {
@@ -237,39 +230,6 @@ function renderStats() {
   fill($('#statsMe'), tMe, state.names[me]);
 }
 
-function renderSumPreview() {
-  const box = $('#sumPreview');
-  if (!box || !state.game) return;
-  const g = state.game;
-  if (!state.selectedHand) {
-    box.classList.remove('show', 'ok', 'bad');
-    box.textContent = '';
-    return;
-  }
-  const hand = g.hands[state.me].find((c) => c.id === state.selectedHand);
-  if (!hand) return;
-  const tableCards = g.table.filter((c) => state.selectedTable.has(c.id));
-  const sum = hand.value + tableCards.reduce((s, c) => s + c.value, 0);
-  const parts = [String(hand.value), ...tableCards.map((c) => String(c.value))];
-  if (!tableCards.length) {
-    const can = findCaptures(hand, g.table);
-    box.classList.add('show');
-    box.classList.toggle('ok', false);
-    box.classList.toggle('bad', false);
-    box.textContent = can.length
-      ? `Carta ${hand.value} · toca la mesa para sumar 15`
-      : `Dejar ${hand.value} en la mesa`;
-    return;
-  }
-  box.classList.add('show');
-  const ok = sum === 15;
-  box.classList.toggle('ok', ok);
-  box.classList.toggle('bad', !ok);
-  box.textContent = ok
-    ? `${parts.join(' + ')} = 15 · ¡captura!`
-    : `${parts.join(' + ')} = ${sum} · ${sum < 15 ? `faltan ${15 - sum}` : `sobran ${sum - 15}`}`;
-}
-
 function renderScoreBars() {
   const g = state.game;
   if (!g) return;
@@ -326,14 +286,17 @@ function renderPiles() {
 
   const paint = (el, cards, side, playerIdx) => {
     if (!el) return;
+    const prev = state.lastPileCount[playerIdx] || 0;
     el.innerHTML = '';
     el.onclick = () => openPeek(playerIdx);
     if (!cards.length) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
+      state.lastPileCount[playerIdx] = 0;
       return;
     }
     const wrap = document.createElement('div');
     wrap.className = 'pile-stack';
+    if (cards.length > prev) wrap.classList.add('pile-pulse');
     const show = cards.slice(-3);
     show.forEach((c, i) => {
       const card = cardEl(c, { face: true, tiny: true });
@@ -345,6 +308,7 @@ function renderPiles() {
     meta.className = 'pile-meta';
     meta.textContent = `${cards.length} · ver`;
     el.appendChild(meta);
+    state.lastPileCount[playerIdx] = cards.length;
   };
 
   paint($('#pileOpp'), g.captured[opp], state.names[opp], opp);
@@ -432,10 +396,8 @@ function render() {
     setMsg(
       g.phase === 'play'
         ? myTurn
-          ? state.selectedHand
-            ? 'Toca la mesa para sumar 15 (o Dejar)'
-            : 'Tu turno — toca una carta de tu mano'
-          : 'Turno del rival…'
+          ? 'Tu turno'
+          : `Turno de ${state.names[opp]}`
         : g.message
     );
   }
@@ -443,7 +405,6 @@ function render() {
   renderStats();
   renderScoreBars();
   renderPiles();
-  renderSumPreview();
   renderFeed();
 
   const oppHand = $('#oppHand');
@@ -462,6 +423,13 @@ function render() {
   deckBadge.textContent = `Mazo ${g.deck.length}`;
   felt.appendChild(deckBadge);
 
+  if (!g.table.length) {
+    const empty = document.createElement('div');
+    empty.className = 'felt-empty';
+    empty.textContent = 'Mesa limpia';
+    felt.appendChild(empty);
+  }
+
   g.table.forEach((c, i) => {
     const selected = state.selectedTable.has(c.id);
     const selecting = myTurn && !!state.selectedHand;
@@ -472,8 +440,6 @@ function render() {
     });
     const rot = ((i * 17) % 11) - 5;
     el.style.setProperty('--table-rot', `${rot}deg`);
-    if (c.suit === 'oros') el.classList.add('is-oro');
-    if (c.rank === 7) el.classList.add('is-siete');
     if (selecting) el.addEventListener('click', () => toggleTable(c.id));
     felt.appendChild(el);
   });
@@ -490,33 +456,17 @@ function render() {
       dim: myTurn && state.selectedHand && !selected,
     });
     applyFan(el, i, myCards.length);
-    if (c.suit === 'oros') el.classList.add('is-oro');
-    if (c.rank === 7) el.classList.add('is-siete');
     if (myTurn) el.addEventListener('click', () => selectHand(c.id));
     myHand.appendChild(el);
   });
 
   const canPlay = myTurn && !!state.selectedHand;
-  let canDiscard = canPlay;
-  let handCard = null;
-  if (canPlay) {
-    handCard = g.hands[state.me].find((c) => c.id === state.selectedHand);
-    if (handCard && findCaptures(handCard, g.table).length > 0) canDiscard = false;
-  }
   const canTryCapture = canPlay && state.selectedTable.size > 0;
-  const sumOk =
-    canTryCapture &&
-    handCard &&
-    handCard.value +
-      g.table
-        .filter((c) => state.selectedTable.has(c.id))
-        .reduce((s, c) => s + c.value, 0) ===
-      15;
 
+  // Sin adelantar si la jugada es válida: el motor decide al confirmar
   $('#btnCapture').disabled = !canTryCapture;
-  $('#btnCapture').classList.toggle('sum-ready', !!sumOk);
-  $('#btnCapture').classList.toggle('sum-bad', canTryCapture && !sumOk);
-  $('#btnDiscard').disabled = !canDiscard;
+  $('#btnCapture').classList.remove('sum-ready', 'sum-bad');
+  $('#btnDiscard').disabled = !canPlay;
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
     showRoundPanel(g);
@@ -623,7 +573,6 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
   } catch (err) {
     state.busy = false;
     document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
-    setMsg(err.message || 'Jugada inválida');
     throw err;
   }
   state.selectedHand = null;
@@ -658,7 +607,13 @@ async function commitLocalMove(move) {
       broadcast: state.mode === 'online' && state.role === 'host',
     });
     return true;
-  } catch (_) {
+  } catch (err) {
+    const reason = err?.message || 'Jugada inválida';
+    // Mensajes cortos de regla, sin calcular por ti
+    if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
+    else if (/inválida|sumar 15/i.test(reason)) flashBad('Esa captura no vale');
+    else flashBad(reason);
+    render();
     return false;
   }
 }
@@ -685,22 +640,8 @@ function submitMove(move) {
 
 function doCapture() {
   if (!state.selectedHand || state.busy) return;
-  const g = state.game;
-  if (!g) return;
-  const hand = g.hands[state.me].find((c) => c.id === state.selectedHand);
-  if (!hand) return;
   if (!state.selectedTable.size) {
-    flashBad('Toca cartas de la mesa');
-    return;
-  }
-  const tableCards = g.table.filter((c) => state.selectedTable.has(c.id));
-  const sum = hand.value + tableCards.reduce((s, c) => s + c.value, 0);
-  if (sum !== 15) {
-    flashBad(
-      sum < 15
-        ? `Suma ${sum} · faltan ${15 - sum}`
-        : `Suma ${sum} · sobran ${sum - 15}`
-    );
+    flashBad('Elige cartas de la mesa');
     return;
   }
   submitMove({
@@ -711,7 +652,7 @@ function doCapture() {
 }
 
 function doDiscard() {
-  if (!state.selectedHand) return;
+  if (!state.selectedHand || state.busy) return;
   submitMove({
     player: state.me,
     cardId: state.selectedHand,
@@ -1053,7 +994,11 @@ function wireNet(net) {
 
     if (data.type === 'reject' && state.role === 'guest') {
       state.busy = false;
-      setMsg(data.reason || 'Jugada rechazada');
+      document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
+      const reason = data.reason || 'Jugada rechazada';
+      if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
+      else if (/inválida|sumar 15/i.test(reason)) flashBad('Esa captura no vale');
+      else flashBad(reason);
       render();
     }
   });
@@ -1135,7 +1080,7 @@ function bindUi() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=10').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=11').then((reg) => {
     reg.update?.();
   }).catch(() => {});
 }
