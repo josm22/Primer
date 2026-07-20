@@ -121,6 +121,10 @@ function setFace(node, card) {
   node.innerHTML = `<img src="${cardImageUrl(card)}" alt="" draggable="false">`;
 }
 
+function setBack(node) {
+  node.innerHTML = `<img src="${cardBackUrl()}" alt="" draggable="false">`;
+}
+
 /**
  * Animate flyer from current left/top to target box.
  */
@@ -587,7 +591,30 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
     )
   );
 
-  await sleep(type === 'escoba' ? 650 : 320);
+  // Escoba: la última carta se gira boca abajo y se cruza (90°)
+  if (type === 'escoba') {
+    const marker = pack[pack.length - 1];
+    setBack(marker);
+    await animateTo(
+      marker,
+      {
+        left: dest.left - 10,
+        top: dest.top + 12,
+        width: dest.width,
+        height: dest.height,
+      },
+      {
+        ms: 380,
+        rotate: 90,
+        scale: 1.04,
+        easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
+      }
+    );
+    await sleep(280);
+  } else {
+    await sleep(320);
+  }
+
   document.getElementById('felt')?.classList.remove('sweep');
   await onBeforeClear?.();
   clearLayer();

@@ -38,6 +38,7 @@ const state = {
   prevScores: [0, 0],
   dealing: false,
   lastPileCount: [0, 0],
+  lastEscCount: [0, 0],
   netStatus: '',
   moveWatch: null,
   feltClearedUntil: 0,
@@ -517,12 +518,18 @@ function renderPiles() {
   const me = state.me;
   const opp = 1 - me;
 
-  const paint = (el, cards, side, playerIdx) => {
+  const paint = (el, cards, playerIdx) => {
     if (!el) return;
     const prev = state.lastPileCount[playerIdx] || 0;
+    const prevEsc = state.lastEscCount?.[playerIdx] || 0;
+    const escCount = g.escobas[playerIdx] || 0;
     el.innerHTML = '';
     el.setAttribute('role', 'button');
     el.tabIndex = 0;
+    el.setAttribute(
+      'aria-label',
+      `Capturas: ${cards.length} cartas, ${escCount} escobas. Toca para ver.`
+    );
     el.onclick = () => openPeek(playerIdx);
     el.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -530,30 +537,67 @@ function renderPiles() {
         openPeek(playerIdx);
       }
     };
-    if (!cards.length) {
+
+    if (!cards.length && !escCount) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       state.lastPileCount[playerIdx] = 0;
+      if (!state.lastEscCount) state.lastEscCount = [0, 0];
+      state.lastEscCount[playerIdx] = 0;
       return;
     }
-    const wrap = document.createElement('div');
-    wrap.className = 'pile-stack';
-    if (cards.length > prev) wrap.classList.add('pile-pulse');
-    const show = cards.slice(-3);
-    show.forEach((c, i) => {
-      const card = cardEl(c, { face: true, tiny: true });
-      card.style.setProperty('--i', String(i));
-      wrap.appendChild(card);
-    });
-    el.appendChild(wrap);
+
+    const stage = document.createElement('div');
+    stage.className = 'pile-stage';
+    if (cards.length > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
+
+    // Montón normal (últimas capturas, cara arriba)
+    if (cards.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pile-stack';
+      const show = cards.slice(-3);
+      show.forEach((c, i) => {
+        const card = cardEl(c, { face: true, tiny: true });
+        card.style.setProperty('--i', String(i));
+        wrap.appendChild(card);
+      });
+      stage.appendChild(wrap);
+    }
+
+    // Escobas: carta boca abajo y perpendicular (para contar)
+    if (escCount > 0) {
+      const escWrap = document.createElement('div');
+      escWrap.className = 'pile-escobas';
+      escWrap.setAttribute('aria-hidden', 'true');
+      const showEsc = Math.min(escCount, 8);
+      for (let i = 0; i < showEsc; i++) {
+        const mark = cardEl(null, { face: false, tiny: true });
+        mark.classList.add('escoba-mark');
+        mark.style.setProperty('--e', String(i));
+        if (i === showEsc - 1 && escCount > prevEsc) {
+          mark.classList.add('escoba-mark-new');
+        }
+        escWrap.appendChild(mark);
+      }
+      stage.appendChild(escWrap);
+    }
+
+    el.appendChild(stage);
     const meta = document.createElement('div');
     meta.className = 'pile-meta';
-    meta.textContent = `${cards.length} · ver`;
+    const bits = [];
+    if (cards.length) bits.push(String(cards.length));
+    if (escCount) bits.push(`${escCount} esc.`);
+    bits.push('ver');
+    meta.textContent = bits.join(' · ');
     el.appendChild(meta);
+
     state.lastPileCount[playerIdx] = cards.length;
+    if (!state.lastEscCount) state.lastEscCount = [0, 0];
+    state.lastEscCount[playerIdx] = escCount;
   };
 
-  paint($('#pileOpp'), g.captured[opp], state.names[opp], opp);
-  paint($('#pileMe'), g.captured[me], state.names[me], me);
+  paint($('#pileOpp'), g.captured[opp], opp);
+  paint($('#pileMe'), g.captured[me], me);
 }
 
 function openPeek(playerIdx) {
@@ -583,6 +627,11 @@ function openPeek(playerIdx) {
         <span class="${t.sieteOros ? 'chip-hot-inline' : ''}">${t.sieteOros ? '★ 7 de oros' : 'Sin 7♦'}</span>
         <span>${g.escobas[playerIdx]} escobas</span>
       </div>
+      ${
+        g.escobas[playerIdx]
+          ? `<p class="peek-escoba-hint">${g.escobas[playerIdx]} carta${g.escobas[playerIdx] > 1 ? 's' : ''} cruzada${g.escobas[playerIdx] > 1 ? 's' : ''} en el montón</p>`
+          : ''
+      }
       ${oros.length ? `<div class="peek-section"><h3>Oros</h3><div class="peek-grid" id="peekOros"></div></div>` : ''}
       ${sietes.length ? `<div class="peek-section"><h3>Sietes</h3><div class="peek-grid" id="peekSietes"></div></div>` : ''}
       <div class="peek-section"><h3>Todas</h3><div class="peek-grid" id="peekAll"></div></div>
@@ -1541,7 +1590,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=15').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=16').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
