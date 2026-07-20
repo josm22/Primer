@@ -6,17 +6,10 @@ import {
   bestCapture,
   serializeState,
   WIN_SCORE,
-  RANK_LABEL,
 } from './engine.js';
 import { playAiTurn } from './ai.js';
 import { EscobaNet, normalizeCode } from './net.js';
-
-const SUIT_GLYPH = {
-  oros: '◆',
-  copas: '♥',
-  espadas: '♠',
-  bastos: '♣',
-};
+import { buildCardFaceHtml, buildCardBackHtml } from './cards-ui.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -45,7 +38,7 @@ function setMsg(text) {
 function cardEl(card, { face = true, selectable = false, selected = false, capture = false, dim = false } = {}) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = `card ${face ? `face-up ${card.suit}` : 'face-down'}`;
+  el.className = `card ${face ? `face-up suit-${card.suit}` : 'face-down'}`;
   el.dataset.id = card?.id || '';
   if (selected) el.classList.add('selected');
   if (capture) el.classList.add('capture-target');
@@ -53,15 +46,10 @@ function cardEl(card, { face = true, selectable = false, selected = false, captu
   if (!selectable) el.tabIndex = -1;
 
   if (face && card) {
-    const rankShort = RANK_LABEL[card.rank] === 'As' ? 'A' : RANK_LABEL[card.rank].length > 2 ? RANK_LABEL[card.rank][0] : String(card.rank);
-    const glyph = SUIT_GLYPH[card.suit];
-    el.innerHTML = `
-      <span class="corner"><span>${rankShort}</span><span>${glyph}</span></span>
-      <span class="suit-big">${glyph}</span>
-      <span class="corner bl"><span>${rankShort}</span><span>${glyph}</span></span>
-    `;
+    el.innerHTML = buildCardFaceHtml(card);
     el.setAttribute('aria-label', card.label);
   } else {
+    el.innerHTML = buildCardBackHtml();
     el.setAttribute('aria-label', 'Carta oculta');
   }
   return el;

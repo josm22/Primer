@@ -1,7 +1,7 @@
 {
-  "name": "Escoba — online",
+  "name": "Escoba — baraja española",
   "short_name": "Escoba",
-  "description": "Escoba del 15: juega online con un amigo por código de invitación",
+  "description": "Escoba del 15 con baraja española: juega online con un amigo por código",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
