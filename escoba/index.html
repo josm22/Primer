@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#145c3d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Escoba">
+  <meta name="description" content="Escoba del 15 — juega online con un amigo por invitación">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <title>Escoba — online</title>
+</head>
+<body>
+  <div id="app">
+    <!-- HOME -->
+    <section id="screenHome" class="screen active">
+      <div class="hero">
+        <h1 class="brand"><span>Baraja española</span>Escoba</h1>
+        <p class="tagline">Partidas a 21 puntos. Invita a un amigo con un código o practica contra la CPU.</p>
+        <div class="actions">
+          <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
+          <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
+          <button type="button" class="btn btn-ghost" id="btnCpu">Practicar vs CPU</button>
+        </div>
+        <div class="footer-links">
+          <button type="button" id="btnRulesHome">Cómo se juega</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- JOIN -->
+    <section id="screenJoin" class="screen">
+      <div class="hero">
+        <h1 class="brand" style="font-size:clamp(40px,12vw,56px)"><span>Entrar</span>Código</h1>
+        <div class="field">
+          <label for="joinCode">Código de 6 caracteres</label>
+          <input id="joinCode" maxlength="6" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="ABC123">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-gold" id="btnJoin">Unirme</button>
+          <button type="button" class="btn btn-ghost" id="btnJoinBack">Volver</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screenJoinWait" class="screen">
+      <div class="hero">
+        <h1 class="brand" style="font-size:clamp(36px,11vw,48px)">Conectando</h1>
+        <p class="status-line" id="joinWaitStatus">…</p>
+        <button type="button" class="btn btn-ghost" id="btnJoinWaitHome">Cancelar</button>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="screenGame" class="screen">
+      <div class="top-bar">
+        <div class="scoreboard">
+          <div class="score-pill" id="scoreMe"><span class="who">Tú</span><span class="pts">0</span></div>
+          <div class="score-pill" id="scoreOpp"><span class="who">Rival</span><span class="pts">0</span></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-small" id="btnRules">Reglas</button>
+        <button type="button" class="btn btn-ghost btn-small" id="btnLeave">Salir</button>
+      </div>
+      <div class="msg-bar" id="msgBar"></div>
+      <div class="table-area">
+        <div class="opp-hand" id="oppHand" aria-label="Mano del rival"></div>
+        <div class="felt" id="felt" aria-label="Mesa"></div>
+        <div class="my-hand" id="myHand" aria-label="Tu mano"></div>
+      </div>
+      <div class="play-bar">
+        <button type="button" class="btn btn-ghost" id="btnDiscard" disabled>Dejar</button>
+        <button type="button" class="btn btn-ghost" id="btnAuto" disabled>Auto</button>
+        <button type="button" class="btn btn-gold" id="btnCapture" disabled>Capturar</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Invite overlay -->
+  <div class="overlay" id="inviteOverlay" role="dialog" aria-modal="true">
+    <div class="panel">
+      <h2>Invitación</h2>
+      <p>Comparte este código. Cuando tu amigo se una, empieza la partida.</p>
+      <div class="invite-code" id="inviteCode">······</div>
+      <p class="status-line" id="inviteStatus"></p>
+      <div class="actions">
+        <button type="button" class="btn btn-gold" id="btnShare">Compartir</button>
+        <button type="button" class="btn btn-ghost" id="btnCancelInvite">Cancelar</button>
+      </div>
+      <p class="hint">Ambos necesitáis conexión a internet. Funciona mejor con la app instalada en el iPhone (Compartir → Añadir a pantalla de inicio).</p>
+    </div>
+  </div>
+
+  <!-- Round / match end -->
+  <div class="overlay" id="roundOverlay" role="dialog" aria-modal="true">
+    <div class="panel">
+      <h2 id="roundTitle">Fin de ronda</h2>
+      <div id="roundBody"></div>
+      <div class="actions" id="roundActions"></div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="overlay" id="rulesOverlay" role="dialog" aria-modal="true">
+    <div class="panel">
+      <h2>Cómo se juega</h2>
+      <div class="rules-body">
+        <p>Baraja española de 40 cartas. Valores: 1–7, Sota 8, Caballo 9, Rey 10.</p>
+        <ul>
+          <li>En tu turno juegas <strong>una carta</strong> de la mano.</li>
+          <li>Si con ella y cartas de la mesa sumas exactamente <strong>15</strong>, las capturas.</li>
+          <li>Si no puedes (o no quieres), <strong>dejas</strong> la carta en la mesa.</li>
+          <li>Vaciar la mesa = <strong>escoba</strong> (+1 punto).</li>
+        </ul>
+        <p>Al final de la ronda (mazo vacío):</p>
+        <ul>
+          <li>Más cartas · más oros · más sietes · 7 de oros · cada escoba</li>
+        </ul>
+        <p>Primera persona en llegar a <strong>21 puntos</strong> gana la partida.</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnCloseRules">Entendido</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
