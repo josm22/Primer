@@ -3,7 +3,6 @@ import {
   applyMove,
   startNextRound,
   findCaptures,
-  bestCapture,
   chooseAiMove,
   serializeState,
   WIN_SCORE,
@@ -226,22 +225,6 @@ function pushFeed(mv) {
   state.feed = state.feed.slice(0, 8);
 }
 
-function legalIdsForHand(card, table) {
-  const caps = findCaptures(card, table);
-  const ids = new Set();
-  for (const group of caps) group.forEach((c) => ids.add(c.id));
-  return { caps, ids };
-}
-
-function autoPickCapture(card, table) {
-  const { caps } = legalIdsForHand(card, table);
-  if (!caps.length) return [];
-  // Prefer escoba, then bestCapture order
-  const best = bestCapture(card, table) || caps[0];
-  return best.map((c) => c.id);
-}
-
-
 function renderPiles() {
   const g = state.game;
   const me = state.me;
@@ -346,13 +329,6 @@ function render() {
     );
   }
 
-  // Legal table highlights for selected hand card
-  state.legalTableIds = new Set();
-  if (myTurn && state.selectedHand) {
-    const hand = g.hands[state.me].find((c) => c.id === state.selectedHand);
-    if (hand) state.legalTableIds = legalIdsForHand(hand, g.table).ids;
-  }
-
   renderStats();
   renderScoreBars();
   renderPiles();
@@ -374,18 +350,15 @@ function render() {
 
   for (const c of g.table) {
     const selected = state.selectedTable.has(c.id);
-    const legal = state.legalTableIds.has(c.id);
-    const hinting = myTurn && !!state.selectedHand;
+    const selecting = myTurn && !!state.selectedHand;
     const el = cardEl(c, {
       face: true,
-      selectable: hinting,
+      selectable: selecting,
       capture: selected,
-      dim: hinting && state.legalTableIds.size > 0 && !legal && !selected,
     });
-    if (legal && hinting) el.classList.add('legal-hint');
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
-    if (hinting) el.addEventListener('click', () => toggleTable(c.id));
+    if (selecting) el.addEventListener('click', () => toggleTable(c.id));
     felt.appendChild(el);
   }
 
@@ -401,15 +374,7 @@ function render() {
     });
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
-    // Can this card capture something?
-    if (myTurn && findCaptures(c, g.table).length) el.classList.add('can-capture');
-    if (myTurn) {
-      el.addEventListener('click', () => selectHand(c.id));
-      el.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        quickPlay(c.id);
-      });
-    }
+    if (myTurn) el.addEventListener('click', () => selectHand(c.id));
     myHand.appendChild(el);
   }
 
@@ -432,8 +397,6 @@ function render() {
 
   $('#btnCapture').disabled = !sumOk;
   $('#btnDiscard').disabled = !canDiscard;
-  $('#btnAuto').disabled = !canPlay;
-  $('#btnHint').disabled = !myTurn;
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
     showRoundPanel(g);
@@ -447,72 +410,16 @@ function selectHand(id) {
   } else {
     state.selectedHand = id;
     state.selectedTable.clear();
-    const card = state.game.hands[state.me].find((c) => c.id === id);
-    if (card) {
-      const picks = autoPickCapture(card, state.game.table);
-      picks.forEach((cid) => state.selectedTable.add(cid));
-    }
     playSfx('select');
   }
   render();
 }
 
 function toggleTable(id) {
-  // Only allow legal cards when a hand card is selected with captures
-  if (state.selectedHand && state.legalTableIds.size > 0 && !state.legalTableIds.has(id)) {
-    setMsg('Esa carta no entra en ninguna suma a 15');
-    buzz(20);
-    return;
-  }
   if (state.selectedTable.has(id)) state.selectedTable.delete(id);
   else state.selectedTable.add(id);
   playSfx('select');
   render();
-}
-
-function quickPlay(cardId) {
-  if (state.busy || !state.game) return;
-  if (state.game.currentPlayer !== state.me) return;
-  const card = state.game.hands[state.me].find((c) => c.id === cardId);
-  if (!card) return;
-  const best = bestCapture(card, state.game.table);
-  if (best) {
-    submitMove({
-      player: state.me,
-      cardId,
-      captureIds: best.map((c) => c.id),
-    });
-  } else if (!findCaptures(card, state.game.table).length) {
-    submitMove({ player: state.me, cardId, captureIds: [] });
-  }
-}
-
-function doHint() {
-  if (state.busy || !state.game) return;
-  if (state.game.currentPlayer !== state.me) return;
-  const move = chooseAiMove(state.game, state.me);
-  if (!move) return;
-  state.selectedHand = move.cardId;
-  state.selectedTable = new Set(move.captureIds || []);
-  playSfx('select');
-  render();
-  setMsg(
-    move.captureIds?.length
-      ? 'Pista: captura sugerida (revisa y pulsa Capturar)'
-      : 'Pista: deja esta carta en la mesa'
-  );
-}
-
-function describeLoot(cards) {
-  const oros = cards.filter((c) => c.suit === 'oros').length;
-  const sietes = cards.filter((c) => c.rank === 7).length;
-  const so = cards.some((c) => c.suit === 'oros' && c.rank === 7);
-  const bits = [];
-  if (oros) bits.push(`+${oros} oro${oros > 1 ? 's' : ''}`);
-  if (sietes) bits.push(`+${sietes} siete${sietes > 1 ? 's' : ''}`);
-  if (so) bits.push('★ 7 de oros');
-  if (!bits.length) bits.push(`${cards.length} carta${cards.length > 1 ? 's' : ''}`);
-  return bits.join(' · ');
 }
 
 async function showReveal(mv) {
@@ -651,8 +558,6 @@ function submitMove(move) {
     // Soft UI update without wiping ghosted cards from layout
     $('#btnCapture').disabled = true;
     $('#btnDiscard').disabled = true;
-    $('#btnAuto').disabled = true;
-    $('#btnHint').disabled = true;
     return;
   }
   commitLocalMove({ ...move, player: state.me });
@@ -673,21 +578,6 @@ function doDiscard() {
     player: state.me,
     cardId: state.selectedHand,
     captureIds: [],
-  });
-}
-
-function doAuto() {
-  if (!state.selectedHand) return;
-  const card = state.game.hands[state.me].find((c) => c.id === state.selectedHand);
-  const best = bestCapture(card, state.game.table);
-  if (!best) {
-    doDiscard();
-    return;
-  }
-  submitMove({
-    player: state.me,
-    cardId: state.selectedHand,
-    captureIds: best.map((c) => c.id),
   });
 }
 
@@ -842,7 +732,6 @@ function leaveToHome() {
   state.feed = [];
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
-  $('#revealOverlay')?.classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
   showScreen('screenHome');
 }
@@ -1052,8 +941,6 @@ function bindUi() {
   $('#btnCancelInvite').addEventListener('click', leaveToHome);
   $('#btnCapture').addEventListener('click', doCapture);
   $('#btnDiscard').addEventListener('click', doDiscard);
-  $('#btnAuto').addEventListener('click', doAuto);
-  $('#btnHint')?.addEventListener('click', doHint);
   $('#btnLeave').addEventListener('click', leaveToHome);
   $('#btnRules').addEventListener('click', openRules);
   $('#btnRulesHome').addEventListener('click', openRules);
@@ -1074,7 +961,9 @@ function bindUi() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=9').then((reg) => {
+    reg.update?.();
+  }).catch(() => {});
 }
 
 bindUi();
