@@ -30,6 +30,7 @@ const state = {
   names: ['Tú', 'Rival'],
   net: null,
   busy: false,
+  skipNextPilePaint: false,
   lastSeenLog: 0,
   feed: [],
   pendingSnap: null,
@@ -45,6 +46,7 @@ const state = {
   feltClearTimer: null,
   heroIdle: null,
   netChain: Promise.resolve(),
+  nameHelloSent: false,
 };
 
 let audioCtx = null;
@@ -256,9 +258,8 @@ function applyRemoteNames(names) {
   if (!Array.isArray(names) || names.length < 2) return;
   const cleaned = names.map((n) => String(n || '').trim().slice(0, 14) || 'Jugador');
   state.names = cleaned;
-  // Conserva tu nombre local si lo tienes
-  const mine = myDisplayName();
-  if (mine && mine !== 'Tú') state.names[state.me] = mine;
+  // Siempre conserva tu asiento local
+  state.names[state.me] = myDisplayName();
 }
 
 function updatePlayButtons() {
@@ -326,7 +327,13 @@ async function finishAfterMove() {
     markFeltCleared();
   }
 
-  render();
+  if (state.skipNextPilePaint) {
+    state.skipNextPilePaint = false;
+    // Conserva el montón (y la animación de escoba cruzada) ya pintado bajo el flyer
+    render({ skipPiles: true });
+  } else {
+    render();
+  }
   maybeAiOrWait();
 }
 
@@ -655,7 +662,8 @@ function openPeek(playerIdx) {
   playSfx('peek');
 }
 
-function render() {
+function render(opts = {}) {
+  const skipPiles = !!opts.skipPiles;
   const g = state.game;
   if (!g) return;
 
@@ -702,7 +710,7 @@ function render() {
 
   renderStats();
   renderScoreBars();
-  renderPiles();
+  if (!skipPiles) renderPiles();
   renderFeed();
 
   const oppHand = $('#oppHand');
@@ -864,8 +872,9 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
     await playTableAnim(snap, mv.type, {
       onSfx: playSfx,
       onBeforeClear: async () => {
-        // Pinta el destino bajo el flyer para evitar un frame en blanco
-        if (state.game?.phase === 'play') render();
+        // Destino bajo el flyer (también en fin de ronda)
+        state.skipNextPilePaint = true;
+        render();
       },
     });
   }
@@ -1253,6 +1262,7 @@ async function startJoin() {
     state.role = 'guest';
     state.me = 1;
     state.names = ['Anfitrión', myDisplayName()];
+    state.nameHelloSent = false;
     $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
     setNetChip('Enlace…', 'warn');
   } catch (err) {
@@ -1318,13 +1328,20 @@ async function ingestRemoteState(game, meta = {}) {
   $('#roundOverlay').classList.remove('open');
   showScreen('screenGame');
 
+  // Guest confirma nombre tras estar listo (rejoin / primera sync)
+  if (state.role === 'guest' && state.net && !state.nameHelloSent) {
+    state.nameHelloSent = true;
+    state.net.send({ type: 'hello', playerName: myDisplayName() });
+  }
+
   if (mv && snap) {
     pushFeed(mv);
     state.busy = true;
     await playTableAnim(snap, mv.type, {
       onSfx: playSfx,
       onBeforeClear: async () => {
-        if (state.game?.phase === 'play') render();
+        state.skipNextPilePaint = true;
+        render();
       },
     });
     if (mv.type === 'escoba') markFeltCleared();
@@ -1360,7 +1377,12 @@ async function ingestRemoteState(game, meta = {}) {
     return;
   }
 
-  render();
+  if (state.skipNextPilePaint) {
+    state.skipNextPilePaint = false;
+    render({ skipPiles: true });
+  } else {
+    render();
+  }
 }
 
 function wireNet(net) {
@@ -1388,8 +1410,17 @@ function wireNet(net) {
       return;
     }
 
-    if (data.type === 'hello' && data.names) {
-      applyRemoteNames(data.names);
+    if (data.type === 'hello') {
+      if (data.names) {
+        applyRemoteNames(data.names);
+      } else if (data.playerName && state.role === 'host') {
+        const guestName = String(data.playerName || '').trim().slice(0, 14);
+        if (guestName) {
+          state.names[1] = guestName;
+          // Echo nombres canónicos para que el guest vea al anfitrión
+          net.send({ type: 'hello', names: state.names });
+        }
+      }
       if (state.game && !state.busy) render();
       return;
     }
@@ -1401,6 +1432,12 @@ function wireNet(net) {
 
     if (data.type === 'move' && state.role === 'host') {
       enqueueNet(async () => {
+        // Espera a que termine animación/reparto en vez de rechazar
+        let guard = 0;
+        while ((state.busy || state.dealing) && guard < 40) {
+          await sleep(200);
+          guard++;
+        }
         if (state.busy || state.dealing) {
           net.send({ type: 'reject', reason: 'Espera un momento' });
           return;

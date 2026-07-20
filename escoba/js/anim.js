@@ -363,22 +363,31 @@ function feltLanding(felt, index = 0) {
   };
 }
 
-function pileLanding(pile, felt, meSide) {
-  if (pile && pile.width > 10) {
+function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
+  const w = crossed ? 48 : 52;
+  const h = crossed ? 72 : 80;
+  const stage =
+    selRect(meSide ? '#pileMe .pile-stage' : '#pileOpp .pile-stage') || pile;
+  if (stage && stage.width > 10) {
+    // Centro del montón (coincide con .pile-stage / escobas cruzadas)
     return {
-      left: pile.left + Math.max(0, (pile.width - 52) / 2),
-      top: pile.top + Math.max(0, pile.height - 88),
-      width: 52,
-      height: 80,
+      left: stage.left + Math.max(0, (stage.width - w) / 2) + (crossed ? -6 : 0),
+      top:
+        stage.top +
+        (crossed
+          ? Math.max(0, (stage.height - h) / 2) + 4
+          : Math.max(0, stage.height - h)),
+      width: w,
+      height: h,
     };
   }
   // Fallback: off toward player
   const f = felt || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
   return {
-    left: f.left + f.width / 2 - 26,
+    left: f.left + f.width / 2 - w / 2,
     top: meSide ? f.bottom - 20 : f.top - 40,
-    width: 52,
-    height: 80,
+    width: w,
+    height: h,
   };
 }
 
@@ -569,7 +578,7 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
   }
 
   // LEAVE: whole stack flies off the table into the capture pile
-  const dest = pileLanding(pile, felt, meSide);
+  const dest = pileLanding(pile, felt, meSide, { crossed: type === 'escoba' });
   const pack = [playedFlyer, ...tableFlyers];
   await Promise.all(
     pack.map((node, i) =>
@@ -598,8 +607,8 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear } = {}) {
     await animateTo(
       marker,
       {
-        left: dest.left - 10,
-        top: dest.top + 12,
+        left: dest.left,
+        top: dest.top,
         width: dest.width,
         height: dest.height,
       },

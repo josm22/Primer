@@ -1,4 +1,4 @@
-const CACHE = 'escoba-v16';
+const CACHE = 'escoba-v17';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,8 @@ const ASSETS = [
   './js/anim.js',
   './manifest.webmanifest',
   './icon.svg',
+  './apple-touch-icon.png',
+  './icon-512.png',
   './cards/back.png',
 ];
 

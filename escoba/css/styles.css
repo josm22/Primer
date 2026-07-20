@@ -454,7 +454,8 @@ body::before {
   justify-content: center;
   gap: 0;
   min-height: var(--card-h);
-  padding: 0 8px;
+  flex: 1;
+  padding: 0 4px;
 }
 
 .opp-hand .card,
@@ -738,28 +739,27 @@ body::before {
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-}
-
-.opp-hand, .my-hand {
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  min-height: var(--card-h);
-  flex: 1;
-  padding: 0;
+  overflow: visible;
 }
 
 .pile {
-  width: 78px;
+  width: 96px;
   flex-shrink: 0;
-  min-height: 78px;
+  min-height: 86px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
   position: relative;
+  overflow: visible;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+  padding: 6px 4px;
 }
+
+.pile:active { background: rgba(255,255,255,0.06); }
 
 .pile-empty {
   font-size: 0.65rem;
@@ -770,13 +770,14 @@ body::before {
 
 .pile-stage {
   position: relative;
-  width: 56px;
-  height: 78px;
+  width: 72px;
+  height: 86px;
+  overflow: visible;
 }
 
 .pile-stack {
   position: absolute;
-  left: 4px;
+  left: 12px;
   bottom: 0;
   width: 48px;
   height: 72px;
@@ -803,6 +804,7 @@ body::before {
   margin-top: -36px;
   pointer-events: none;
   z-index: 4;
+  overflow: visible;
 }
 
 .pile-escobas .card.tiny.escoba-mark {
@@ -866,10 +868,16 @@ body::before {
 }
 
 @media (max-height: 780px) {
-  .pile { width: 64px; }
-  .pile-stage { width: 48px; height: 68px; }
-  .pile-stack, .pile-stack .card.tiny,
-  .pile-escobas, .pile-escobas .card.tiny.escoba-mark {
+  .pile { width: 84px; min-height: 74px; }
+  .pile-stage { width: 64px; height: 74px; }
+  .pile-stack {
+    left: 12px;
+    width: 40px;
+    height: 60px;
+  }
+  .pile-stack .card.tiny,
+  .pile-escobas,
+  .pile-escobas .card.tiny.escoba-mark {
     width: 40px;
     height: 60px;
   }
@@ -1120,14 +1128,6 @@ body::before {
 .feed-item.feed-escoba { color: var(--gold); font-weight: 700; }
 .feed-item.feed-cap { color: #b8f0d0; }
 
-
-.pile {
-  cursor: pointer;
-  border-radius: 12px;
-  transition: background 0.15s ease;
-  padding: 4px;
-}
-.pile:active { background: rgba(255,255,255,0.06); }
 
 .peek-panel { max-height: 80dvh; overflow: auto; }
 .peek-summary {
