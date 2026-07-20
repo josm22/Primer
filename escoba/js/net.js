@@ -39,6 +39,7 @@ export class EscobaNet {
     this.clientId = null;
     this.topic = null;
     this.ready = false;
+    this.playerName = '';
     this._joinTimer = null;
     this._destroyed = false;
     this.handlers = {
@@ -48,6 +49,7 @@ export class EscobaNet {
       onDisconnect: () => {},
       onError: () => {},
       onPeerJoin: () => {},
+      onReconnect: () => {},
     };
   }
 
@@ -114,7 +116,7 @@ export class EscobaNet {
   }
 
   _announceJoin() {
-    this.send({ type: 'join' });
+    this.send({ type: 'join', name: this.playerName || '' });
   }
 
   async _connect() {
@@ -164,19 +166,30 @@ export class EscobaNet {
 
       client.on('connect', () => {
         client.subscribe(this.topic, { qos: 0 }, (err) => {
-          if (settled) return;
           if (err) {
-            settled = true;
-            clearTimeout(timer);
-            reject(err);
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              reject(err);
+            }
             return;
           }
-          settled = true;
-          clearTimeout(timer);
-          this.handlers.onStatus(
-            this.role === 'host' ? 'Sala lista — comparte el código' : 'En sala — emparejando…'
-          );
-          resolve();
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            this.handlers.onStatus(
+              this.role === 'host' ? 'Sala lista — comparte el código' : 'En sala — emparejando…'
+            );
+            resolve();
+            return;
+          }
+          // Reconnect after the first successful session
+          if (this.ready) {
+            this.handlers.onStatus(
+              this.role === 'host' ? 'Reconectado' : 'Reconectado — sincronizando…'
+            );
+            this.handlers.onReconnect?.();
+          }
         });
       });
 
