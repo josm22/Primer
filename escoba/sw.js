@@ -1,4 +1,4 @@
-const CACHE = 'escoba-v3';
+const CACHE = 'escoba-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/cards-ui.js',
   './manifest.webmanifest',
   './icon.svg',
+  './cards/back.png',
 ];
 
 self.addEventListener('install', (event) => {

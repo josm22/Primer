@@ -33,6 +33,7 @@
         <div class="footer-links">
           <button type="button" id="btnRulesHome">Cómo se juega</button>
         </div>
+        <p class="credit">Naipes: Basquetteur (Wikimedia) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>
       </div>
     </section>
 
@@ -130,13 +131,12 @@
   </div>
 
   <script type="module">
-    import { suitSvg } from './js/cards-ui.js';
     const art = document.getElementById('heroArt');
     if (art) {
-      for (const suit of ['oros', 'copas', 'espadas', 'bastos']) {
+      for (const id of ['oros-1', 'copas-10', 'espadas-12', 'bastos-7']) {
         const d = document.createElement('div');
         d.className = 'mini-card';
-        d.innerHTML = suitSvg(suit, { size: 28 });
+        d.innerHTML = `<img src="./cards/${id}.png" alt="" draggable="false">`;
         art.appendChild(d);
       }
     }

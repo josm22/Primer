@@ -241,6 +241,11 @@ function maybeAiOrWait() {
   }
 }
 
+function cellMark(pts, extra = '') {
+  if (pts > 0) return `<span class="pts-win">+${pts}</span>${extra}`;
+  return `<span class="pts-zero">—</span>${extra}`;
+}
+
 function showRoundPanel(g) {
   const panel = $('#roundOverlay');
   const title = $('#roundTitle');
@@ -255,26 +260,107 @@ function showRoundPanel(g) {
           ? '¡Has ganado!'
           : 'Has perdido';
   } else {
-    title.textContent = 'Fin de ronda';
+    title.textContent = 'Recuento de la ronda';
   }
 
   const rs = g.roundScores;
   if (rs) {
-    const rows = rs.detail
-      .map(
-        (d) =>
-          `<tr><td>${d.label}</td><td>${d.a}</td><td>${d.b}</td></tr>`
-      )
-      .join('');
+    const c = rs.counts;
+    const hasSO = [
+      g.captured[0].some((x) => x.suit === 'oros' && x.rank === 7),
+      g.captured[1].some((x) => x.suit === 'oros' && x.rank === 7),
+    ];
+    const byKey = Object.fromEntries(rs.detail.map((d) => [d.key, d]));
+
+    const row = (label, countA, countB, ptsA, ptsB, tip) => `
+      <tr>
+        <td>
+          <div class="score-label">${label}</div>
+          ${tip ? `<div class="score-tip">${tip}</div>` : ''}
+        </td>
+        <td>
+          <div class="score-count">${countA}</div>
+          ${cellMark(ptsA)}
+        </td>
+        <td>
+          <div class="score-count">${countB}</div>
+          ${cellMark(ptsB)}
+        </td>
+      </tr>`;
+
     body.innerHTML = `
+      <p class="score-intro">Así se suman los puntos de esta ronda:</p>
       <table class="score-table">
-        <thead><tr><th></th><th>${state.names[0]}</th><th>${state.names[1]}</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th>${state.names[0]}</th>
+            <th>${state.names[1]}</th>
+          </tr>
+        </thead>
         <tbody>
-          ${rows}
-          <tr class="total"><td>Ronda</td><td>${rs.pts[0]}</td><td>${rs.pts[1]}</td></tr>
-          <tr class="total"><td>Total (a ${WIN_SCORE})</td><td>${g.scores[0]}</td><td>${g.scores[1]}</td></tr>
+          ${row(
+            'Escobas',
+            `${g.escobas[0]}`,
+            `${g.escobas[1]}`,
+            byKey.escobas.a,
+            byKey.escobas.b,
+            '1 punto por cada escoba'
+          )}
+          ${row(
+            'Cartas',
+            `${c.cards[0]}`,
+            `${c.cards[1]}`,
+            byKey.cartas.a,
+            byKey.cartas.b,
+            '1 punto quien tenga más'
+          )}
+          ${row(
+            'Oros',
+            `${c.oros[0]}`,
+            `${c.oros[1]}`,
+            byKey.oros.a,
+            byKey.oros.b,
+            '1 punto quien tenga más'
+          )}
+          ${row(
+            'Sietes',
+            `${c.sietes[0]}`,
+            `${c.sietes[1]}`,
+            byKey.sietes.a,
+            byKey.sietes.b,
+            '1 punto quien tenga más'
+          )}
+          ${row(
+            '7 de oros',
+            hasSO[0] ? 'Sí' : 'No',
+            hasSO[1] ? 'Sí' : 'No',
+            byKey.sieteOros.a,
+            byKey.sieteOros.b,
+            '1 punto quien lo capture'
+          )}
+          <tr class="sum-row">
+            <td>Suma de la ronda</td>
+            <td><strong>+${rs.pts[0]}</strong></td>
+            <td><strong>+${rs.pts[1]}</strong></td>
+          </tr>
+          <tr class="total">
+            <td>Marcador (a ${WIN_SCORE})</td>
+            <td><strong>${g.scores[0]}</strong></td>
+            <td><strong>${g.scores[1]}</strong></td>
+          </tr>
         </tbody>
-      </table>`;
+      </table>
+      ${
+        g.phase === 'matchEnd'
+          ? `<p class="final-line">${
+              g.winner == null
+                ? 'Misma puntuación final.'
+                : `Victoria de <strong>${state.names[g.winner]}</strong>: ${g.scores[0]}–${g.scores[1]}.`
+            }</p>`
+          : ''
+      }
+    `;
   } else {
     body.innerHTML = `<p>${g.message}</p>`;
   }
@@ -285,12 +371,36 @@ function showRoundPanel(g) {
     btn.className = 'btn btn-gold';
     btn.textContent = 'Siguiente ronda';
     btn.onclick = () => nextRound();
-    // Solo host/cpu inicia; guest espera
     if (state.mode === 'online' && state.role === 'guest') {
       btn.disabled = true;
       btn.textContent = 'Esperando anfitrión…';
     }
     actions.appendChild(btn);
+  } else if (g.phase === 'matchEnd') {
+    const again = document.createElement('button');
+    again.className = 'btn btn-gold';
+    again.textContent = 'Nueva partida';
+    again.onclick = () => {
+      if (state.mode === 'cpu') startCpu();
+      else leaveToHome();
+    };
+    if (state.mode === 'online' && state.role === 'guest') {
+      again.disabled = true;
+      again.textContent = 'Espera al anfitrión o sal';
+    }
+    if (state.mode === 'online' && state.role === 'host') {
+      again.onclick = () => {
+        state.game = createMatch({ firstPlayer: 0 });
+        state.game.scores = [0, 0];
+        state.selectedHand = null;
+        state.selectedTable.clear();
+        state.net.send({ type: 'state', game: serializeState(state.game) });
+        $('#roundOverlay').classList.remove('open');
+        showScreen('screenGame');
+        render();
+      };
+    }
+    actions.appendChild(again);
   }
 
   const home = document.createElement('button');

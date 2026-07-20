@@ -115,13 +115,12 @@ body::before {
   width: 54px;
   height: 84px;
   border-radius: 8px;
-  background: linear-gradient(165deg, #fffdf7, var(--parchment-2));
-  border: 1px solid rgba(28, 22, 18, 0.12);
+  overflow: hidden;
+  background: #1a100c;
+  border: 1px solid rgba(28, 22, 18, 0.25);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   animation: floatSuit 4.5s ease-in-out infinite;
+  padding: 0;
 }
 
 .hero-art .mini-card:nth-child(1) { transform: rotate(-14deg); animation-delay: 0s; }
@@ -403,7 +402,7 @@ body::before {
   z-index: 2;
 }
 
-/* ---- Cards (baraja española) ---- */
+/* ---- Cards (fotos baraja española) ---- */
 .card {
   width: var(--card-w);
   height: var(--card-h);
@@ -416,9 +415,14 @@ body::before {
   flex-shrink: 0;
   padding: 0;
   border: none;
-  background: transparent;
+  background: #1a100c;
   -webkit-appearance: none;
   appearance: none;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 6px 16px rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(40, 28, 14, 0.35);
 }
 
 .card:nth-child(1) { animation-delay: 0.02s; }
@@ -428,24 +432,21 @@ body::before {
 .card:nth-child(5) { animation-delay: 0.22s; }
 .card:nth-child(6) { animation-delay: 0.27s; }
 
-.card.face-up {
-  background: linear-gradient(165deg, #fffdf8 0%, var(--parchment) 55%, var(--parchment-2) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 6px 16px rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(40, 28, 14, 0.18);
-}
+.card.face-down { cursor: default; }
 
-.card.face-down {
-  background: linear-gradient(160deg, #7a1f24 0%, #4e1216 100%);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.32);
-  border: 2px solid #f0e2c8;
-  cursor: default;
+.card-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  border-radius: 9px;
 }
 
 .card.selected {
   transform: translateY(-16px) scale(1.05);
-  box-shadow: 0 14px 28px rgba(224, 179, 77, 0.4);
+  box-shadow: 0 14px 28px rgba(224, 179, 77, 0.45);
   z-index: 5;
   outline: 2px solid var(--gold);
   outline-offset: 2px;
@@ -458,117 +459,7 @@ body::before {
   z-index: 4;
 }
 
-.card.dim { filter: brightness(0.72) saturate(0.7); }
-
-.card-frame {
-  position: absolute;
-  inset: 4px;
-  border-radius: 7px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1.5px var(--suit);
-}
-
-.card .corner {
-  position: absolute;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  line-height: 1;
-  color: var(--suit);
-}
-
-.card .corner.tl { top: 3px; left: 4px; }
-.card .corner.br {
-  bottom: 3px;
-  right: 4px;
-  transform: rotate(180deg);
-}
-
-.card .corner .rnk {
-  font-family: var(--font-card);
-  font-weight: 700;
-  font-size: calc(var(--card-w) * 0.2);
-}
-
-.card .corner svg {
-  display: block;
-  width: 12px;
-  height: 12px;
-}
-
-.pips {
-  position: absolute;
-  inset: 0;
-}
-
-.pip {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pip svg { width: 100%; height: 100%; display: block; }
-
-.figure {
-  position: absolute;
-  inset: 16px 10px 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.figure-art {
-  width: 70%;
-  height: auto;
-  max-height: 48%;
-}
-
-.figure-suit {
-  margin-top: 2px;
-  display: flex;
-}
-
-.figure-name {
-  font-family: var(--font-card);
-  font-size: calc(var(--card-w) * 0.125);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
-}
-
-.card-back-art {
-  position: absolute;
-  inset: 5px;
-  border-radius: 6px;
-  border: 1.5px solid rgba(240, 226, 200, 0.55);
-  background:
-    repeating-linear-gradient(
-      45deg,
-      rgba(240, 226, 200, 0.08) 0 4px,
-      transparent 4px 9px
-    ),
-    linear-gradient(160deg, #8b252c, #5a151a);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-motif {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 8px;
-  border: 1px solid rgba(240, 226, 200, 0.25);
-}
-
-.back-motif svg { display: block; opacity: 0.9; }
+.card.dim { filter: brightness(0.72) saturate(0.75); }
 
 .play-bar {
   display: flex;
@@ -620,18 +511,76 @@ body::before {
 .score-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 18px;
-  font-size: 0.95rem;
+  margin-bottom: 14px;
+  font-size: 0.92rem;
 }
 
 .score-table th, .score-table td {
-  padding: 8px 6px;
+  padding: 10px 6px;
   text-align: center;
   border-bottom: 1px solid rgba(244, 235, 224, 0.12);
+  vertical-align: top;
 }
 
 .score-table th:first-child, .score-table td:first-child { text-align: left; }
 .score-table .total { font-weight: 700; color: var(--gold); }
+.score-table .sum-row td {
+  border-top: 1px solid rgba(224, 179, 77, 0.35);
+  padding-top: 12px;
+  color: var(--cream);
+}
+.score-label { font-weight: 700; }
+.score-tip {
+  font-size: 0.72rem;
+  color: rgba(244, 235, 224, 0.5);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.score-count {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+.pts-win {
+  display: inline-block;
+  color: #2a1c0a;
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.pts-zero {
+  color: rgba(244, 235, 224, 0.35);
+  font-size: 0.85rem;
+}
+.score-intro {
+  font-size: 0.9rem !important;
+  margin-bottom: 10px !important;
+}
+.final-line {
+  text-align: center;
+  margin: 4px 0 12px !important;
+  color: var(--gold) !important;
+  font-size: 1.05rem !important;
+}
+
+.hero-art .mini-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.credit {
+  margin-top: 18px;
+  font-size: 0.72rem;
+  color: rgba(244, 235, 224, 0.4);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.credit a { color: rgba(224, 179, 77, 0.7); }
 
 .rules-body {
   font-size: 0.92rem;

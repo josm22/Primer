@@ -44,6 +44,6 @@ Abre http://localhost:8080 — los módulos ES y PeerJS requieren servir por HTT
 node escoba/js/engine.test.js
 ```
 
-## Nota
+## Créditos
 
-Esta carpeta `escoba/` es independiente de la PWA **Cuello** de la raíz del repositorio.
+Naipes españoles de [Basquetteur](https://commons.wikimedia.org/wiki/User:Basquetteur) (Wikimedia Commons), licencia [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
