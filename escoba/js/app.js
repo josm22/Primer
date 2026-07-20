@@ -8,12 +8,18 @@ import {
   WIN_SCORE,
 } from './engine.js';
 import { EscobaNet, normalizeCode } from './net.js';
-import { buildCardFaceHtml, buildCardBackHtml, cardImageUrl } from './cards-ui.js';
-import { snapshotAnim, playTableAnim } from './anim.js';
+import {
+  buildCardFaceHtml,
+  buildCardBackHtml,
+  cardImageUrl,
+  preloadDeckImages,
+} from './cards-ui.js';
+import { snapshotAnim, playTableAnim, playDealAnim } from './anim.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const NAME_KEY = 'escoba-player-name';
 
 const state = {
   mode: null,
@@ -30,6 +36,9 @@ const state = {
   legalTableIds: new Set(),
   feed: [],
   pendingSnap: null,
+  needDeal: false,
+  prevScores: [0, 0],
+  dealing: false,
 };
 
 let audioCtx = null;
@@ -74,7 +83,92 @@ function playSfx(kind) {
   } else if (kind === 'discard') {
     buzz(10);
     tone(220, 0.07, 'sine', 0.03);
+  } else if (kind === 'deal') {
+    buzz(6);
+    tone(260, 0.05, 'triangle', 0.025);
+    setTimeout(() => tone(320, 0.05, 'triangle', 0.02), 80);
+    setTimeout(() => tone(380, 0.06, 'triangle', 0.02), 160);
+  } else if (kind === 'bad') {
+    buzz([25, 40, 25]);
+    tone(160, 0.1, 'sawtooth', 0.025);
   }
+}
+
+function myDisplayName() {
+  const raw = ($('#playerName')?.value || '').trim();
+  return raw.slice(0, 14) || 'Tú';
+}
+
+function loadSavedName() {
+  try {
+    const n = localStorage.getItem(NAME_KEY);
+    if (n && $('#playerName')) $('#playerName').value = n;
+  } catch (_) {}
+}
+
+function saveName() {
+  try {
+    localStorage.setItem(NAME_KEY, myDisplayName());
+  } catch (_) {}
+}
+
+function applyFan(el, index, total) {
+  const mid = (total - 1) / 2;
+  const rot = (index - mid) * 3.6;
+  const y = Math.abs(index - mid) * 2.2;
+  el.style.setProperty('--fan-rot', `${rot}deg`);
+  el.style.setProperty('--fan-y', `${y}px`);
+}
+
+function flashBad(msg) {
+  setMsg(msg);
+  const bar = $('#msgBar');
+  const sum = $('#sumPreview');
+  bar?.classList.remove('flash-bad');
+  sum?.classList.remove('shake');
+  void bar?.offsetWidth;
+  bar?.classList.add('flash-bad');
+  sum?.classList.add('shake');
+  playSfx('bad');
+  setTimeout(() => {
+    bar?.classList.remove('flash-bad');
+    sum?.classList.remove('shake');
+  }, 420);
+}
+
+function requestDeal() {
+  state.needDeal = true;
+}
+
+async function runDealIfNeeded() {
+  if (!state.needDeal || !state.game || state.game.phase !== 'play' || state.dealing) {
+    return;
+  }
+  state.needDeal = false;
+  state.dealing = true;
+  state.busy = true;
+  const screen = $('#screenGame');
+  screen?.classList.add('dealing');
+  render();
+  await sleep(40);
+  const g = state.game;
+  const me = state.me;
+  const opp = 1 - me;
+  try {
+    await playDealAnim({
+      tableCards: g.table.slice(),
+      myCards: g.hands[me].slice(),
+      oppCount: g.hands[opp].length,
+      me,
+      onSfx: playSfx,
+    });
+  } catch (_) {}
+  screen?.classList.remove('dealing');
+  state.dealing = false;
+  state.busy = false;
+  state.prevScores = [...g.scores];
+  render();
+  maybeAiOrWait();
 }
 
 function showScreen(id) {
@@ -311,8 +405,25 @@ function render() {
   const opp = 1 - state.me;
   $('#scoreMe .who').textContent = state.names[state.me];
   $('#scoreOpp .who').textContent = state.names[opp];
-  $('#scoreMe .pts').textContent = g.scores[state.me];
-  $('#scoreOpp .pts').textContent = g.scores[opp];
+  const ptsMe = $('#scoreMe .pts');
+  const ptsOpp = $('#scoreOpp .pts');
+  if (ptsMe) {
+    if (Number(ptsMe.textContent) !== g.scores[state.me] && g.scores[state.me] > (state.prevScores[state.me] || 0)) {
+      ptsMe.classList.remove('bump');
+      void ptsMe.offsetWidth;
+      ptsMe.classList.add('bump');
+    }
+    ptsMe.textContent = g.scores[state.me];
+  }
+  if (ptsOpp) {
+    if (Number(ptsOpp.textContent) !== g.scores[opp] && g.scores[opp] > (state.prevScores[opp] || 0)) {
+      ptsOpp.classList.remove('bump');
+      void ptsOpp.offsetWidth;
+      ptsOpp.classList.add('bump');
+    }
+    ptsOpp.textContent = g.scores[opp];
+  }
+  state.prevScores = [...g.scores];
   $('#scoreMe').classList.toggle('active', g.phase === 'play' && g.currentPlayer === state.me && !state.busy);
   $('#scoreOpp').classList.toggle('active', g.phase === 'play' && g.currentPlayer === opp);
 
@@ -337,8 +448,11 @@ function render() {
 
   const oppHand = $('#oppHand');
   oppHand.innerHTML = '';
-  for (let i = 0; i < g.hands[opp].length; i++) {
-    oppHand.appendChild(cardEl(null, { face: false }));
+  const oppLen = g.hands[opp].length;
+  for (let i = 0; i < oppLen; i++) {
+    const el = cardEl(null, { face: false });
+    applyFan(el, i, oppLen);
+    oppHand.appendChild(el);
   }
 
   const felt = $('#felt');
@@ -348,7 +462,7 @@ function render() {
   deckBadge.textContent = `Mazo ${g.deck.length}`;
   felt.appendChild(deckBadge);
 
-  for (const c of g.table) {
+  g.table.forEach((c, i) => {
     const selected = state.selectedTable.has(c.id);
     const selecting = myTurn && !!state.selectedHand;
     const el = cardEl(c, {
@@ -356,15 +470,18 @@ function render() {
       selectable: selecting,
       capture: selected,
     });
+    const rot = ((i * 17) % 11) - 5;
+    el.style.setProperty('--table-rot', `${rot}deg`);
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
     if (selecting) el.addEventListener('click', () => toggleTable(c.id));
     felt.appendChild(el);
-  }
+  });
 
   const myHand = $('#myHand');
   myHand.innerHTML = '';
-  for (const c of g.hands[state.me]) {
+  const myCards = g.hands[state.me];
+  myCards.forEach((c, i) => {
     const selected = state.selectedHand === c.id;
     const el = cardEl(c, {
       face: true,
@@ -372,11 +489,12 @@ function render() {
       selected,
       dim: myTurn && state.selectedHand && !selected,
     });
+    applyFan(el, i, myCards.length);
     if (c.suit === 'oros') el.classList.add('is-oro');
     if (c.rank === 7) el.classList.add('is-siete');
     if (myTurn) el.addEventListener('click', () => selectHand(c.id));
     myHand.appendChild(el);
-  }
+  });
 
   const canPlay = myTurn && !!state.selectedHand;
   let canDiscard = canPlay;
@@ -385,17 +503,19 @@ function render() {
     handCard = g.hands[state.me].find((c) => c.id === state.selectedHand);
     if (handCard && findCaptures(handCard, g.table).length > 0) canDiscard = false;
   }
+  const canTryCapture = canPlay && state.selectedTable.size > 0;
   const sumOk =
-    canPlay &&
+    canTryCapture &&
     handCard &&
-    state.selectedTable.size > 0 &&
     handCard.value +
       g.table
         .filter((c) => state.selectedTable.has(c.id))
         .reduce((s, c) => s + c.value, 0) ===
       15;
 
-  $('#btnCapture').disabled = !sumOk;
+  $('#btnCapture').disabled = !canTryCapture;
+  $('#btnCapture').classList.toggle('sum-ready', !!sumOk);
+  $('#btnCapture').classList.toggle('sum-bad', canTryCapture && !sumOk);
   $('#btnDiscard').disabled = !canDiscard;
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
@@ -564,7 +684,25 @@ function submitMove(move) {
 }
 
 function doCapture() {
-  if (!state.selectedHand) return;
+  if (!state.selectedHand || state.busy) return;
+  const g = state.game;
+  if (!g) return;
+  const hand = g.hands[state.me].find((c) => c.id === state.selectedHand);
+  if (!hand) return;
+  if (!state.selectedTable.size) {
+    flashBad('Toca cartas de la mesa');
+    return;
+  }
+  const tableCards = g.table.filter((c) => state.selectedTable.has(c.id));
+  const sum = hand.value + tableCards.reduce((s, c) => s + c.value, 0);
+  if (sum !== 15) {
+    flashBad(
+      sum < 15
+        ? `Suma ${sum} · faltan ${15 - sum}`
+        : `Suma ${sum} · sobran ${sum - 15}`
+    );
+    return;
+  }
   submitMove({
     player: state.me,
     cardId: state.selectedHand,
@@ -687,12 +825,16 @@ function showRoundPanel(g) {
         state.game = createMatch({ firstPlayer: 0 });
         state.game.scores = [0, 0];
         state.lastSeenLog = 0;
+        state.feed = [];
         state.selectedHand = null;
         state.selectedTable.clear();
+        state.prevScores = [0, 0];
         state.net.send({ type: 'state', game: serializeState(state.game) });
         $('#roundOverlay').classList.remove('open');
         showScreen('screenGame');
+        requestDeal();
         render();
+        runDealIfNeeded();
       };
     } else {
       again.disabled = true;
@@ -715,11 +857,12 @@ function nextRound() {
   state.lastSeenLog = 0;
   state.feed = [];
   $('#roundOverlay').classList.remove('open');
+  requestDeal();
   render();
   if (state.mode === 'online' && state.role === 'host') {
     state.net.send({ type: 'state', game: serializeState(state.game) });
   }
-  maybeAiOrWait();
+  runDealIfNeeded();
 }
 
 function leaveToHome() {
@@ -728,8 +871,11 @@ function leaveToHome() {
   state.game = null;
   state.mode = null;
   state.busy = false;
+  state.dealing = false;
+  state.needDeal = false;
   state.lastSeenLog = 0;
   state.feed = [];
+  $('#screenGame')?.classList.remove('dealing');
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
@@ -737,19 +883,22 @@ function leaveToHome() {
 }
 
 function startCpu() {
+  saveName();
   state.mode = 'cpu';
   state.role = null;
   state.me = 0;
-  state.names = ['Tú', 'CPU'];
+  state.names = [myDisplayName(), 'CPU'];
   state.game = createMatch({ firstPlayer: Math.random() < 0.5 ? 0 : 1 });
   state.lastSeenLog = 0;
   state.feed = [];
   state.selectedHand = null;
   state.selectedTable.clear();
+  state.prevScores = [0, 0];
   showScreen('screenGame');
   $('#roundOverlay').classList.remove('open');
+  requestDeal();
   render();
-  maybeAiOrWait();
+  runDealIfNeeded();
 }
 
 function beginHostMatch() {
@@ -758,19 +907,26 @@ function beginHostMatch() {
     state.net.send({ type: 'state', game: serializeState(state.game) });
     return;
   }
+  saveName();
+  state.names = [myDisplayName(), 'Amigo'];
   state.game = createMatch({ firstPlayer: 0 });
   state.lastSeenLog = 0;
   state.selectedHand = null;
   state.selectedTable.clear();
+  state.feed = [];
+  state.prevScores = [0, 0];
   state.net.markReady();
   state.net.send({ type: 'state', game: serializeState(state.game) });
   $('#inviteOverlay').classList.remove('open');
   showScreen('screenGame');
+  requestDeal();
   render();
+  runDealIfNeeded();
 }
 
 async function startHost() {
   try {
+    saveName();
     state.net?.destroy();
     state.net = new EscobaNet();
     wireNet(state.net);
@@ -782,7 +938,7 @@ async function startHost() {
     state.mode = 'online';
     state.role = 'host';
     state.me = 0;
-    state.names = ['Tú', 'Amigo'];
+    state.names = [myDisplayName(), 'Amigo'];
     state.game = null;
   } catch (err) {
     $('#inviteStatus').textContent = err.message || 'Error al crear sala';
@@ -796,6 +952,7 @@ async function startJoin() {
     return;
   }
   try {
+    saveName();
     state.net?.destroy();
     state.net = new EscobaNet();
     wireNet(state.net);
@@ -805,7 +962,7 @@ async function startJoin() {
     state.mode = 'online';
     state.role = 'guest';
     state.me = 1;
-    state.names = ['Anfitrión', 'Tú'];
+    state.names = ['Anfitrión', myDisplayName()];
     $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
   } catch (err) {
     $('#joinWaitStatus').textContent = err.message || 'No se pudo unir';
@@ -819,6 +976,13 @@ async function ingestRemoteState(game) {
   const log = game.moveLog || [];
   const mv =
     wasPlaying && log.length > prevLog ? log[log.length - 1] : null;
+
+  // Nueva ronda o primera llegada del estado: animar reparto
+  const isFreshDeal =
+    !wasPlaying ||
+    (prevGame &&
+      game.phase === 'play' &&
+      (prevGame.phase === 'roundEnd' || prevGame.phase === 'matchEnd'));
 
   let snap = state.pendingSnap || null;
   if (!snap && mv && prevGame) {
@@ -845,6 +1009,14 @@ async function ingestRemoteState(game) {
 
   state.lastSeenLog = log.length;
   state.busy = false;
+
+  if (isFreshDeal && game.phase === 'play' && !mv) {
+    requestDeal();
+    render();
+    await runDealIfNeeded();
+    return;
+  }
+
   render();
 }
 
@@ -952,6 +1124,8 @@ function bindUi() {
   $('#joinCode').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') startJoin();
   });
+  $('#playerName')?.addEventListener('change', saveName);
+  $('#playerName')?.addEventListener('blur', saveName);
   const unlock = () => {
     tone(1, 0.01, 'sine', 0.0001);
     window.removeEventListener('pointerdown', unlock);
@@ -961,12 +1135,14 @@ function bindUi() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=9').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=10').then((reg) => {
     reg.update?.();
   }).catch(() => {});
 }
 
+loadSavedName();
 bindUi();
 registerSw();
 showScreen('screenHome');
+preloadDeckImages();
 applyInviteFromUrl();
