@@ -10,6 +10,7 @@ import {
 } from './engine.js';
 import { EscobaNet, normalizeCode } from './net.js';
 import { buildCardFaceHtml, buildCardBackHtml, cardImageUrl } from './cards-ui.js';
+import { snapshotAnim, playTableAnim } from './anim.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -513,99 +514,87 @@ function describeLoot(cards) {
   return bits.join(' · ');
 }
 
-async function showReveal({ player, type, cardId, captureIds = [] }) {
-  const overlay = $('#revealOverlay');
-  const title = $('#revealTitle');
-  const cardsEl = $('#revealCards');
-  const loot = $('#revealLoot');
-  const who = state.names[player] || `Jugador ${player + 1}`;
-  const isMe = player === state.me;
-
-  // Resolve cards from current OR previous — after applyMove they're in captured
-  const all = [
-    ...state.game.captured[0],
-    ...state.game.captured[1],
-    ...state.game.table,
-    ...state.game.hands[0],
-    ...state.game.hands[1],
-  ];
-  // Prefer looking in captured pile of player for the taken set
-  const pile = state.game.captured[player];
-  const findCard = (id) =>
-    pile.find((c) => c.id === id) ||
-    all.find((c) => c.id === id) ||
-    null;
-
-  const played = findCard(cardId);
-  const taken = captureIds.map(findCard).filter(Boolean);
-  const shown = played ? [played, ...taken.filter((c) => c.id !== played.id)] : taken;
-
-  cardsEl.innerHTML = '';
-  shown.forEach((c, i) => {
-    const d = document.createElement('div');
-    d.className = 'reveal-card';
-    d.style.animationDelay = `${0.08 + i * 0.1}s`;
-    if (c.suit === 'oros') d.classList.add('is-oro');
-    if (c.rank === 7) d.classList.add('is-siete');
-    d.innerHTML = `<img src="${cardImageUrl(c)}" alt="${c.label}">`;
-    cardsEl.appendChild(d);
-  });
-
-  overlay.classList.remove('escoba', 'mine', 'theirs');
-  if (type === 'escoba') {
-    title.textContent = isMe ? '¡ESCOBA!' : `¡Escoba de ${who}!`;
-    overlay.classList.add('escoba');
-    loot.textContent = describeLoot(shown) + ' · mesa limpia';
-    playSfx('escoba');
-  } else if (type === 'capture') {
-    title.textContent = isMe ? 'Capturas' : `${who} captura`;
-    overlay.classList.add(isMe ? 'mine' : 'theirs');
-    loot.textContent = describeLoot(shown);
-    playSfx('capture');
-  } else {
-    title.textContent = isMe ? 'Dejas en la mesa' : `${who} deja carta`;
-    loot.textContent = played ? played.label : '';
-    playSfx('discard');
-  }
-
-  const tip = $('#revealTip');
-  if (tip) tip.textContent = 'Toca para continuar';
-
-  overlay.classList.add('open');
-  const wait = type === 'escoba' ? 3400 : type === 'capture' ? 2800 : 1500;
-
-  await new Promise((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      overlay.removeEventListener('click', finish);
-      state.revealSkip = null;
-      resolve();
-    };
-    state.revealSkip = finish;
-    const timer = setTimeout(finish, wait);
-    overlay.addEventListener('click', finish);
-  });
-
-  overlay.classList.remove('open');
-  await sleep(200);
+async function showReveal(mv) {
+  // Fallback path: build snapshot from current DOM + pre-move reconstruction
+  const before = reconstructBefore(mv);
+  const snap = snapshotAnim(
+    { player: mv.player, cardId: mv.cardId, captureIds: mv.captureIds || [] },
+    { me: state.me, game: before }
+  );
+  ghostIds([mv.cardId, ...(mv.captureIds || [])]);
+  await playTableAnim(snap, mv.type, { onSfx: playSfx });
 }
 
 function lastMoveFrom(game) {
-  const log = game.moveLog || [];
+  const log = game?.moveLog || [];
   if (!log.length) return null;
   return log[log.length - 1];
+}
+
+/** Best-effort previous hands/table for remote replay. */
+function reconstructBefore(mv) {
+  const g = state.game;
+  const hands = [
+    g.hands[0].map((c) => ({ ...c })),
+    g.hands[1].map((c) => ({ ...c })),
+  ];
+  const table = g.table.map((c) => ({ ...c }));
+  const captured = [
+    g.captured[0].map((c) => ({ ...c })),
+    g.captured[1].map((c) => ({ ...c })),
+  ];
+
+  const ids = new Set([mv.cardId, ...(mv.captureIds || [])]);
+  const pulled = [];
+  for (const p of [0, 1]) {
+    captured[p] = captured[p].filter((c) => {
+      if (ids.has(c.id)) {
+        pulled.push(c);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  if (mv.type === 'discard') {
+    const idx = table.findIndex((c) => c.id === mv.cardId);
+    if (idx >= 0) {
+      const [c] = table.splice(idx, 1);
+      hands[mv.player].push(c);
+    }
+  } else {
+    const played = pulled.find((c) => c.id === mv.cardId);
+    if (played) hands[mv.player].push(played);
+    for (const id of mv.captureIds || []) {
+      const c = pulled.find((x) => x.id === id);
+      if (c && c.id !== mv.cardId) table.push(c);
+    }
+  }
+
+  return { ...g, hands, table, captured };
+}
+
+function ghostIds(ids) {
+  for (const id of ids) {
+    document
+      .querySelector(`.card[data-id="${CSS.escape(id)}"]`)
+      ?.classList.add('ghosting');
+  }
 }
 
 async function applyAndReveal(move, { broadcast = false } = {}) {
   state.busy = true;
   const beforeLen = (state.game.moveLog || []).length;
+
+  // Snapshot positions while DOM still shows current hands/table
+  const snap = snapshotAnim(move, { me: state.me, game: state.game });
+  ghostIds([move.cardId, ...(move.captureIds || [])]);
+
   try {
     state.game = applyMove(state.game, move);
   } catch (err) {
     state.busy = false;
+    document.querySelectorAll('.card.ghosting').forEach((el) => el.classList.remove('ghosting'));
     setMsg(err.message || 'Jugada inválida');
     throw err;
   }
@@ -619,11 +608,14 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
   const mv = lastMoveFrom(state.game);
   if (mv && (state.game.moveLog || []).length > beforeLen) {
     pushFeed(mv);
-    setMsg(mv.type === 'escoba' ? '¡Escoba!' : mv.type === 'capture' ? 'Capturando…' : '…');
-    render();
-    await showReveal(mv);
-  } else {
-    render();
+    setMsg(
+      mv.type === 'escoba'
+        ? '¡Escoba!'
+        : mv.type === 'capture'
+          ? 'Capturando…'
+          : 'Dejando carta…'
+    );
+    await playTableAnim(snap, mv.type, { onSfx: playSfx });
   }
 
   state.lastSeenLog = (state.game.moveLog || []).length;
@@ -925,6 +917,20 @@ async function startJoin() {
 async function ingestRemoteState(game) {
   const prevLog = state.lastSeenLog || 0;
   const wasPlaying = !!state.game;
+  const prevGame = state.game;
+  const log = game.moveLog || [];
+  const mv =
+    wasPlaying && log.length > prevLog ? log[log.length - 1] : null;
+
+  let snap = null;
+  if (mv && prevGame) {
+    snap = snapshotAnim(
+      { player: mv.player, cardId: mv.cardId, captureIds: mv.captureIds || [] },
+      { me: state.me, game: prevGame }
+    );
+    ghostIds([mv.cardId, ...(mv.captureIds || [])]);
+  }
+
   state.game = game;
   state.selectedHand = null;
   state.selectedTable.clear();
@@ -932,14 +938,12 @@ async function ingestRemoteState(game) {
   $('#roundOverlay').classList.remove('open');
   showScreen('screenGame');
 
-  const log = game.moveLog || [];
-  if (wasPlaying && log.length > prevLog) {
-    const mv = log[log.length - 1];
+  if (mv && snap) {
     pushFeed(mv);
     state.busy = true;
-    render();
-    await showReveal(mv);
+    await playTableAnim(snap, mv.type, { onSfx: playSfx });
   }
+
   state.lastSeenLog = log.length;
   state.busy = false;
   render();

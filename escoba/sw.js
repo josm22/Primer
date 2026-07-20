@@ -1,4 +1,4 @@
-const CACHE = 'escoba-v6';
+const CACHE = 'escoba-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './js/ai.js',
   './js/net.js',
   './js/cards-ui.js',
+  './js/anim.js',
   './manifest.webmanifest',
   './icon.svg',
   './cards/back.png',
