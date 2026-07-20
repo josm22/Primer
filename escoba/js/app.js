@@ -32,6 +32,7 @@ const state = {
   busy: false,
   skipNextPilePaint: false,
   animSeat: null,
+  holdLeftoverIds: null,
   lastSeenLog: 0,
   feed: [],
   pendingSnap: null,
@@ -209,10 +210,13 @@ async function runDealIfNeeded() {
 
 async function sweepRoundLeftovers(g) {
   const left = g.roundLeftovers;
-  if (!left?.cards?.length) return;
+  if (!left?.cards?.length) {
+    state.holdLeftoverIds = null;
+    return;
+  }
   const felt = $('#felt');
-  // Tras un “dejar” que cierra la ronda, la carta nueva no está en el DOM
-  if (felt) {
+  // Si onBeforeClear ya dejó los restos en la mesa, no hace falta reinyectar
+  if (felt && !state.holdLeftoverIds?.size) {
     for (const c of left.cards) {
       const existing = document.querySelector(
         `.card[data-id="${CSS.escape(c.id)}"]`
@@ -233,9 +237,24 @@ async function sweepRoundLeftovers(g) {
     onSfx: playSfx,
     whoName: who,
     onBeforeClear: async () => {
+      state.holdLeftoverIds = null;
       renderPiles();
     },
   });
+  state.holdLeftoverIds = null;
+}
+
+function stageRoundLeftoversForAnim() {
+  const g = state.game;
+  if (
+    !g ||
+    (g.phase !== 'roundEnd' && g.phase !== 'matchEnd') ||
+    !g.roundLeftovers?.cards?.length
+  ) {
+    return false;
+  }
+  state.holdLeftoverIds = new Set(g.roundLeftovers.cards.map((c) => c.id));
+  return true;
 }
 
 function markFeltCleared() {
@@ -291,12 +310,19 @@ function patchSelection() {
     const selected = state.selectedHand === id;
     el.classList.toggle('selected', selected);
     el.classList.toggle('dim', myTurn && !!state.selectedHand && !selected);
+    if (el.getAttribute('aria-pressed') != null) {
+      el.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    }
   });
 
   $$('#felt > .card').forEach((el) => {
     const id = el.dataset.id;
     if (!id) return;
-    el.classList.toggle('capture-target', state.selectedTable.has(id));
+    const on = state.selectedTable.has(id);
+    el.classList.toggle('capture-target', on);
+    if (el.getAttribute('aria-pressed') != null) {
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
     if (selecting) el.onclick = () => toggleTable(id);
     else if (myTurn) el.onclick = () => setMsg('Elige primero una carta de tu mano');
     else el.onclick = null;
@@ -394,6 +420,14 @@ function clearMoveWatch() {
 function setNetChip(text, kind = '') {
   const el = $('#netChip');
   if (!el) return;
+  const short =
+    text === 'Sincronizando'
+      ? 'Sync…'
+      : text === 'Reconectando'
+        ? 'Rede…'
+        : text === 'Enlace…'
+          ? 'Enlace…'
+          : text;
   state.netStatus = text || '';
   if (!text) {
     el.hidden = true;
@@ -402,7 +436,7 @@ function setNetChip(text, kind = '') {
     return;
   }
   el.hidden = false;
-  el.textContent = text;
+  el.textContent = short;
   el.className = `net-chip${kind ? ` ${kind}` : ''}`;
 }
 
@@ -425,26 +459,36 @@ function tally(captured) {
   };
 }
 
-function cardEl(card, { face = true, selectable = false, selected = false, capture = false, dim = false, tiny = false, last = false } = {}) {
-  const el = document.createElement(tiny ? 'div' : 'button');
-  if (!tiny) el.type = 'button';
+function cardEl(card, {
+  face = true,
+  selectable = false,
+  selected = false,
+  capture = false,
+  dim = false,
+  tiny = false,
+  last = false,
+} = {}) {
+  const asButton = !tiny && selectable;
+  const el = document.createElement(asButton ? 'button' : 'div');
+  if (asButton) el.type = 'button';
   el.className = `card ${face ? `face-up suit-${card?.suit || ''}` : 'face-down'}${tiny ? ' tiny' : ''}`;
   el.dataset.id = card?.id || '';
   if (selected) el.classList.add('selected');
   if (capture) el.classList.add('capture-target');
   if (dim) el.classList.add('dim');
   if (last) el.classList.add('hand-last');
-  if (!selectable && !tiny) el.tabIndex = -1;
 
   if (face && card) {
     el.innerHTML = buildCardFaceHtml(card);
     el.setAttribute('aria-label', card.label);
   } else {
     el.innerHTML = buildCardBackHtml();
-    el.setAttribute('aria-label', 'Carta oculta');
+    if (asButton) el.setAttribute('aria-label', 'Carta oculta');
+    else el.setAttribute('aria-hidden', 'true');
   }
 
-  if (!tiny) {
+  if (asButton) {
+    el.setAttribute('aria-pressed', selected || capture ? 'true' : 'false');
     const press = () => el.classList.add('pressed');
     const release = () => el.classList.remove('pressed');
     el.addEventListener('pointerdown', press);
@@ -541,9 +585,12 @@ function renderPiles() {
   const g = state.game;
   const me = state.me;
   const opp = 1 - me;
+  const hide = state.holdLeftoverIds;
 
   const paint = (el, cards, playerIdx) => {
     if (!el) return;
+    const visible =
+      hide?.size ? cards.filter((c) => !hide.has(c.id)) : cards;
     const prev = state.lastPileCount[playerIdx] || 0;
     const prevEsc = state.lastEscCount?.[playerIdx] || 0;
     const escCount = g.escobas[playerIdx] || 0;
@@ -562,7 +609,7 @@ function renderPiles() {
       }
     };
 
-    if (!cards.length && !escCount) {
+    if (!visible.length && !escCount) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       state.lastPileCount[playerIdx] = 0;
       if (!state.lastEscCount) state.lastEscCount = [0, 0];
@@ -572,13 +619,13 @@ function renderPiles() {
 
     const stage = document.createElement('div');
     stage.className = 'pile-stage';
-    if (cards.length > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
+    if (visible.length > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
 
     // Montón normal (últimas capturas, cara arriba)
-    if (cards.length) {
+    if (visible.length) {
       const wrap = document.createElement('div');
       wrap.className = 'pile-stack';
-      const show = cards.slice(-3);
+      const show = visible.slice(-3);
       show.forEach((c, i) => {
         const card = cardEl(c, { face: true, tiny: true });
         card.style.setProperty('--i', String(i));
@@ -615,7 +662,7 @@ function renderPiles() {
     meta.textContent = bits.join(' · ');
     el.appendChild(meta);
 
-    state.lastPileCount[playerIdx] = cards.length;
+    state.lastPileCount[playerIdx] = visible.length;
     if (!state.lastEscCount) state.lastEscCount = [0, 0];
     state.lastEscCount[playerIdx] = escCount;
   };
@@ -794,7 +841,14 @@ function render(opts = {}) {
   deckStack.appendChild(deckCount);
   felt.appendChild(deckStack);
 
-  if (!g.table.length) {
+  // Restos de fin de ronda se muestran en mesa hasta el barrido
+  const stagedLeft =
+    state.holdLeftoverIds?.size && g.roundLeftovers?.cards?.length
+      ? g.roundLeftovers.cards
+      : null;
+  const tableCards = g.table.length ? g.table : stagedLeft || [];
+
+  if (!tableCards.length) {
     const empty = document.createElement('div');
     empty.className = 'felt-empty';
     const cleared = Date.now() < (state.feltClearedUntil || 0);
@@ -811,9 +865,9 @@ function render(opts = {}) {
     felt.classList.remove('felt-cleared');
   }
 
-  g.table.forEach((c, i) => {
+  tableCards.forEach((c, i) => {
     const selected = state.selectedTable.has(c.id);
-    const selecting = myTurn && !!state.selectedHand;
+    const selecting = myTurn && !!state.selectedHand && !stagedLeft;
     const el = cardEl(c, {
       face: true,
       selectable: selecting,
@@ -822,8 +876,9 @@ function render(opts = {}) {
     const rot = ((i * 17) % 11) - 5;
     el.style.setProperty('--table-rot', `${rot}deg`);
     if (selecting) el.onclick = () => toggleTable(c.id);
-    else if (myTurn) el.onclick = () => setMsg('Elige primero una carta de tu mano');
-    else el.onclick = null;
+    else if (myTurn && !stagedLeft) {
+      el.onclick = () => setMsg('Elige primero una carta de tu mano');
+    } else el.onclick = null;
     felt.appendChild(el);
   });
 
@@ -958,8 +1013,8 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
       await playTableAnim(snap, mv.type, {
         onSfx: playSfx,
         onBeforeClear: async () => {
-          // Destino bajo el flyer (también en fin de ronda)
           state.skipNextPilePaint = true;
+          stageRoundLeftoversForAnim();
           render();
         },
       });
@@ -1255,6 +1310,7 @@ function leaveToHome() {
   state.dealing = false;
   state.animSeat = null;
   state.pendingSnap = null;
+  state.holdLeftoverIds = null;
   state.needDeal = false;
   state.dealHandsOnly = false;
   state.lastSeenLog = 0;
@@ -1481,6 +1537,7 @@ async function ingestRemoteState(game, meta = {}) {
         onSfx: playSfx,
         onBeforeClear: async () => {
           state.skipNextPilePaint = true;
+          stageRoundLeftoversForAnim();
           render();
         },
       });
@@ -1508,8 +1565,12 @@ async function ingestRemoteState(game, meta = {}) {
     return;
   }
 
-  // Mid-round redeal after a move
-  if (mv && game.message === 'Nueva mano repartida' && game.phase === 'play') {
+  // Mid-round redeal after a move (o catch-up con varias jugadas)
+  if (
+    game.phase === 'play' &&
+    game.message === 'Nueva mano repartida' &&
+    (mv || gap > 1)
+  ) {
     setMsg('Nueva mano');
     render();
     await sleep(320);
@@ -1802,7 +1863,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=21').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=22').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

@@ -247,12 +247,13 @@ export async function playDealAnim({
   layer.classList.add('active');
 
   const felt = selRect('#felt');
-  const deck = selRect('.deck-stack') || selRect('.deck-badge') || felt;
+  const deck = selRect('.deck-stack') || felt;
+  const cardSz = cssCardSize();
   const origin = {
-    left: (deck?.left ?? window.innerWidth / 2) + (deck?.width ?? 0) / 2 - 24,
-    top: (deck?.top ?? window.innerHeight / 2) + (deck?.height ?? 0) / 2 - 36,
-    width: 48,
-    height: 74,
+    left: (deck?.left ?? window.innerWidth / 2) + (deck?.width ?? 0) / 2 - cardSz.width * 0.35,
+    top: (deck?.top ?? window.innerHeight / 2) + (deck?.height ?? 0) / 2 - cardSz.height * 0.35,
+    width: cardSz.width * 0.7,
+    height: cardSz.height * 0.7,
   };
 
   await preload(cardBackUrl());
@@ -267,12 +268,12 @@ export async function playDealAnim({
 
   // Mesa (cara arriba)
   for (let i = 0; i < table.length; i++) {
-    const land = feltLanding(felt, i);
+    const land = feltLanding(felt, i, cardSz);
     const node = makeFlyer(null, origin, { face: false, z: 1 + i });
     flyers.push(
       (async () => {
         await sleep(70 * i);
-        await animateTo(node, { ...land, width: 72, height: 110 }, {
+        await animateTo(node, land, {
           ms: 420,
           rotate: (i - 1.5) * 3,
           easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)',
@@ -284,14 +285,16 @@ export async function playDealAnim({
   }
 
   // Rival (dorso)
+  const oppW = cardSz.width * 0.82;
+  const oppH = cardSz.height * 0.82;
   for (let i = 0; i < oppCount; i++) {
     const hand = handOrigin(1 - me, me);
-    const spread = (i - (oppCount - 1) / 2) * 22;
+    const spread = (i - (oppCount - 1) / 2) * (oppW * 0.38);
     const land = {
       left: hand.left + spread,
       top: hand.top,
-      width: 56,
-      height: 86,
+      width: oppW,
+      height: oppH,
     };
     const node = makeFlyer(null, origin, { face: false, z: 10 + i });
     flyers.push(
@@ -310,12 +313,12 @@ export async function playDealAnim({
   for (let i = 0; i < myCards.length; i++) {
     const hand = handOrigin(me, me);
     const mid = (myCards.length - 1) / 2;
-    const spread = (i - mid) * 26;
+    const spread = (i - mid) * (cardSz.width * 0.38);
     const land = {
       left: hand.left + spread,
       top: hand.top,
-      width: 68,
-      height: 104,
+      width: cardSz.width,
+      height: cardSz.height,
     };
     const node = makeFlyer(null, origin, { face: false, z: 20 + i });
     flyers.push(
@@ -341,9 +344,9 @@ export async function playDealAnim({
   clearLayer();
 }
 
-function feltLanding(felt, index = 0) {
-  const w = 72;
-  const h = 110;
+function feltLanding(felt, index = 0, size = null) {
+  const w = size?.width || 72;
+  const h = size?.height || 110;
   if (!felt) {
     return {
       left: window.innerWidth / 2 - w / 2,
@@ -353,14 +356,24 @@ function feltLanding(felt, index = 0) {
     };
   }
   // Spread a bit so it looks placed on the cloth
-  const ox = ((index % 3) - 1) * 28;
-  const oy = (Math.floor(index / 3) - 0.5) * 16;
+  const ox = ((index % 3) - 1) * (w * 0.38);
+  const oy = (Math.floor(index / 3) - 0.5) * (h * 0.14);
   return {
     left: felt.left + felt.width / 2 - w / 2 + ox,
     top: felt.top + felt.height / 2 - h / 2 + oy,
     width: w,
     height: h,
   };
+}
+
+function cssCardSize() {
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    const w = parseFloat(cs.getPropertyValue('--card-w')) || 72;
+    const h = parseFloat(cs.getPropertyValue('--card-h')) || w * 1.55;
+    if (w > 20 && h > 20) return { width: w, height: h };
+  } catch (_) {}
+  return { width: 72, height: 110 };
 }
 
 function pileLanding(pile, felt, meSide, { crossed = false } = {}) {

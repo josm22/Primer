@@ -345,13 +345,14 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .scoreboard {
   display: flex;
   gap: 8px;
   flex: 1;
+  min-width: 0;
 }
 
 .score-pill {
@@ -388,17 +389,24 @@ body::before {
 }
 
 .net-chip {
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 7px 9px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(244, 235, 224, 0.18);
   color: rgba(244, 235, 224, 0.7);
   white-space: nowrap;
+  margin: 0 0 8px;
+  max-width: 100%;
+}
+
+.net-chip[hidden] {
+  display: none !important;
 }
 
 .net-chip.ok {
