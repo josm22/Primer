@@ -157,7 +157,7 @@ export function applyMove(state, { player, cardId: playId, captureIds = [] }) {
   if (captureIds.length === 0) {
     // Descarte solo si no hay captura posible con esa carta
     if (findCaptures(card, next.table).length > 0) {
-      throw new Error('Debes capturar: esa carta suma 15 con la mesa');
+      throw new Error('Hay que capturar con esa carta');
     }
     next.hands[player] = hand.filter((c) => c.id !== playId);
     next.table.push(card);
@@ -170,7 +170,7 @@ export function applyMove(state, { player, cardId: playId, captureIds = [] }) {
         group.length === captureIds.length &&
         group.every((c) => captureSet.has(c.id))
     );
-    if (!ok) throw new Error('Captura inválida (debe sumar 15)');
+    if (!ok) throw new Error('Captura inválida');
 
     const { kept, removed } = removeCards(next.table, captureIds);
     next.table = kept;

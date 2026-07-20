@@ -465,7 +465,6 @@ function render() {
 
   // Sin adelantar si la jugada es válida: el motor decide al confirmar
   $('#btnCapture').disabled = !canTryCapture;
-  $('#btnCapture').classList.remove('sum-ready', 'sum-bad');
   $('#btnDiscard').disabled = !canPlay;
 
   if (g.phase === 'roundEnd' || g.phase === 'matchEnd') {
