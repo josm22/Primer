@@ -636,6 +636,14 @@ body::before {
   border: 1px solid rgba(40, 28, 14, 0.35);
 }
 
+div.card {
+  cursor: default;
+}
+
+button.card {
+  cursor: pointer;
+}
+
 .card:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
