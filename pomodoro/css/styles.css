@@ -1095,6 +1095,129 @@ body.is-deep-focus .primary {
   display: none;
 }
 
+.cycle-eta {
+  margin: -6px 0 10px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+}
+
+.cycle-eta[hidden] {
+  display: none;
+}
+
+.intention-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(92vw, 340px);
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--phase) 28%, var(--line));
+  background: color-mix(in srgb, var(--phase) 8%, var(--paper));
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.intention-chip[hidden] {
+  display: none;
+}
+
+.intention-blocks-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.intention-blocks-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.intention-blocks-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.print-report {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  body.is-printing .print-report,
+  body.is-printing .print-report * {
+    visibility: visible !important;
+  }
+
+  body.is-printing .print-report {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px 28px;
+    color: #101411;
+    background: #fff;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+
+  .print-brand {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .print-report h1 {
+    font-size: 22px;
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+
+  .print-intention,
+  .print-stats {
+    margin: 0 0 10px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .print-list {
+    margin: 16px 0;
+    padding-left: 18px;
+  }
+
+  .print-list li {
+    margin: 0 0 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .print-foot {
+    margin-top: 28px;
+    font-size: 12px;
+    color: #666;
+  }
+}
+
 .lifetime-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1136,7 +1259,9 @@ body.is-deep-focus .primary {
   width: 100%;
 }
 
-body.is-deep-focus .eta {
+body.is-deep-focus .eta,
+body.is-deep-focus .cycle-eta,
+body.is-deep-focus .intention-chip {
   opacity: 0.72;
 }
 

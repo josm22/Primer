@@ -107,6 +107,7 @@ const STREAK_MILESTONES = [3, 7, 14, 30];
 const MILESTONE_KEY = "foco-streak-milestones-v1";
 const FREEZE_KEY = "foco-streak-freeze-v1";
 const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
+const INTENTION_KEY = "foco-intention-v1";
 
 const DEFAULTS = {
   focusMins: 25,
@@ -250,6 +251,15 @@ const els = {
   historyFilter: document.getElementById("historyFilter"),
   savePresetBtn: document.getElementById("savePresetBtn"),
   resetPresetBtn: document.getElementById("resetPresetBtn"),
+  intentionOverlay: document.getElementById("intentionOverlay"),
+  intentionInput: document.getElementById("intentionInput"),
+  intentionBlocks: document.getElementById("intentionBlocks"),
+  intentionSave: document.getElementById("intentionSave"),
+  intentionSkip: document.getElementById("intentionSkip"),
+  intentionChip: document.getElementById("intentionChip"),
+  cycleEta: document.getElementById("cycleEta"),
+  printDayBtn: document.getElementById("printDayBtn"),
+  printReport: document.getElementById("printReport"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -300,7 +310,35 @@ const state = {
   deferReload: false,
   historyFilter: "all",
   breakActsDone: [],
+  intention: loadIntention(),
 };
+
+function loadIntention() {
+  try {
+    const raw = localStorage.getItem(INTENTION_KEY);
+    if (!raw) return { date: "", text: "", blocks: 0 };
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== todayKey()) return { date: "", text: "", blocks: 0 };
+    return {
+      date: parsed.date,
+      text: typeof parsed.text === "string" ? parsed.text.slice(0, 48) : "",
+      blocks: Number(parsed.blocks) || 0,
+    };
+  } catch {
+    return { date: "", text: "", blocks: 0 };
+  }
+}
+
+function saveIntention(data) {
+  state.intention = data;
+  localStorage.setItem(INTENTION_KEY, JSON.stringify(data));
+}
+
+function clearIntentionIfStale() {
+  if (state.intention.date && state.intention.date !== todayKey()) {
+    state.intention = { date: "", text: "", blocks: 0 };
+  }
+}
 
 function todayKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -782,6 +820,166 @@ function renderEta() {
   els.etaText.textContent = `${label} a las ${formatEta(state.remainingMs)}`;
 }
 
+function estimateCycleRemainingMs() {
+  const focusMs = state.settings.focusMins * 60_000;
+  const shortMs = state.settings.shortMins * 60_000;
+  const longMs = state.settings.longMins * 60_000;
+  const rounds = state.settings.roundsUntilLong;
+  let remaining = Math.max(0, state.remainingMs);
+  let phase = state.phase;
+  let done = state.completedInCycle;
+
+  if (phase === "focus") {
+    const afterThis = done + 1;
+    if (afterThis >= rounds) {
+      remaining += longMs;
+    } else {
+      remaining += shortMs;
+      for (let i = afterThis; i < rounds; i += 1) {
+        remaining += focusMs + (i + 1 >= rounds ? longMs : shortMs);
+      }
+    }
+  } else if (phase === "short") {
+    for (let i = done; i < rounds; i += 1) {
+      remaining += focusMs + (i + 1 >= rounds ? longMs : shortMs);
+    }
+  } else {
+    remaining += focusMs;
+  }
+  return remaining;
+}
+
+function renderCycleEta() {
+  if (!els.cycleEta) return;
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  if (deepActive || !state.running) {
+    els.cycleEta.hidden = true;
+    return;
+  }
+  const ms = estimateCycleRemainingMs();
+  if (ms < state.remainingMs + 60_000) {
+    els.cycleEta.hidden = true;
+    return;
+  }
+  els.cycleEta.hidden = false;
+  els.cycleEta.textContent = `Ciclo ~ ${formatEta(ms)}`;
+}
+
+function renderIntentionChip() {
+  if (!els.intentionChip) return;
+  clearIntentionIfStale();
+  const text = (state.intention.text || "").trim();
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  if (!text || deepActive) {
+    els.intentionChip.hidden = true;
+    return;
+  }
+  const today = countTodayFocus();
+  const planned = state.intention.blocks || 0;
+  const progress = planned > 0 ? ` · ${today}/${planned}` : "";
+  els.intentionChip.hidden = false;
+  els.intentionChip.textContent = `Hoy: ${text}${progress}`;
+}
+
+function showIntentionPrompt() {
+  if (!els.intentionOverlay) return;
+  if (els.intentionInput) els.intentionInput.value = state.intention.text || state.task || "";
+  if (els.intentionBlocks) {
+    els.intentionBlocks.value = String(state.intention.blocks || state.settings.dailyGoal || 4);
+  }
+  els.intentionOverlay.hidden = false;
+  const card = els.intentionOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+  setTimeout(() => els.intentionInput?.focus(), 250);
+}
+
+function hideIntentionPrompt() {
+  if (!els.intentionOverlay) return;
+  clearFocusTrap();
+  els.intentionOverlay.hidden = true;
+}
+
+function commitIntention({ skip = false } = {}) {
+  const key = todayKey();
+  if (skip) {
+    saveIntention({ date: key, text: "", blocks: 0 });
+    localStorage.setItem(`foco-intention-skip-${key}`, "1");
+    hideIntentionPrompt();
+    render();
+    return;
+  }
+  const text = (els.intentionInput?.value || "").trim().slice(0, 48);
+  const blocks = clamp(Number(els.intentionBlocks?.value) || 0, [0, 20]);
+  saveIntention({ date: key, text, blocks });
+  if (text && !state.task && state.phase === "focus" && !state.running) {
+    state.task = text;
+    els.taskInput.value = text;
+    saveSession({ force: true });
+  }
+  hideIntentionPrompt();
+  render();
+  showToast(text ? "Intención sellada" : "Día sin intención escrita");
+}
+
+function maybeShowIntention() {
+  const hour = new Date().getHours();
+  if (hour >= 14) return;
+  const key = todayKey();
+  if (localStorage.getItem(`foco-intention-skip-${key}`) === "1") return;
+  if (state.intention.date === key && (state.intention.text || state.intention.blocks)) return;
+  if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+  if (state.running) return;
+  showIntentionPrompt();
+}
+
+function buildPrintReportHtml() {
+  const key = todayKey();
+  const sessions = state.history.filter((s) => s.date === key);
+  const minutes = sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  const intention = (state.intention.text || "").trim();
+  const planned = state.intention.blocks || 0;
+  const streak = currentStreak();
+  const score = computeFocusScore().score;
+  const rows = sessions
+    .map((s) => {
+      const time = s.endedAt
+        ? new Date(s.endedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+        : "—";
+      const task = s.task || "Enfoque";
+      const note = s.note ? ` — ${s.note}` : "";
+      return `<li><strong>${time}</strong> · ${escapeHtml(task)} · ${s.minutes} min · ${categoryLabel(s.category || "extra")}${escapeHtml(note)}</li>`;
+    })
+    .join("");
+  return `
+    <div class="print-brand">FOCO</div>
+    <h1>Resumen del ${new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</h1>
+    ${intention ? `<p class="print-intention">Intención: ${escapeHtml(intention)}${planned ? ` · meta ${planned}` : ""}</p>` : ""}
+    <p class="print-stats">${sessions.length} enfoques · ${minutes} min · racha ${streak}${score ? ` · score ${score}` : ""}</p>
+    <ol class="print-list">${rows || "<li>Sin sellos hoy.</li>"}</ol>
+    <p class="print-foot">Tu tiempo · tu sello</p>
+  `;
+}
+
+function printDayReport() {
+  if (!els.printReport) {
+    window.print();
+    return;
+  }
+  els.printReport.innerHTML = buildPrintReportHtml();
+  els.printReport.hidden = false;
+  document.body.classList.add("is-printing");
+  const cleanup = () => {
+    document.body.classList.remove("is-printing");
+    els.printReport.hidden = true;
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(() => window.print(), 50);
+}
+
 function toggleDeepFocus() {
   state.settings.deepFocus = !state.settings.deepFocus;
   saveSettings();
@@ -1227,9 +1425,11 @@ function greetingText() {
   const hour = new Date().getHours();
   const today = countTodayFocus();
   const goal = state.settings.dailyGoal;
+  const intention = (state.intention.text || "").trim();
   if (state.running && state.phase === "focus") return "El sello está en marcha.";
   if (state.running && state.phase !== "focus") return "Pausa con intención.";
   if (today >= goal) return "Meta sellada. Qué bien.";
+  if (intention && today === 0 && hour < 14) return `Hoy: ${intention}`;
   if (hour < 12) return today ? `Buenos días · ${today}/${goal}` : "Buenos días. Empieza con calma.";
   if (hour < 19) return today ? `Buenas tardes · ${today}/${goal}` : "Buenas tardes. Un bloque y listo.";
   return today ? `Buenas noches · ${today}/${goal}` : "Buenas noches. Un último sello.";
@@ -1775,6 +1975,8 @@ function render() {
   renderBreakActivities();
   renderRepeatLast();
   renderEta();
+  renderCycleEta();
+  renderIntentionChip();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1819,6 +2021,7 @@ function renderTimerChrome() {
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   updateDocumentTitle();
   renderEta();
+  renderCycleEta();
 }
 
 function weekShareText() {
@@ -3085,6 +3288,26 @@ function bindEvents() {
     });
   }
 
+  if (els.intentionSave) {
+    els.intentionSave.addEventListener("click", () => commitIntention());
+  }
+  if (els.intentionSkip) {
+    els.intentionSkip.addEventListener("click", () => commitIntention({ skip: true }));
+  }
+  els.intentionInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitIntention();
+    }
+  });
+  els.intentionChip?.addEventListener("click", () => {
+    showIntentionPrompt();
+  });
+
+  if (els.printDayBtn) {
+    els.printDayBtn.addEventListener("click", printDayReport);
+  }
+
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
     await handleImportFile(file);
@@ -3168,6 +3391,10 @@ function bindEvents() {
         hideShortcuts();
         return;
       }
+      if (els.intentionOverlay && !els.intentionOverlay.hidden) {
+        commitIntention({ skip: true });
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -3181,6 +3408,7 @@ function bindEvents() {
     if (els.noteOverlay && !els.noteOverlay.hidden) return;
     if (els.dayOverlay && !els.dayOverlay.hidden) return;
     if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) return;
+    if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -3223,6 +3451,16 @@ function bindEvents() {
     if (key === "d") {
       event.preventDefault();
       toggleDeepFocus();
+      return;
+    }
+    if (key === "i") {
+      event.preventDefault();
+      showIntentionPrompt();
+      return;
+    }
+    if (key === "p") {
+      event.preventDefault();
+      printDayReport();
     }
   });
 }
@@ -3311,6 +3549,7 @@ function dismissRitual() {
   if (!els.ritualOverlay) return;
   els.ritualOverlay.hidden = true;
   localStorage.setItem(RITUAL_KEY, "1");
+  setTimeout(maybeShowIntention, 500);
 }
 
 function setupRitual() {
@@ -3399,6 +3638,10 @@ function init() {
   setupWeeklyRecap();
   scheduleDaySummary();
   setTimeout(maybeNudgeStreak, 2200);
+  setTimeout(() => {
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    maybeShowIntention();
+  }, 1800);
 }
 
 init();
