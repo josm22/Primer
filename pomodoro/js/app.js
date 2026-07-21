@@ -1175,10 +1175,92 @@ function closeSheet() {
   [els.statsSheet, els.settingsSheet].forEach((sheet) => {
     sheet.classList.remove("is-open");
     sheet.setAttribute("aria-hidden", "true");
+    const panel = sheet.querySelector(".sheet-panel");
+    if (panel) {
+      panel.classList.remove("is-dragging");
+      panel.style.transform = "";
+    }
   });
   els.statsBtn.setAttribute("aria-expanded", "false");
   els.settingsBtn.setAttribute("aria-expanded", "false");
   state.openSheet = null;
+}
+
+function setupSheetGestures(sheet) {
+  const panel = sheet.querySelector(".sheet-panel");
+  if (!panel) return;
+  let startY = 0;
+  let currentY = 0;
+  let dragging = false;
+
+  panel.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.target.closest("button, input, a, label, .stepper, .toggle")) return;
+      if (panel.scrollTop > 0) return;
+      dragging = true;
+      startY = event.clientY;
+      currentY = 0;
+      panel.classList.add("is-dragging");
+      panel.setPointerCapture?.(event.pointerId);
+    },
+    { passive: true }
+  );
+
+  panel.addEventListener(
+    "pointermove",
+    (event) => {
+      if (!dragging) return;
+      currentY = Math.max(0, event.clientY - startY);
+      panel.style.transform = `translateY(${currentY}px)`;
+    },
+    { passive: true }
+  );
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove("is-dragging");
+    if (currentY > 110) {
+      panel.style.transform = "";
+      closeSheet();
+      return;
+    }
+    panel.style.transform = "translateY(0)";
+    requestAnimationFrame(() => {
+      panel.style.transform = "";
+    });
+  };
+
+  panel.addEventListener("pointerup", endDrag);
+  panel.addEventListener("pointercancel", endDrag);
+}
+
+function applyParallax(beta, gamma) {
+  const x = Math.max(-18, Math.min(18, gamma || 0));
+  const y = Math.max(-18, Math.min(18, (beta || 0) - 45));
+  document.documentElement.style.setProperty("--tilt-x", `${x * 0.9}px`);
+  document.documentElement.style.setProperty("--tilt-y", `${y * 0.7}px`);
+}
+
+async function enableParallax() {
+  if (state.parallaxReady) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || !window.DeviceOrientationEvent) return;
+
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    if (permission !== "granted") return;
+  }
+
+  window.addEventListener(
+    "deviceorientation",
+    (event) => {
+      applyParallax(event.beta, event.gamma);
+    },
+    { passive: true }
+  );
+  state.parallaxReady = true;
 }
 
 function adjustSetting(key, delta) {
@@ -1198,10 +1280,16 @@ function adjustSetting(key, delta) {
 }
 
 function bindEvents() {
-  const unlockAudio = () => ensureAudio();
+  const unlockAudio = () => {
+    ensureAudio();
+    enableParallax().catch(() => {});
+  };
   ["pointerdown", "keydown"].forEach((type) => {
     document.addEventListener(type, unlockAudio, { once: true, passive: true });
   });
+
+  setupSheetGestures(els.statsSheet);
+  setupSheetGestures(els.settingsSheet);
 
   els.primaryBtn.addEventListener("click", toggleTimer);
 
