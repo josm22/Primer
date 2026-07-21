@@ -29,7 +29,8 @@ Luego visita http://localhost:8080
 
 ## Otras apps en este repo
 
-- **[Foco](./pomodoro/)** — Pomodoro para iPhone: [josm22.github.io/Primer/pomodoro/](https://josm22.github.io/Primer/pomodoro/)
+- **[Foco (PWA)](./pomodoro/)** — Pomodoro en el navegador: [josm22.github.io/Primer/pomodoro/](https://josm22.github.io/Primer/pomodoro/)
+- **[Foco (SwiftUI)](./Foco/)** — misma app nativa para abrir en Xcode
 - **[Escoba](./escoba/)** — Escoba del 15 online
 
 ## Despliegue
