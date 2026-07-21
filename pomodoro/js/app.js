@@ -1,6 +1,7 @@
 const STORAGE_KEY = "foco-settings-v1";
 const STATS_KEY = "foco-stats-v1";
 const HISTORY_KEY = "foco-history-v1";
+const SESSION_KEY = "foco-session-v1";
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const PHASES = {
@@ -29,6 +30,7 @@ const DEFAULTS = {
   shortMins: 5,
   longMins: 15,
   roundsUntilLong: 4,
+  dailyGoal: 8,
   sound: true,
   notify: true,
   autoAdvance: true,
@@ -39,6 +41,7 @@ const LIMITS = {
   shortMins: [1, 30],
   longMins: [1, 60],
   roundsUntilLong: [2, 8],
+  dailyGoal: [1, 20],
 };
 
 const els = {
@@ -70,11 +73,16 @@ const els = {
   weekChart: document.getElementById("weekChart"),
   historyList: document.getElementById("historyList"),
   historyEmpty: document.getElementById("historyEmpty"),
+  streakDisplay: document.getElementById("streakDisplay"),
+  streakStat: document.getElementById("streakStat"),
+  goalStat: document.getElementById("goalStat"),
+  goalFill: document.getElementById("goalFill"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
     longMins: document.getElementById("longMins"),
     roundsUntilLong: document.getElementById("roundsUntilLong"),
+    dailyGoal: document.getElementById("dailyGoal"),
   },
 };
 
@@ -229,6 +237,90 @@ function countTodayFocus() {
   return state.history.filter((s) => s.date === key).length;
 }
 
+function shiftDayKey(key, deltaDays) {
+  const date = parseDayKey(key);
+  date.setDate(date.getDate() + deltaDays);
+  return todayKey(date);
+}
+
+function currentStreak() {
+  const daysWithFocus = new Set(state.history.map((s) => s.date));
+  let cursor = todayKey();
+  if (!daysWithFocus.has(cursor)) {
+    cursor = shiftDayKey(cursor, -1);
+    if (!daysWithFocus.has(cursor)) return 0;
+  }
+  let streak = 0;
+  while (daysWithFocus.has(cursor)) {
+    streak += 1;
+    cursor = shiftDayKey(cursor, -1);
+  }
+  return streak;
+}
+
+function saveSession() {
+  const payload = {
+    phase: state.phase,
+    remainingMs: state.remainingMs,
+    totalMs: state.totalMs,
+    running: state.running,
+    completedInCycle: state.completedInCycle,
+    endAt: state.running ? state.endAt : null,
+    task: state.task,
+    savedAt: Date.now(),
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (!saved || !PHASES[saved.phase]) return false;
+
+    state.phase = saved.phase;
+    state.totalMs = Number(saved.totalMs) || phaseDurationMs(saved.phase);
+    state.completedInCycle = Number(saved.completedInCycle) || 0;
+    state.task = typeof saved.task === "string" ? saved.task : "";
+
+    if (saved.running && saved.endAt) {
+      const left = Math.max(0, Number(saved.endAt) - Date.now());
+      els.body.dataset.phase = state.phase;
+      els.phaseLabel.textContent = PHASES[state.phase].label;
+      els.supportText.textContent = PHASES[state.phase].support;
+      updateThemeColor();
+      if (left > 0) {
+        state.remainingMs = left;
+        state.endAt = Number(saved.endAt);
+        state.running = true;
+        clearTick();
+        state.tickId = setInterval(tick, 250);
+        acquireWakeLock();
+      } else {
+        // Terminó mientras la app estaba cerrada: cierra el bloque, sin autoarrancar.
+        completePhaseQuietly();
+      }
+      return true;
+    }
+
+    state.running = false;
+    state.endAt = null;
+    state.remainingMs = Math.max(0, Number(saved.remainingMs) || state.totalMs);
+    els.body.dataset.phase = state.phase;
+    els.phaseLabel.textContent = PHASES[state.phase].label;
+    els.supportText.textContent = PHASES[state.phase].support;
+    updateThemeColor();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function last7Days() {
   const days = [];
   for (let i = 6; i >= 0; i -= 1) {
@@ -310,11 +402,24 @@ function updateThemeColor() {
   els.metaTheme.content = colors[state.phase] || colors.focus;
 }
 
+function renderGoalProgress() {
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const streak = currentStreak();
+  const pct = Math.min(100, Math.round((today / Math.max(1, goal)) * 100));
+  els.streakDisplay.textContent = String(streak);
+  els.streakStat.textContent = String(streak);
+  els.goalStat.textContent = `${today}/${goal}`;
+  els.goalFill.style.width = `${pct}%`;
+  els.todayDisplay.textContent = `${today}/${goal}`;
+}
+
 function renderWeekChart() {
   const { days, count, minutes } = weekSummary();
   const max = Math.max(1, ...days.map((d) => d.count));
   els.weekFocusCount.textContent = String(count);
   els.weekFocusMins.textContent = String(minutes);
+  renderGoalProgress();
 
   els.weekChart.innerHTML = days
     .map((day) => {
@@ -378,11 +483,12 @@ function render() {
   const rounds = state.settings.roundsUntilLong;
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
-  els.todayDisplay.textContent = String(countTodayFocus());
+  renderGoalProgress();
   els.outputs.focusMins.value = state.settings.focusMins;
   els.outputs.shortMins.value = state.settings.shortMins;
   els.outputs.longMins.value = state.settings.longMins;
   els.outputs.roundsUntilLong.value = state.settings.roundsUntilLong;
+  els.outputs.dailyGoal.value = state.settings.dailyGoal;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.autoToggle.setAttribute("aria-checked", String(state.settings.autoAdvance));
@@ -457,6 +563,7 @@ function tick() {
   if (!state.running || state.endAt == null) return;
   state.remainingMs = Math.max(0, state.endAt - Date.now());
   render();
+  saveSession();
   if (state.remainingMs <= 0) {
     onPhaseComplete();
   }
@@ -473,6 +580,7 @@ function start() {
   clearTick();
   state.tickId = setInterval(tick, 250);
   acquireWakeLock();
+  saveSession();
   render();
 }
 
@@ -483,12 +591,14 @@ function pause() {
   state.endAt = null;
   clearTick();
   releaseWakeLock();
+  saveSession();
   render();
 }
 
 function resetCurrent() {
   pause();
   setPhase(state.phase, { resetTime: true });
+  saveSession();
 }
 
 function nextPhaseAfter(current) {
@@ -514,13 +624,20 @@ function onPhaseComplete() {
 
   if (finished === "focus") {
     recordFocusSession(plannedMinutes);
-    showToast("Enfoque completado");
+    const today = countTodayFocus();
+    const goal = state.settings.dailyGoal;
+    if (today >= goal) {
+      showToast(`Meta del día: ${today}/${goal}`);
+    } else {
+      showToast(`Enfoque completado · ${today}/${goal}`);
+    }
   } else {
     showToast("Descanso completado");
   }
 
   const next = nextPhaseAfter(finished);
   setPhase(next, { resetTime: true });
+  saveSession();
 
   if (state.settings.autoAdvance) {
     start();
@@ -542,6 +659,7 @@ function skipPhase() {
   } else {
     setPhase("focus", { resetTime: true });
   }
+  saveSession();
 }
 
 function openSheet(name) {
@@ -569,8 +687,13 @@ function adjustSetting(key, delta) {
   const [min, max] = LIMITS[key];
   state.settings[key] = clamp(state.settings[key] + delta, [min, max]);
   saveSettings();
+  if (key === "dailyGoal") {
+    render();
+    return;
+  }
   if (!state.running) {
     setPhase(state.phase, { resetTime: true });
+    saveSession();
   } else {
     render();
   }
@@ -608,6 +731,7 @@ function bindEvents() {
 
   els.taskInput.addEventListener("input", () => {
     state.task = els.taskInput.value.slice(0, 48);
+    saveSession();
   });
 
   els.taskInput.addEventListener("keydown", (event) => {
@@ -650,8 +774,12 @@ function bindEvents() {
     if (document.visibilityState === "visible") {
       tick();
       if (state.running) await acquireWakeLock();
+    } else {
+      saveSession();
     }
   });
+
+  window.addEventListener("pagehide", saveSession);
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.openSheet) closeSheet();
@@ -698,7 +826,11 @@ function setupInstallTip() {
 
 function init() {
   bindEvents();
-  setPhase("focus", { resetTime: true });
+  if (!restoreSession()) {
+    setPhase("focus", { resetTime: true });
+  } else {
+    render();
+  }
   registerSW();
   setupInstallTip();
 }
