@@ -1,6 +1,6 @@
 # Foco — Pomodoro para iPhone
 
-Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso largo, con ciclos automáticos.
+Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso largo, con ciclos automáticos y una interfaz cuidada para iPhone.
 
 ## Usar en iPhone (sin Mac)
 
