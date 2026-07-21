@@ -54,6 +54,7 @@
             <span class="visually-hidden">Tarea actual</span>
             <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" autocomplete="off" enterkeyhint="done">
           </label>
+          <div class="recent-tasks" id="recentTasks" hidden></div>
         </div>
       </div>
     </main>
@@ -128,6 +129,10 @@
       <div class="share-actions">
         <button class="secondary" id="shareWeekBtn" type="button">Compartir semana</button>
         <button class="secondary" id="exportBtn" type="button">Exportar backup</button>
+        <label class="secondary import-label">
+          Importar backup
+          <input id="importInput" type="file" accept="application/json,.json" hidden>
+        </label>
       </div>
     </div>
   </div>

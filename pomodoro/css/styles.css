@@ -231,6 +231,64 @@ button {
   margin-top: 2px;
 }
 
+.recent-tasks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 260px;
+  margin-top: 8px;
+}
+
+.recent-tasks[hidden] {
+  display: none;
+}
+
+.recent-task {
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-task:active {
+  transform: scale(0.97);
+}
+
+.timer-shell.is-ending .ring-progress {
+  stroke: var(--phase);
+  animation: ending-pulse 1s ease-in-out infinite;
+}
+
+.timer-shell.is-ending .time {
+  color: var(--phase);
+}
+
+@keyframes ending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+body.is-deep-focus .recent-tasks {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+}
+
 .task-field input {
   width: 100%;
   border: 0;
@@ -374,10 +432,17 @@ body.is-deep-focus .task-field {
   margin-top: 22px;
 }
 
-.share-actions .secondary {
+.share-actions .secondary,
+.share-actions .import-label {
   flex: 1;
   min-width: 140px;
   justify-content: center;
+  display: inline-flex;
+  align-items: center;
+}
+
+.import-label {
+  cursor: pointer;
 }
 
 .goal-track {

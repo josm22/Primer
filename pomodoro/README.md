@@ -19,7 +19,9 @@ Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso larg
 - Panel de progreso: semana, minutos, meta y racha
 - Presets rápidos de enfoque (15 / 25 / 50)
 - Modo profundo, tips en descansos
-- Compartir semana y exportar backup
+- Compartir semana, exportar e importar backup
+- Atajos de tareas recientes
+- Aviso visual en el último minuto
 - Celebración al cumplir la meta diaria
 - El timer se conserva si sales de la app
 - Aviso para actualizar cuando hay versión nueva
