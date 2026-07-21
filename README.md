@@ -10,10 +10,12 @@ Instálala como PWA desde el navegador (móvil o escritorio) para recordatorios 
 
 ## Contenido
 
-- **Hoy** — rutina guiada, escala de dolor, logros, chin tuck y pausas activas
+- **Hoy** — rutina guiada, accesos rápidos, escala de dolor con mini gráfico, logros, chin tuck y pausas activas
 - **Mapa** — músculos tensos/débiles con enlace a ejercicios
-- **Guía** — 9 ejercicios en 3 fases
-- **Datos** — gráficos, informe para el fisio, exportar/importar backup
+- **Guía** — 9 ejercicios en 3 fases, con buscador
+- **Datos** — gráficos, meta semanal configurable, informe para el fisio, exportar/importar backup
+
+Extras: modo oscuro automático (sistema), checklist de escritorio en fase Reeducar, aviso sin conexión, barra de progreso diaria y racha en el saludo.
 
 Los datos se guardan solo en el dispositivo (`localStorage`).
 
