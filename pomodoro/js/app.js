@@ -179,6 +179,7 @@ const DEFAULTS = {
   categoryPresets: true,
   soundTheme: "soft",
   atmosphere: "slate",
+  queueOnly: false,
 };
 
 const LIMITS = {
@@ -319,6 +320,10 @@ const els = {
   queueAddBtn: document.getElementById("queueAddBtn"),
   queueList: document.getElementById("queueList"),
   atmosphereRow: document.getElementById("atmosphereRow"),
+  queueOnlyToggle: document.getElementById("queueOnlyToggle"),
+  queueClearDoneBtn: document.getElementById("queueClearDoneBtn"),
+  hourChart: document.getElementById("hourChart"),
+  hourInsight: document.getElementById("hourInsight"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -467,6 +472,32 @@ function removeQueueItem(id) {
   renderTaskQueue();
 }
 
+function moveQueueItem(id, direction) {
+  ensureQueueFresh();
+  const index = state.queue.items.findIndex((q) => q.id === id);
+  if (index < 0) return;
+  const target = index + direction;
+  if (target < 0 || target >= state.queue.items.length) return;
+  const items = state.queue.items;
+  const [item] = items.splice(index, 1);
+  items.splice(target, 0, item);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function clearDoneQueueItems() {
+  ensureQueueFresh();
+  const before = state.queue.items.length;
+  state.queue.items = state.queue.items.filter((q) => !q.done);
+  if (state.queue.items.length === before) {
+    showToast("No hay hechos que limpiar");
+    return;
+  }
+  saveQueue();
+  renderTaskQueue();
+  showToast("Cola limpia");
+}
+
 function pullQueueItem(id) {
   ensureQueueFresh();
   const item = state.queue.items.find((q) => q.id === id);
@@ -531,23 +562,93 @@ function renderTaskQueue() {
   if (!show) return;
 
   const items = state.queue.items;
+  const doneCount = items.filter((q) => q.done).length;
+  if (els.queueClearDoneBtn) {
+    els.queueClearDoneBtn.hidden = doneCount === 0;
+  }
+
   if (!items.length) {
-    els.queueList.innerHTML = `<li class="queue-empty">Cola vacía. Añade lo que quieres sellar hoy.</li>`;
+    els.queueList.innerHTML = `<li class="queue-empty">${
+      state.settings.queueOnly
+        ? "Cola vacía. En modo solo cola, añade lo que vas a sellar."
+        : "Cola vacía. Añade lo que quieres sellar hoy."
+    }</li>`;
     return;
   }
 
   els.queueList.innerHTML = items
-    .map((item) => {
+    .map((item, index) => {
       const doneClass = item.done ? " is-done" : "";
+      const upDisabled = index === 0 ? " disabled" : "";
+      const downDisabled = index === items.length - 1 ? " disabled" : "";
       return `
         <li class="queue-item${doneClass}" data-id="${escapeHtml(item.id)}">
           <button type="button" class="queue-check" data-toggle="${escapeHtml(item.id)}" aria-label="${item.done ? "Marcar pendiente" : "Marcar hecho"}">${item.done ? "✓" : ""}</button>
           <button type="button" class="queue-text" data-pull="${escapeHtml(item.id)}">${escapeHtml(item.text)}</button>
+          <div class="queue-move">
+            <button type="button" class="queue-move-btn" data-move="${escapeHtml(item.id)}" data-dir="-1" aria-label="Subir"${upDisabled}>↑</button>
+            <button type="button" class="queue-move-btn" data-move="${escapeHtml(item.id)}" data-dir="1" aria-label="Bajar"${downDisabled}>↓</button>
+          </div>
           <button type="button" class="queue-del" data-remove="${escapeHtml(item.id)}" aria-label="Quitar">×</button>
         </li>
       `;
     })
     .join("");
+}
+
+function hourBucketsForWeek() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const buckets = [
+    { key: "morning", label: "Mañana", range: "6–12", count: 0 },
+    { key: "afternoon", label: "Tarde", range: "12–18", count: 0 },
+    { key: "evening", label: "Noche", range: "18–24", count: 0 },
+    { key: "night", label: "Madrugada", range: "0–6", count: 0 },
+  ];
+  for (const session of state.history) {
+    if (!keys.has(session.date)) continue;
+    const date = session.endedAt ? new Date(session.endedAt) : null;
+    if (!date || Number.isNaN(date.getTime())) continue;
+    const hour = date.getHours();
+    if (hour >= 6 && hour < 12) buckets[0].count += 1;
+    else if (hour >= 12 && hour < 18) buckets[1].count += 1;
+    else if (hour >= 18) buckets[2].count += 1;
+    else buckets[3].count += 1;
+  }
+  return buckets;
+}
+
+function renderHourChart() {
+  if (!els.hourChart) return;
+  const buckets = hourBucketsForWeek();
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  const max = Math.max(1, ...buckets.map((b) => b.count));
+  els.hourChart.innerHTML = buckets
+    .map((bucket) => {
+      const height = Math.max(4, Math.round((bucket.count / max) * 100));
+      return `
+        <div class="hour-col" title="${bucket.label}: ${bucket.count}">
+          <div class="hour-bar-wrap">
+            <div class="hour-bar" style="height:${bucket.count ? height : 4}%"></div>
+          </div>
+          <div class="hour-count">${bucket.count || "·"}</div>
+          <div class="hour-name">${bucket.label}</div>
+          <div class="hour-range">${bucket.range}</div>
+        </div>
+      `;
+    })
+    .join("");
+
+  if (els.hourInsight) {
+    if (!total) {
+      els.hourInsight.textContent = "Cuando completes sellos verás tu franja fuerte.";
+      return;
+    }
+    const top = buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null);
+    els.hourInsight.textContent = top && top.count
+      ? `Esta semana enfocas más de ${top.label.toLowerCase()} (${top.range}h).`
+      : "Cuando completes sellos verás tu franja fuerte.";
+  }
 }
 
 function todayKey(date = new Date()) {
@@ -2098,6 +2199,7 @@ function renderStatsPanel() {
   renderStreakMilestone();
   renderCategoryBreakdown();
   renderLifetimeStats();
+  renderHourChart();
 }
 
 function recentTaskNames() {
@@ -2211,6 +2313,9 @@ function render() {
   if (els.categoryPresetsToggle) {
     els.categoryPresetsToggle.setAttribute("aria-checked", String(state.settings.categoryPresets));
   }
+  if (els.queueOnlyToggle) {
+    els.queueOnlyToggle.setAttribute("aria-checked", String(state.settings.queueOnly));
+  }
   renderSoundThemes();
   renderAtmosphere();
   renderWallClock();
@@ -2218,12 +2323,16 @@ function render() {
   renderTaskSuggestions();
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
+  els.body.classList.toggle("is-queue-only", Boolean(state.settings.queueOnly));
   updateThemeColor();
   els.shell.setAttribute("aria-label", state.running ? "Pausar temporizador" : "Empezar o continuar temporizador");
   if (document.activeElement !== els.taskInput) {
     els.taskInput.value = state.task;
   }
-  els.taskInput.closest(".task-field").hidden = state.phase !== "focus";
+  const taskField = els.taskInput.closest(".task-field");
+  if (taskField) {
+    taskField.hidden = state.phase !== "focus" || state.settings.queueOnly;
+  }
   if (state.openSheet === "stats") renderStatsPanel();
 }
 
@@ -2777,6 +2886,19 @@ function tick() {
 
 function start({ silent = false } = {}) {
   if (state.running || state.completing) return;
+  if (state.settings.queueOnly && state.phase === "focus") {
+    ensureQueueFresh();
+    if (!(state.task || "").trim()) {
+      const next = nextQueueItem();
+      if (next) {
+        state.task = next.text;
+        if (els.taskInput) els.taskInput.value = next.text;
+      } else {
+        showToast("Añade una tarea a la cola para empezar");
+        return;
+      }
+    }
+  }
   if (state.remainingMs <= 0) {
     state.totalMs = phaseDurationMs();
     state.remainingMs = state.totalMs;
@@ -3456,6 +3578,27 @@ function bindEvents() {
     });
   }
 
+  if (els.queueOnlyToggle) {
+    els.queueOnlyToggle.addEventListener("click", () => {
+      state.settings.queueOnly = !state.settings.queueOnly;
+      saveSettings();
+      if (state.settings.queueOnly && !(state.task || "").trim()) {
+        const next = nextQueueItem();
+        if (next) {
+          state.task = next.text;
+          if (els.taskInput) els.taskInput.value = next.text;
+          saveSession({ force: true });
+        }
+      }
+      render();
+      showToast(state.settings.queueOnly ? "Modo solo cola on" : "Modo solo cola off");
+    });
+  }
+
+  if (els.queueClearDoneBtn) {
+    els.queueClearDoneBtn.addEventListener("click", clearDoneQueueItems);
+  }
+
   if (els.soundThemeRow) {
     els.soundThemeRow.addEventListener("click", (event) => {
       const btn = event.target.closest("[data-theme]");
@@ -3497,6 +3640,11 @@ function bindEvents() {
       const toggle = event.target.closest("[data-toggle]");
       if (toggle) {
         toggleQueueItem(toggle.dataset.toggle);
+        return;
+      }
+      const move = event.target.closest("[data-move]");
+      if (move) {
+        moveQueueItem(move.dataset.move, Number(move.dataset.dir) || 0);
         return;
       }
       const pull = event.target.closest("[data-pull]");

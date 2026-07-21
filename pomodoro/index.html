@@ -106,6 +106,7 @@
           <div class="task-queue" id="taskQueue" hidden>
             <div class="queue-head">
               <span class="section-label">Cola de hoy</span>
+              <button type="button" class="queue-clear" id="queueClearDoneBtn" hidden>Limpiar hechos</button>
             </div>
             <div class="queue-add">
               <label class="visually-hidden" for="queueInput">Nueva tarea en cola</label>
@@ -244,6 +245,10 @@
 
       <p class="section-label">Últimos 7 días</p>
       <div class="week-chart" id="weekChart" aria-hidden="true"></div>
+
+      <p class="section-label">Por franja horaria</p>
+      <div class="hour-chart" id="hourChart" aria-hidden="true"></div>
+      <p class="hint" id="hourInsight">Cuando completes sellos verás tu franja fuerte.</p>
 
       <p class="section-label">Mapa de foco</p>
       <div class="heatmap" id="heatmap" aria-label="Mapa de calor de las últimas 4 semanas"></div>
@@ -387,6 +392,14 @@
           <p class="hint">Ajusta minutos al cambiar Trabajo, Estudio, Personal o Extra.</p>
         </div>
         <button class="toggle" id="categoryPresetsToggle" type="button" role="switch" aria-checked="true" aria-label="Plantillas por categoría"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Solo cola</div>
+          <p class="hint">Oculta el campo libre y arranca solo desde la cola de hoy.</p>
+        </div>
+        <button class="toggle" id="queueOnlyToggle" type="button" role="switch" aria-checked="false" aria-label="Solo cola"></button>
       </div>
 
       <div class="preset-actions">
