@@ -25,6 +25,23 @@ const PHASES = {
   },
 };
 
+const BREAK_TIPS = {
+  short: [
+    "Levántate y mira a lo lejos unos segundos.",
+    "Estira cuello y hombros con calma.",
+    "Bebe un poco de agua.",
+    "Respira: 4 segundos inhala, 4 exhala.",
+    "Suelta la mirada de la pantalla un momento.",
+  ],
+  long: [
+    "Da un paseo corto y vuelve con la mente fresca.",
+    "Estira piernas y espalda antes del siguiente ciclo.",
+    "Cierra los ojos un minuto y respira despacio.",
+    "Revisa qué vas a atacar en el próximo enfoque.",
+    "Sal un momento de la silla: el cuerpo también cuenta.",
+  ],
+};
+
 const DEFAULTS = {
   focusMins: 25,
   shortMins: 5,
@@ -34,6 +51,7 @@ const DEFAULTS = {
   sound: true,
   notify: true,
   autoAdvance: true,
+  deepFocus: false,
 };
 
 const LIMITS = {
@@ -84,6 +102,9 @@ const els = {
   goalOverlayClose: document.getElementById("goalOverlayClose"),
   updateTip: document.getElementById("updateTip"),
   updateTipBtn: document.getElementById("updateTipBtn"),
+  deepToggle: document.getElementById("deepToggle"),
+  shareWeekBtn: document.getElementById("shareWeekBtn"),
+  exportBtn: document.getElementById("exportBtn"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -387,12 +408,18 @@ function formatHistoryWhen(session) {
   return `${date.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} · ${time}`;
 }
 
+function pickBreakTip(phase) {
+  const tips = BREAK_TIPS[phase];
+  if (!tips || !tips.length) return PHASES[phase].support;
+  return tips[Math.floor(Math.random() * tips.length)];
+}
+
 function setPhase(phase, { resetTime = true } = {}) {
   state.phase = phase;
   els.body.dataset.phase = phase;
   const info = PHASES[phase];
   els.phaseLabel.textContent = info.label;
-  els.supportText.textContent = info.support;
+  els.supportText.textContent = phase === "focus" ? info.support : pickBreakTip(phase);
   if (resetTime) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
@@ -511,11 +538,84 @@ function render() {
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.autoToggle.setAttribute("aria-checked", String(state.settings.autoAdvance));
+  els.deepToggle.setAttribute("aria-checked", String(state.settings.deepFocus));
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  els.body.classList.toggle("is-deep-focus", deepActive);
   if (document.activeElement !== els.taskInput) {
     els.taskInput.value = state.task;
   }
   els.taskInput.closest(".task-field").hidden = state.phase !== "focus";
   if (state.openSheet === "stats") renderStatsPanel();
+}
+
+function weekShareText() {
+  const { count, minutes, days } = weekSummary();
+  const today = countTodayFocus();
+  const streak = currentStreak();
+  const bars = days
+    .map((d) => `${d.label} ${"●".repeat(d.count)}${d.count ? "" : "·"} (${d.count})`)
+    .join("\n");
+  return [
+    "Foco — resumen semanal",
+    `${count} enfoques · ${minutes} min`,
+    `Hoy ${today}/${state.settings.dailyGoal} · racha ${streak}`,
+    "",
+    bars,
+  ].join("\n");
+}
+
+async function shareWeek() {
+  const text = weekShareText();
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Foco — semana", text });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Resumen copiado");
+  } catch {
+    showToast("No se pudo compartir");
+  }
+}
+
+async function exportBackup() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    settings: state.settings,
+    sessions: state.history,
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const filename = `foco-backup-${todayKey()}.json`;
+
+  try {
+    if (navigator.share && navigator.canShare) {
+      const file = new File([json], filename, { type: "application/json" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Backup Foco" });
+        return;
+      }
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(json);
+    showToast("Backup copiado");
+  } catch {
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Backup descargado");
+  }
 }
 
 function showGoalCelebration(today, goal) {
@@ -849,6 +949,21 @@ function bindEvents() {
     state.settings.autoAdvance = !state.settings.autoAdvance;
     saveSettings();
     render();
+  });
+
+  els.deepToggle.addEventListener("click", () => {
+    state.settings.deepFocus = !state.settings.deepFocus;
+    saveSettings();
+    render();
+    showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
+  });
+
+  els.shareWeekBtn.addEventListener("click", () => {
+    shareWeek();
+  });
+
+  els.exportBtn.addEventListener("click", () => {
+    exportBackup();
   });
 
   document.addEventListener("visibilitychange", async () => {

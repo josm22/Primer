@@ -83,11 +83,13 @@
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-head">
         <h2 id="statsTitle">Progreso</h2>
-        <button class="icon-btn" id="closeStatsBtn" type="button" aria-label="Cerrar">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
-        </button>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="closeStatsBtn" type="button" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="stat-grid">
@@ -122,6 +124,11 @@
       <p class="section-label">Recientes</p>
       <ul class="history-list" id="historyList"></ul>
       <p class="hint" id="historyEmpty">Aún no hay enfoques completados. Termina un bloque para verlo aquí.</p>
+
+      <div class="share-actions">
+        <button class="secondary" id="shareWeekBtn" type="button">Compartir semana</button>
+        <button class="secondary" id="exportBtn" type="button">Exportar backup</button>
+      </div>
     </div>
   </div>
 
@@ -215,6 +222,14 @@
           <p class="hint">Pasa solo al siguiente bloque al acabar el tiempo.</p>
         </div>
         <button class="toggle" id="autoToggle" type="button" role="switch" aria-checked="true" aria-label="Autoavanzar"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Modo profundo</div>
+          <p class="hint">Durante el enfoque oculta saltar, reiniciar y contadores.</p>
+        </div>
+        <button class="toggle" id="deepToggle" type="button" role="switch" aria-checked="false" aria-label="Modo profundo"></button>
       </div>
     </div>
   </div>
