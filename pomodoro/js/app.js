@@ -105,6 +105,8 @@ const els = {
   deepToggle: document.getElementById("deepToggle"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  importInput: document.getElementById("importInput"),
+  recentTasks: document.getElementById("recentTasks"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -510,6 +512,41 @@ function renderStatsPanel() {
   renderHistoryList();
 }
 
+function recentTaskNames() {
+  const seen = new Set();
+  const names = [];
+  for (const session of state.history) {
+    const task = (session.task || "").trim();
+    if (!task) continue;
+    const key = task.toLocaleLowerCase("es");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(task);
+    if (names.length >= 4) break;
+  }
+  return names;
+}
+
+function renderRecentTasks() {
+  const show =
+    state.phase === "focus" &&
+    !state.running &&
+    !(state.settings.deepFocus && state.running);
+  const names = show ? recentTaskNames() : [];
+  if (!names.length || state.phase !== "focus") {
+    els.recentTasks.hidden = true;
+    els.recentTasks.innerHTML = "";
+    return;
+  }
+  els.recentTasks.hidden = false;
+  els.recentTasks.innerHTML = names
+    .map(
+      (name) =>
+        `<button type="button" class="recent-task" data-task="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+    )
+    .join("");
+}
+
 function renderPresets() {
   const show = state.phase === "focus" && !state.running && state.remainingMs === state.totalMs;
   els.presets.hidden = !show;
@@ -525,11 +562,13 @@ function render() {
   els.ring.style.strokeDashoffset = String(Math.min(1, Math.max(0, progress)));
   els.primaryBtn.textContent = state.running ? "Pausa" : state.remainingMs < state.totalMs ? "Continuar" : "Empezar";
   els.shell.classList.toggle("is-running", state.running);
+  els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   const rounds = state.settings.roundsUntilLong;
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
   renderGoalProgress();
   renderPresets();
+  renderRecentTasks();
   els.outputs.focusMins.value = state.settings.focusMins;
   els.outputs.shortMins.value = state.settings.shortMins;
   els.outputs.longMins.value = state.settings.longMins;
@@ -615,6 +654,72 @@ async function exportBackup() {
     a.click();
     URL.revokeObjectURL(url);
     showToast("Backup descargado");
+  }
+}
+
+function importBackupText(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    showToast("Archivo no válido");
+    return false;
+  }
+
+  const sessions = Array.isArray(parsed?.sessions)
+    ? parsed.sessions
+    : Array.isArray(parsed)
+      ? parsed
+      : null;
+  if (!sessions) {
+    showToast("Backup sin sesiones");
+    return false;
+  }
+
+  const normalized = sessions
+    .filter((s) => s && s.date && (s.minutes || s.minutes === 0))
+    .map((s, index) => ({
+      id: s.id || `import-${Date.now()}-${index}`,
+      date: String(s.date),
+      minutes: Number(s.minutes) || 0,
+      task: s.task || null,
+      endedAt: s.endedAt || `${s.date}T12:00:00.000Z`,
+    }));
+
+  if (!normalized.length) {
+    showToast("No había enfoques que importar");
+    return false;
+  }
+
+  const byId = new Map(state.history.map((s) => [s.id, s]));
+  for (const session of normalized) {
+    byId.set(session.id, session);
+  }
+  state.history = pruneHistory([...byId.values()]);
+  saveHistory();
+
+  if (parsed.settings && typeof parsed.settings === "object") {
+    state.settings = {
+      ...state.settings,
+      ...Object.fromEntries(
+        Object.entries(parsed.settings).filter(([key]) => key in DEFAULTS)
+      ),
+    };
+    saveSettings();
+  }
+
+  render();
+  showToast(`Importados ${normalized.length} enfoques`);
+  return true;
+}
+
+async function handleImportFile(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    importBackupText(text);
+  } catch {
+    showToast("No se pudo leer el archivo");
   }
 }
 
@@ -964,6 +1069,21 @@ function bindEvents() {
 
   els.exportBtn.addEventListener("click", () => {
     exportBackup();
+  });
+
+  els.importInput.addEventListener("change", async () => {
+    const file = els.importInput.files && els.importInput.files[0];
+    await handleImportFile(file);
+    els.importInput.value = "";
+  });
+
+  els.recentTasks.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-task]");
+    if (!btn) return;
+    state.task = btn.dataset.task.slice(0, 48);
+    els.taskInput.value = state.task;
+    saveSession();
+    showToast("Tarea lista");
   });
 
   document.addEventListener("visibilitychange", async () => {
