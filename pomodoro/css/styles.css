@@ -1629,6 +1629,174 @@ body.is-deep-focus .task-field {
   flex-shrink: 0;
 }
 
+.timer-shell.is-ending::after {
+  animation-duration: 8s;
+  border-color: color-mix(in srgb, var(--phase) 55%, transparent);
+  border-style: solid;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 18px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  line-height: 1.45;
+}
+
+.empty-state span {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+body.is-stamping .brand-mark {
+  animation: stamp-hit 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.is-stamping .timer-shell::before {
+  animation: stamp-disc 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes stamp-hit {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  35% {
+    transform: scale(1.28) rotate(18deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes stamp-disc {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.ritual {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(60% 50% at 50% 30%, rgba(214, 40, 24, 0.16), transparent 70%),
+    rgba(16, 20, 17, 0.42);
+  backdrop-filter: blur(10px);
+  animation: ritual-in 0.45s ease both;
+}
+
+.ritual[hidden] {
+  display: none;
+}
+
+@keyframes ritual-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ritual-card {
+  width: min(100%, 360px);
+  text-align: center;
+  padding: 32px 24px 24px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(243, 244, 240, 0.94), rgba(226, 228, 223, 0.98)),
+    var(--paper);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  animation: goal-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ritual-seal {
+  width: 52px;
+  height: 52px;
+  border-radius: 22%;
+  border: 2.5px solid var(--focus);
+  position: relative;
+  margin-bottom: 4px;
+  animation: seal-idle 5.5s ease-in-out infinite;
+}
+
+.ritual-seal::before {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: var(--focus);
+}
+
+.ritual-seal::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 18%;
+  border: 1.5px solid color-mix(in srgb, var(--focus) 45%, transparent);
+}
+
+.ritual-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 6vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+
+.ritual-copy {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.ritual-field {
+  width: 100%;
+  margin: 4px 0 8px;
+}
+
+.ritual-field input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1.5px solid rgba(16, 20, 17, 0.2);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  text-align: center;
+  padding: 10px 4px;
+  outline: none;
+}
+
+.ritual-field input:focus {
+  border-bottom-color: var(--focus);
+}
+
+.ritual-card .primary {
+  width: 100%;
+}
+
+.ritual-skip {
+  width: 100%;
+}
+
 @media (min-width: 720px) {
   .app {
     padding-top: 36px;
@@ -1641,10 +1809,21 @@ body.is-deep-focus .task-field {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .orb,
+  .wash,
+  .grain,
+  .brand-mark,
+  .ritual-seal,
+  .timer-shell::after,
+  .timer-shell.is-running .ring-progress,
+  .timer-shell.is-running .time {
     animation: none !important;
-    transition: none !important;
+  }
+
+  .app,
+  .ritual,
+  .ritual-card,
+  .goal-card {
+    animation: none !important;
   }
 }
