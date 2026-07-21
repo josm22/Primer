@@ -181,6 +181,11 @@
         </div>
       </div>
 
+      <div class="streak-freeze-row" id="streakFreezeRow" hidden>
+        <p class="streak-freeze-copy" id="streakFreezeCopy">—</p>
+        <button class="secondary streak-freeze-btn" id="streakFreezeBtn" type="button">Proteger racha</button>
+      </div>
+
       <p class="best-day" id="bestDay">Tu mejor día aparecerá aquí.</p>
       <p class="insight" id="insightText">Empieza un enfoque para ver tu ritmo.</p>
 
@@ -301,6 +306,23 @@
           <p class="hint">Una campanilla corta al acabar cada bloque.</p>
         </div>
         <button class="toggle" id="soundToggle" type="button" role="switch" aria-checked="true" aria-label="Sonido al terminar"></button>
+      </div>
+
+      <div class="field sound-theme-field">
+        <p class="section-label">Tono de campanilla</p>
+        <div class="sound-theme-row" id="soundThemeRow" role="group" aria-label="Tono de campanilla">
+          <button type="button" class="sound-theme" data-theme="soft" aria-pressed="true">Suave</button>
+          <button type="button" class="sound-theme" data-theme="bell" aria-pressed="false">Campana</button>
+          <button type="button" class="sound-theme" data-theme="wood" aria-pressed="false">Madera</button>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Plantillas por categoría</div>
+          <p class="hint">Ajusta minutos al cambiar Trabajo, Estudio, Personal o Extra.</p>
+        </div>
+        <button class="toggle" id="categoryPresetsToggle" type="button" role="switch" aria-checked="true" aria-label="Plantillas por categoría"></button>
       </div>
 
       <div class="toggle-row">
