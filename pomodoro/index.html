@@ -66,7 +66,8 @@
       </div>
       <div class="meta" aria-live="polite">
         <span>Ronda <strong id="roundDisplay">1/4</strong></span>
-        <span>Hoy <strong id="todayDisplay">0</strong></span>
+        <span>Hoy <strong id="todayDisplay">0/8</strong></span>
+        <span>Racha <strong id="streakDisplay">0</strong></span>
       </div>
     </footer>
   </div>
@@ -93,6 +94,21 @@
           <div class="stat-value" id="weekFocusMins">0</div>
           <div class="stat-label">Minutos de foco</div>
         </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-block">
+          <div class="stat-value" id="streakStat">0</div>
+          <div class="stat-label">Días de racha</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="goalStat">0/8</div>
+          <div class="stat-label">Meta de hoy</div>
+        </div>
+      </div>
+
+      <div class="goal-track" aria-hidden="true">
+        <div class="goal-fill" id="goalFill"></div>
       </div>
 
       <p class="section-label">Últimos 7 días</p>
@@ -157,6 +173,17 @@
             <button type="button" data-setting="roundsUntilLong" data-delta="-1" aria-label="Menos rondas">−</button>
             <output id="roundsUntilLong">4</output>
             <button type="button" data-setting="roundsUntilLong" data-delta="1" aria-label="Más rondas">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="dailyGoal">Meta diaria</label>
+          <div class="stepper">
+            <button type="button" data-setting="dailyGoal" data-delta="-1" aria-label="Bajar meta diaria">−</button>
+            <output id="dailyGoal">8</output>
+            <button type="button" data-setting="dailyGoal" data-delta="1" aria-label="Subir meta diaria">+</button>
           </div>
         </div>
       </div>

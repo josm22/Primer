@@ -16,7 +16,8 @@ Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso larg
 - Ciclo clásico: 25 / 5 / 15 (configurable)
 - Descanso largo cada 4 pomodoros
 - Contador de enfoques de hoy
-- Panel de progreso: semana, minutos y recientes
+- Panel de progreso: semana, minutos, meta y racha
+- El timer se conserva si sales de la app
 - Tarea actual opcional en cada enfoque
 - Sonido y avisos al terminar
 - Funciona offline (PWA)
