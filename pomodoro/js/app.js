@@ -90,6 +90,7 @@ const els = {
   toast: document.getElementById("toast"),
   toastMessage: document.getElementById("toastMessage"),
   toastAction: document.getElementById("toastAction"),
+  greeting: document.getElementById("greeting"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -151,6 +152,8 @@ const state = {
   toastActionHandler: null,
   confirmHandler: null,
   extendPressTimer: null,
+  parallaxReady: false,
+  prevCompletedInCycle: 0,
 };
 
 function todayKey(date = new Date()) {
@@ -506,6 +509,26 @@ function updateThemeColor() {
   els.ring.setAttribute("stroke", grads[state.phase] || grads.focus);
 }
 
+function greetingText() {
+  const hour = new Date().getHours();
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  if (state.running && state.phase === "focus") return "Concéntrate. Yo cuido el tiempo.";
+  if (state.running && state.phase !== "focus") return "Respira. El siguiente foco espera.";
+  if (today >= goal) return "Meta del día cumplida. Qué bien.";
+  if (hour < 12) return today ? `Buenos días · ${today}/${goal} hoy` : "Buenos días. Empieza con calma.";
+  if (hour < 19) return today ? `Buenas tardes · ${today}/${goal} hoy` : "Buenas tardes. Un bloque y listo.";
+  return today ? `Buenas noches · ${today}/${goal} hoy` : "Buenas noches. Un último foco.";
+}
+
+function renderGreeting() {
+  if (!els.greeting) return;
+  const next = greetingText();
+  if (els.greeting.textContent !== next) {
+    els.greeting.textContent = next;
+  }
+}
+
 function renderGoalProgress() {
   const today = countTodayFocus();
   const goal = state.settings.dailyGoal;
@@ -603,13 +626,16 @@ function renderRoundDots() {
   const rounds = state.settings.roundsUntilLong;
   const done = state.completedInCycle;
   const current = state.phase === "focus" ? Math.min(done + 1, rounds) : null;
+  const popped = done > state.prevCompletedInCycle ? done : 0;
   els.roundDots.innerHTML = Array.from({ length: rounds }, (_, index) => {
     const n = index + 1;
     const classes = ["round-dot"];
     if (n <= done) classes.push("is-done");
     if (current && n === current) classes.push("is-current");
+    if (popped && n === popped) classes.push("is-pop");
     return `<span class="${classes.join(" ")}"></span>`;
   }).join("");
+  state.prevCompletedInCycle = done;
 }
 
 function escapeHtml(value) {
@@ -683,6 +709,7 @@ function render() {
   els.roundDisplay.textContent = `${current}/${rounds}`;
   renderRoundDots();
   renderGoalProgress();
+  renderGreeting();
   renderPresets();
   renderRecentTasks();
   els.outputs.focusMins.value = state.settings.focusMins;
@@ -1010,6 +1037,8 @@ function start() {
   state.tickId = setInterval(tick, 250);
   acquireWakeLock();
   saveSession();
+  if (state.settings.haptic && navigator.vibrate) navigator.vibrate(18);
+  enableParallax().catch(() => {});
   render();
 }
 
@@ -1021,6 +1050,7 @@ function pause() {
   clearTick();
   releaseWakeLock();
   saveSession();
+  if (state.settings.haptic && navigator.vibrate) navigator.vibrate([12, 24, 12]);
   render();
 }
 
