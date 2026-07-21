@@ -450,12 +450,21 @@ function pickBreakTip(phase) {
   return tips[Math.floor(Math.random() * tips.length)];
 }
 
+function swapText(el, value) {
+  if (el.textContent === value) return;
+  el.textContent = value;
+  el.classList.remove("is-swap");
+  // Reinicia la animación de entrada del texto.
+  void el.offsetWidth;
+  el.classList.add("is-swap");
+}
+
 function setPhase(phase, { resetTime = true } = {}) {
   state.phase = phase;
   els.body.dataset.phase = phase;
   const info = PHASES[phase];
-  els.phaseLabel.textContent = info.label;
-  els.supportText.textContent = phase === "focus" ? info.support : pickBreakTip(phase);
+  swapText(els.phaseLabel, info.label);
+  swapText(els.supportText, phase === "focus" ? info.support : pickBreakTip(phase));
   if (resetTime) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
@@ -463,6 +472,23 @@ function setPhase(phase, { resetTime = true } = {}) {
   }
   updateThemeColor();
   render();
+}
+
+function buildRingTicks() {
+  const ticks = document.getElementById("ringTicks");
+  if (!ticks || ticks.childElementCount) return;
+  const count = 24;
+  for (let i = 0; i < count; i += 1) {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const outer = 46;
+    const inner = i % 6 === 0 ? 41.5 : 43.2;
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", String(50 + Math.cos(angle) * inner));
+    line.setAttribute("y1", String(50 + Math.sin(angle) * inner));
+    line.setAttribute("x2", String(50 + Math.cos(angle) * outer));
+    line.setAttribute("y2", String(50 + Math.sin(angle) * outer));
+    ticks.appendChild(line);
+  }
 }
 
 function updateThemeColor() {
@@ -815,6 +841,22 @@ async function handleImportFile(file) {
   }
 }
 
+function burstGoalSparks() {
+  const host = document.getElementById("goalSparks");
+  if (!host) return;
+  host.innerHTML = "";
+  for (let i = 0; i < 14; i += 1) {
+    const spark = document.createElement("span");
+    spark.className = "goal-spark";
+    const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.2;
+    const dist = 70 + Math.random() * 90;
+    spark.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    spark.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
+    spark.style.animationDelay = `${i * 0.02}s`;
+    host.appendChild(spark);
+  }
+}
+
 function showGoalCelebration(today, goal) {
   const key = todayKey();
   if (state.goalCelebratedDate === key) return;
@@ -823,12 +865,15 @@ function showGoalCelebration(today, goal) {
   els.goalOverlayTitle.textContent = "¡Meta cumplida!";
   els.goalOverlayText.textContent = `Hoy llevas ${today} enfoques. Objetivo: ${goal}.`;
   els.goalOverlay.hidden = false;
+  burstGoalSparks();
   if (state.settings.sound) playChime();
   hapticPulse();
 }
 
 function hideGoalCelebration() {
   els.goalOverlay.hidden = true;
+  const host = document.getElementById("goalSparks");
+  if (host) host.innerHTML = "";
 }
 
 function applyFocusPreset(minutes) {
@@ -1381,6 +1426,7 @@ function setupInstallTip() {
 
 function init() {
   bindEvents();
+  buildRingTicks();
   if (!restoreSession()) {
     setPhase("focus", { resetTime: true });
   } else {
