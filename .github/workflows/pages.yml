@@ -28,6 +28,7 @@ jobs:
           mkdir -p _site
           cp index.html manifest.webmanifest sw.js icon.svg .nojekyll _site/
           cp -r escoba _site/escoba
+          cp -r pomodoro _site/pomodoro
 
       - uses: actions/configure-pages@v5
 
