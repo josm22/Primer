@@ -352,6 +352,34 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+body.is-deep-focus .secondary-row,
+body.is-deep-focus .meta,
+body.is-deep-focus .presets {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  margin: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+body.is-deep-focus .task-field {
+  opacity: 0.4;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.share-actions .secondary {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+}
+
 .goal-track {
   margin-top: 14px;
   height: 8px;
