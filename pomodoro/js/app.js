@@ -31,7 +31,7 @@ const BREAK_TIPS = {
     "Estira cuello y hombros con calma.",
     "Bebe un poco de agua.",
     "Respira: 4 segundos inhala, 4 exhala.",
-    "Sueltá la mirada de la pantalla un momento.",
+    "Suelta la mirada de la pantalla un momento.",
   ],
   long: [
     "Da un paseo corto y vuelve con la mente fresca.",
@@ -105,7 +105,6 @@ const els = {
   deepToggle: document.getElementById("deepToggle"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
-  secondaryRow: document.querySelector(".secondary-row"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
