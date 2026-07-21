@@ -84,8 +84,9 @@
           <p class="support" id="supportText">Un bloque. Nada más importa.</p>
           <label class="task-field">
             <span class="visually-hidden">Tarea actual</span>
-            <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" autocomplete="off" enterkeyhint="done">
+            <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" list="taskSuggestions" autocomplete="off" enterkeyhint="done">
           </label>
+          <datalist id="taskSuggestions"></datalist>
           <div class="category-row" id="categoryRow" role="group" aria-label="Categoría">
             <button type="button" class="category is-active" data-category="trabajo">Trabajo</button>
             <button type="button" class="category" data-category="estudio">Estudio</button>
@@ -154,6 +155,16 @@
         </div>
       </div>
 
+      <div class="week-goal-row">
+        <div>
+          <div class="stat-label">Meta semanal</div>
+          <div class="stat-value week-goal-value" id="weekGoalStat">0/40</div>
+        </div>
+        <div class="goal-track week-goal-track" aria-hidden="true">
+          <div class="goal-fill" id="weekGoalFill"></div>
+        </div>
+      </div>
+
       <p class="best-day" id="bestDay">Tu mejor día aparecerá aquí.</p>
       <p class="insight" id="insightText">Empieza un enfoque para ver tu ritmo.</p>
 
@@ -179,6 +190,7 @@
       <div class="share-actions">
         <button class="secondary" id="shareWeekBtn" type="button">Compartir semana</button>
         <button class="secondary" id="exportBtn" type="button">Exportar backup</button>
+        <button class="secondary" id="exportIcsBtn" type="button">Exportar calendario</button>
         <label class="secondary import-label">
           Importar archivo
           <input id="importInput" type="file" accept="application/json,.json" hidden>
@@ -256,6 +268,17 @@
         </div>
       </div>
 
+      <div class="field">
+        <div class="field-row">
+          <label for="weeklyGoal">Meta semanal</label>
+          <div class="stepper">
+            <button type="button" data-setting="weeklyGoal" data-delta="-1" aria-label="Bajar meta semanal">−</button>
+            <output id="weeklyGoal">40</output>
+            <button type="button" data-setting="weeklyGoal" data-delta="1" aria-label="Subir meta semanal">+</button>
+          </div>
+        </div>
+      </div>
+
       <div class="toggle-row">
         <div>
           <div>Sonido al terminar</div>
@@ -304,6 +327,14 @@
         <button class="toggle" id="nightToggle" type="button" role="switch" aria-checked="true" aria-label="Noche suave"></button>
       </div>
 
+      <div class="toggle-row">
+        <div>
+          <div>Horas quietas</div>
+          <p class="hint">Silencia campanillas, vibración y avisos de 22:00 a 8:00.</p>
+        </div>
+        <button class="toggle" id="quietToggle" type="button" role="switch" aria-checked="false" aria-label="Horas quietas"></button>
+      </div>
+
       <div class="danger-zone">
         <p class="section-label">Datos</p>
         <button class="secondary danger-btn" id="resetDataBtn" type="button">Borrar historial y rachas</button>
@@ -327,6 +358,20 @@
     </div>
   </div>
 
+  <div class="goal-overlay" id="noteOverlay" hidden>
+    <div class="goal-card note-card" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+      <p class="goal-kicker">Sello guardado</p>
+      <h2 id="noteTitle">¿Algo que anotar?</h2>
+      <p class="ritual-copy">Opcional. Una línea para recordar qué pasó.</p>
+      <label class="ritual-field">
+        <span class="visually-hidden">Nota de la sesión</span>
+        <input id="noteInput" type="text" maxlength="80" placeholder="Ej. buen ritmo / interrupciones" autocomplete="off" enterkeyhint="done">
+      </label>
+      <button class="primary" id="noteSave" type="button">Guardar</button>
+      <button class="secondary ritual-skip" id="noteSkip" type="button">Omitir</button>
+    </div>
+  </div>
+
   <div class="goal-overlay" id="confirmOverlay" hidden>
     <div class="goal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <p class="goal-kicker">Confirmar</p>
@@ -347,7 +392,7 @@
       <p class="ritual-copy">Un bloque. Nada más importa.</p>
       <label class="ritual-field">
         <span class="visually-hidden">Primera tarea</span>
-        <input id="ritualTask" type="text" maxlength="48" placeholder="Escribe tu tarea" autocomplete="off" enterkeyhint="go">
+        <input id="ritualTask" type="text" maxlength="48" placeholder="Escribe tu tarea" list="taskSuggestions" autocomplete="off" enterkeyhint="go">
       </label>
       <button class="primary" id="ritualStart" type="button">Empezar</button>
       <button class="secondary ritual-skip" id="ritualSkip" type="button">Más tarde</button>
