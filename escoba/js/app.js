@@ -49,6 +49,7 @@ const state = {
   feltClearedUntil: 0,
   feltClearTimer: null,
   heroIdle: null,
+  guestPoll: null,
   netChain: Promise.resolve(),
   nameHelloSent: false,
 };
@@ -178,6 +179,8 @@ async function runDealIfNeeded() {
   state.needDeal = false;
   const handsOnly = !!state.dealHandsOnly;
   state.dealHandsOnly = false;
+  const gen = state.playGen;
+  const cancelled = () => state.playGen !== gen;
   state.dealing = true;
   state.busy = true;
   state.holdHandReveal = false;
@@ -186,6 +189,11 @@ async function runDealIfNeeded() {
   if (handsOnly) screen?.classList.add('dealing-hands');
   render();
   await sleep(40);
+  if (cancelled()) {
+    screen?.classList.remove('dealing', 'dealing-hands');
+    state.dealing = false;
+    return;
+  }
   const g = state.game;
   const me = state.me;
   const opp = 1 - me;
@@ -197,8 +205,14 @@ async function runDealIfNeeded() {
       me,
       handsOnly,
       onSfx: playSfx,
+      isCancelled: cancelled,
     });
   } catch (_) {}
+  if (cancelled()) {
+    screen?.classList.remove('dealing', 'dealing-hands');
+    state.dealing = false;
+    return;
+  }
   screen?.classList.remove('dealing', 'dealing-hands');
   state.dealing = false;
   state.busy = false;
@@ -208,6 +222,7 @@ async function runDealIfNeeded() {
   if (state.mode === 'cpu' && g.currentPlayer !== state.me) {
     await sleep(520);
   }
+  if (cancelled()) return;
   maybeAiOrWait();
 }
 
@@ -217,6 +232,8 @@ async function sweepRoundLeftovers(g) {
     state.holdLeftoverIds = null;
     return;
   }
+  const gen = state.playGen;
+  const cancelled = () => state.playGen !== gen;
   const felt = $('#felt');
   // Si onBeforeClear ya dejó los restos en la mesa, no hace falta reinyectar
   if (felt && !state.holdLeftoverIds?.size) {
@@ -233,12 +250,17 @@ async function sweepRoundLeftovers(g) {
     }
     await sleep(40);
   }
+  if (cancelled()) {
+    state.holdLeftoverIds = null;
+    return;
+  }
   const who =
     left.player == null ? null : state.names[left.player] || 'Jugador';
   await playLeftoverSweep(left, {
     me: state.me,
     onSfx: playSfx,
     whoName: who,
+    isCancelled: cancelled,
     onBeforeClear: async () => {
       state.holdLeftoverIds = null;
       renderPiles();
@@ -344,6 +366,11 @@ async function finishAfterMove() {
   const g = state.game;
   if (!g) return;
 
+  const last = normalizeLogMove(lastMoveFrom(g));
+  if (last?.type === 'escoba') {
+    markFeltCleared();
+  }
+
   if (g.message === 'Nueva mano repartida' && g.phase === 'play') {
     setMsg('Nueva mano');
     state.holdHandReveal = true;
@@ -361,12 +388,8 @@ async function finishAfterMove() {
     render();
     await sleep(550);
     if (state.game === g) showRoundPanel(g);
+    state.busy = false;
     return;
-  }
-
-  const last = normalizeLogMove(lastMoveFrom(g));
-  if (last?.type === 'escoba') {
-    markFeltCleared();
   }
 
   if (state.skipNextPilePaint) {
@@ -396,6 +419,22 @@ function clearGhosts() {
 function requestStateFromHost() {
   if (state.mode !== 'online' || state.role !== 'guest' || !state.net) return;
   state.net.send({ type: 'ping' });
+}
+
+function startGuestIdlePoll() {
+  stopGuestIdlePoll();
+  state.guestPoll = setInterval(() => {
+    if (state.mode !== 'online' || state.role !== 'guest' || !state.net) return;
+    if (!state.game || state.game.phase !== 'play') return;
+    if (state.busy || state.dealing) return;
+    if (state.game.currentPlayer === state.me) return;
+    requestStateFromHost();
+  }, 10000);
+}
+
+function stopGuestIdlePoll() {
+  clearInterval(state.guestPoll);
+  state.guestPoll = null;
 }
 
 function armMoveWatch() {
@@ -821,8 +860,12 @@ function render(opts = {}) {
 
   const oppHand = $('#oppHand');
   oppHand.innerHTML = '';
+  const oppLen = g.hands[opp].length;
+  oppHand.setAttribute(
+    'aria-label',
+    `Mano del rival: ${oppLen} carta${oppLen === 1 ? '' : 's'}`
+  );
   if (!state.holdHandReveal) {
-    const oppLen = g.hands[opp].length;
     for (let i = 0; i < oppLen; i++) {
       const el = cardEl(null, { face: false, last: oppLen === 1 });
       applyFan(el, i, oppLen);
@@ -993,6 +1036,8 @@ function sendState(game = state.game) {
 }
 
 async function applyAndReveal(move, { broadcast = false } = {}) {
+  const gen = state.playGen;
+  const cancelled = () => state.playGen !== gen;
   state.busy = true;
   const beforeLen = (state.game.moveLog || []).length;
 
@@ -1031,23 +1076,31 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
       }
       await playTableAnim(snap, mv.type, {
         onSfx: playSfx,
+        isCancelled: cancelled,
         onBeforeClear: async () => {
+          if (cancelled()) return;
           state.skipNextPilePaint = true;
           stageRoundLeftoversForAnim();
           render();
         },
       });
+      if (cancelled()) return;
     }
     state.lastSeenLog = (state.game.moveLog || []).length;
     state.animSeat = null;
     clearGhosts();
     clearSending();
     await finishAfterMove();
+  } catch (err) {
+    if (!cancelled()) state.busy = false;
+    throw err;
   } finally {
-    state.busy = false;
-    state.animSeat = null;
-    clearGhosts();
-    clearSending();
+    // No limpiar busy aquí: finishAfterMove / deal / maybeAiOrWait lo gestionan
+    if (!cancelled()) {
+      state.animSeat = null;
+      clearGhosts();
+      clearSending();
+    }
   }
 }
 
@@ -1340,6 +1393,7 @@ function leaveToHome() {
   state.feltClearedUntil = 0;
   clearTimeout(state.feltClearTimer);
   clearMoveWatch();
+  stopGuestIdlePoll();
   clearGhosts();
   clearSending();
   clearFlyLayer();
@@ -1454,6 +1508,7 @@ async function startJoin() {
     state.me = 1;
     state.names = ['Anfitrión', myDisplayName()];
     state.nameHelloSent = false;
+    startGuestIdlePoll();
     $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
     setNetChip('Enlace…', 'warn');
   } catch (err) {
@@ -1565,6 +1620,7 @@ async function ingestRemoteState(game, meta = {}) {
       }
       await playTableAnim(snap, mv.type, {
         onSfx: playSfx,
+        isCancelled: () => !stillHere(),
         onBeforeClear: async () => {
           if (!stillHere()) return;
           state.skipNextPilePaint = true;
@@ -1581,6 +1637,8 @@ async function ingestRemoteState(game, meta = {}) {
     clearSending();
 
     if (!stillHere()) return;
+
+    if (state.role === 'guest') startGuestIdlePoll();
 
     if (isFreshDeal && game.phase === 'play' && !mv) {
       state.feed = [];
@@ -1864,6 +1922,27 @@ function bindUi() {
   $('#playerName')?.addEventListener('change', saveName);
   $('#playerName')?.addEventListener('blur', saveName);
   window.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const open = document.querySelector('.overlay.open');
+      if (!open) return;
+      const panel = open.querySelector('.panel') || open;
+      const focusables = [
+        ...panel.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length < 2) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     if (e.key !== 'Escape') return;
     if ($('#peekOverlay')?.classList.contains('open')) {
       closeOverlay('#peekOverlay');
@@ -1911,7 +1990,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=23').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=24').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
