@@ -18,6 +18,7 @@ Tras el deploy de GitHub Pages:
 - Ciclo clásico: 25 / 5 / 15 (configurable)
 - Descanso largo cada 4 pomodoros
 - Contador de enfoques de hoy
+- Panel de progreso: semana, minutos y recientes
 - Avisos al terminar (si das permiso)
 - Funciona offline (PWA)
 
