@@ -144,6 +144,7 @@ const els = {
   timeDisplay: document.getElementById("timeDisplay"),
   supportText: document.getElementById("supportText"),
   breakActivities: document.getElementById("breakActivities"),
+  etaText: document.getElementById("etaText"),
   primaryBtn: document.getElementById("primaryBtn"),
   skipBtn: document.getElementById("skipBtn"),
   extendBtn: document.getElementById("extendBtn"),
@@ -242,6 +243,13 @@ const els = {
   exportWeekPngBtn: document.getElementById("exportWeekPngBtn"),
   shortcutsOverlay: document.getElementById("shortcutsOverlay"),
   shortcutsClose: document.getElementById("shortcutsClose"),
+  monthFocusCount: document.getElementById("monthFocusCount"),
+  monthFocusMins: document.getElementById("monthFocusMins"),
+  allFocusCount: document.getElementById("allFocusCount"),
+  allFocusMins: document.getElementById("allFocusMins"),
+  historyFilter: document.getElementById("historyFilter"),
+  savePresetBtn: document.getElementById("savePresetBtn"),
+  resetPresetBtn: document.getElementById("resetPresetBtn"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -290,6 +298,7 @@ const state = {
   roundDotsKey: "",
   pendingNoteSessionId: null,
   deferReload: false,
+  historyFilter: "all",
   breakActsDone: [],
 };
 
@@ -426,6 +435,24 @@ function persistCategoryOverride() {
     roundsUntilLong: state.settings.roundsUntilLong,
   };
   savePresetOverrides(overrides);
+}
+
+function saveCurrentAsCategoryPreset() {
+  if (!CATEGORIES[state.category]) return;
+  persistCategoryOverride();
+  showToast(`Plantilla ${categoryLabel(state.category).toLowerCase()} guardada`);
+}
+
+function resetCategoryPreset(category = state.category) {
+  if (!CATEGORIES[category]) return;
+  const overrides = loadPresetOverrides();
+  delete overrides[category];
+  savePresetOverrides(overrides);
+  if (state.settings.categoryPresets && !state.running) {
+    applyCategoryPreset(category);
+  }
+  render();
+  showToast(`Plantilla ${categoryLabel(category).toLowerCase()} restaurada`);
 }
 
 function applyCategoryPreset(category) {
@@ -719,6 +746,47 @@ function weekCategoryBreakdown() {
     counts[cat] = (counts[cat] || 0) + 1;
   }
   return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+function monthKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthSummary(date = new Date()) {
+  const key = monthKey(date);
+  const sessions = state.history.filter((s) => String(s.date || "").startsWith(key));
+  return {
+    count: sessions.length,
+    minutes: sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
+}
+
+function lifetimeSummary() {
+  return {
+    count: state.history.length,
+    minutes: state.history.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
+}
+
+function formatEta(ms) {
+  const end = new Date(Date.now() + Math.max(0, ms));
+  return end.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderEta() {
+  if (!els.etaText) return;
+  const show = state.running && state.remainingMs > 0;
+  els.etaText.hidden = !show;
+  if (!show) return;
+  const label = state.phase === "focus" ? "Termina" : "Vuelve";
+  els.etaText.textContent = `${label} a las ${formatEta(state.remainingMs)}`;
+}
+
+function toggleDeepFocus() {
+  state.settings.deepFocus = !state.settings.deepFocus;
+  saveSettings();
+  render();
+  showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
 }
 
 function saveSession({ force = false } = {}) {
@@ -1281,8 +1349,25 @@ function renderWeekChart() {
 }
 
 function renderHistoryList() {
-  const recent = state.history.slice(0, 8);
+  const filter = state.historyFilter || "all";
+  const filtered =
+    filter === "all"
+      ? state.history
+      : state.history.filter((s) => (s.category || "extra") === filter);
+  const recent = filtered.slice(0, 10);
   els.historyEmpty.hidden = recent.length > 0;
+  if (els.historyEmpty) {
+    els.historyEmpty.innerHTML =
+      filter === "all"
+        ? "Aún no hay sellos.<br><span>Termina tu primer enfoque para verlo aquí.</span>"
+        : `Sin sellos en ${categoryLabel(filter).toLowerCase()}.<br><span>Prueba otra categoría.</span>`;
+  }
+  if (els.historyFilter) {
+    els.historyFilter.querySelectorAll("[data-filter]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.filter === filter);
+      btn.setAttribute("aria-pressed", String(btn.dataset.filter === filter));
+    });
+  }
   els.historyList.innerHTML = recent
     .map((session) => {
       const title = session.task
@@ -1307,6 +1392,15 @@ function renderHistoryList() {
     `;
     })
     .join("");
+}
+
+function renderLifetimeStats() {
+  const month = monthSummary();
+  const all = lifetimeSummary();
+  if (els.monthFocusCount) els.monthFocusCount.textContent = String(month.count);
+  if (els.monthFocusMins) els.monthFocusMins.textContent = String(month.minutes);
+  if (els.allFocusCount) els.allFocusCount.textContent = String(all.count);
+  if (els.allFocusMins) els.allFocusMins.textContent = String(all.minutes);
 }
 
 function renderHeatmap() {
@@ -1592,6 +1686,7 @@ function renderStatsPanel() {
   renderStreakFreeze();
   renderStreakMilestone();
   renderCategoryBreakdown();
+  renderLifetimeStats();
 }
 
 function recentTaskNames() {
@@ -1679,6 +1774,7 @@ function render() {
   renderTodayStrip();
   renderBreakActivities();
   renderRepeatLast();
+  renderEta();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1722,6 +1818,7 @@ function renderTimerChrome() {
   updateRingTicks(progress);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   updateDocumentTitle();
+  renderEta();
 }
 
 function weekShareText() {
@@ -2831,10 +2928,7 @@ function bindEvents() {
   });
 
   els.deepToggle.addEventListener("click", () => {
-    state.settings.deepFocus = !state.settings.deepFocus;
-    saveSettings();
-    render();
-    showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
+    toggleDeepFocus();
   });
 
   document.querySelector(".brand")?.addEventListener("click", () => {
@@ -2967,6 +3061,29 @@ function bindEvents() {
   els.shortcutsOverlay?.addEventListener("click", (event) => {
     if (event.target === els.shortcutsOverlay) hideShortcuts();
   });
+
+  if (els.historyFilter) {
+    els.historyFilter.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-filter]");
+      if (!btn) return;
+      state.historyFilter = btn.dataset.filter;
+      renderHistoryList();
+    });
+  }
+
+  if (els.savePresetBtn) {
+    els.savePresetBtn.addEventListener("click", saveCurrentAsCategoryPreset);
+  }
+  if (els.resetPresetBtn) {
+    els.resetPresetBtn.addEventListener("click", () => {
+      askConfirm({
+        title: "¿Restaurar plantilla?",
+        text: `Vuelve a los minutos por defecto de ${categoryLabel(state.category)}.`,
+        okLabel: "Restaurar",
+        onConfirm: () => resetCategoryPreset(),
+      });
+    });
+  }
 
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
@@ -3101,6 +3218,11 @@ function bindEvents() {
     if (key === "l") {
       event.preventDefault();
       repeatLastBlock();
+      return;
+    }
+    if (key === "d") {
+      event.preventDefault();
+      toggleDeepFocus();
     }
   });
 }
@@ -3234,6 +3356,28 @@ function scheduleDaySummary() {
   }, 1400);
 }
 
+function maybeNudgeStreak() {
+  const hour = new Date().getHours();
+  if (hour < 17 || hour >= 22) return;
+  if (countTodayFocus() > 0) return;
+  if (!canUseStreakFreeze()) return;
+  const key = `foco-streak-nudge-${todayKey()}`;
+  if (localStorage.getItem(key) === "1") return;
+  localStorage.setItem(key, "1");
+  showToast(`Racha en riesgo · ${currentStreak()} días`, {
+    actionLabel: "Proteger",
+    onAction: () => {
+      askConfirm({
+        title: "¿Proteger la racha?",
+        text: "Cuenta hoy como día de racha sin enfoque. Solo una vez por semana.",
+        okLabel: "Proteger",
+        onConfirm: useStreakFreeze,
+      });
+    },
+    duration: 7000,
+  });
+}
+
 function init() {
   if (CATEGORIES[state.settings.category]) {
     state.category = state.settings.category;
@@ -3254,6 +3398,7 @@ function init() {
   setupInstallTip();
   setupWeeklyRecap();
   scheduleDaySummary();
+  setTimeout(maybeNudgeStreak, 2200);
 }
 
 init();
