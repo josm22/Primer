@@ -1,4 +1,4 @@
-const CACHE = "foco-v20";
+const CACHE = "foco-v27";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./icon-180.png",
   "./css/styles.css",
   "./js/app.js",
+  "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap",
 ];
 
 self.addEventListener("install", (event) => {
@@ -33,7 +34,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cached) => {
       const fetched = fetch(event.request)
         .then((response) => {
-          if (response && response.ok && response.type === "basic") {
+          if (response && response.ok && (response.type === "basic" || response.type === "cors")) {
             const clone = response.clone();
             caches.open(CACHE).then((cache) => cache.put(event.request, clone));
           }
