@@ -83,6 +83,7 @@
           <div class="phase-label" id="phaseLabel">Enfoque</div>
           <div class="round-dots" id="roundDots" aria-hidden="true"></div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
+          <p class="wall-clock" id="wallClock" aria-hidden="true">--:--</p>
           <p class="eta" id="etaText" hidden></p>
           <p class="cycle-eta" id="cycleEta" hidden></p>
           <p class="support" id="supportText">Un bloque. Nada más importa.</p>
@@ -101,6 +102,17 @@
             <button type="button" class="category" data-category="estudio">Estudio</button>
             <button type="button" class="category" data-category="personal">Personal</button>
             <button type="button" class="category" data-category="extra">Extra</button>
+          </div>
+          <div class="task-queue" id="taskQueue" hidden>
+            <div class="queue-head">
+              <span class="section-label">Cola de hoy</span>
+            </div>
+            <div class="queue-add">
+              <label class="visually-hidden" for="queueInput">Nueva tarea en cola</label>
+              <input id="queueInput" type="text" maxlength="48" placeholder="Añadir a la cola" autocomplete="off" enterkeyhint="done">
+              <button type="button" class="secondary queue-add-btn" id="queueAddBtn">Añadir</button>
+            </div>
+            <ul class="queue-list" id="queueList"></ul>
           </div>
           <div class="recent-tasks" id="recentTasks" hidden></div>
         </div>
@@ -356,6 +368,16 @@
           <button type="button" class="sound-theme" data-theme="soft" aria-pressed="true">Suave</button>
           <button type="button" class="sound-theme" data-theme="bell" aria-pressed="false">Campana</button>
           <button type="button" class="sound-theme" data-theme="wood" aria-pressed="false">Madera</button>
+        </div>
+      </div>
+
+      <div class="field sound-theme-field">
+        <p class="section-label">Atmósfera</p>
+        <div class="sound-theme-row" id="atmosphereRow" role="group" aria-label="Atmósfera">
+          <button type="button" class="sound-theme" data-atmosphere="slate" aria-pressed="true">Pizarra</button>
+          <button type="button" class="sound-theme" data-atmosphere="olive" aria-pressed="false">Olivo</button>
+          <button type="button" class="sound-theme" data-atmosphere="dusk" aria-pressed="false">Crepúsculo</button>
+          <button type="button" class="sound-theme" data-atmosphere="mist" aria-pressed="false">Bruma</button>
         </div>
       </div>
 
