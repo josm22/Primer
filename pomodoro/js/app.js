@@ -106,6 +106,7 @@ const SOUND_THEMES = {
 const STREAK_MILESTONES = [3, 7, 14, 30];
 const MILESTONE_KEY = "foco-streak-milestones-v1";
 const FREEZE_KEY = "foco-streak-freeze-v1";
+const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
 
 const DEFAULTS = {
   focusMins: 25,
@@ -233,6 +234,14 @@ const els = {
   recapTipText: document.getElementById("recapTipText"),
   recapShareBtn: document.getElementById("recapShareBtn"),
   recapCloseBtn: document.getElementById("recapCloseBtn"),
+  repeatLastBtn: document.getElementById("repeatLastBtn"),
+  categoryBreakdown: document.getElementById("categoryBreakdown"),
+  streakMilestoneRow: document.getElementById("streakMilestoneRow"),
+  streakMilestoneText: document.getElementById("streakMilestoneText"),
+  streakMilestoneFill: document.getElementById("streakMilestoneFill"),
+  exportWeekPngBtn: document.getElementById("exportWeekPngBtn"),
+  shortcutsOverlay: document.getElementById("shortcutsOverlay"),
+  shortcutsClose: document.getElementById("shortcutsClose"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -387,9 +396,41 @@ function categoryTag(key) {
   return `<span class="tag tag-${safe}">${categoryLabel(safe)}</span>`;
 }
 
+function loadPresetOverrides() {
+  try {
+    const raw = localStorage.getItem(PRESET_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePresetOverrides(overrides) {
+  localStorage.setItem(PRESET_OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function getCategoryPreset(category) {
+  const base = CATEGORY_PRESETS[category];
+  if (!base) return null;
+  const overrides = loadPresetOverrides();
+  return { ...base, ...(overrides[category] || {}) };
+}
+
+function persistCategoryOverride() {
+  if (!state.settings.categoryPresets || !CATEGORIES[state.category]) return;
+  const overrides = loadPresetOverrides();
+  overrides[state.category] = {
+    focusMins: state.settings.focusMins,
+    shortMins: state.settings.shortMins,
+    longMins: state.settings.longMins,
+    roundsUntilLong: state.settings.roundsUntilLong,
+  };
+  savePresetOverrides(overrides);
+}
+
 function applyCategoryPreset(category) {
   if (!state.settings.categoryPresets || state.running) return false;
-  const preset = CATEGORY_PRESETS[category];
+  const preset = getCategoryPreset(category);
   if (!preset) return false;
   Object.assign(state.settings, preset);
   saveSettings();
@@ -616,6 +657,68 @@ function useStreakFreeze() {
   render();
   renderStatsPanel();
   showToast("Racha protegida por hoy");
+}
+
+function nextStreakMilestone() {
+  const streak = currentStreak();
+  const next = STREAK_MILESTONES.find((m) => m > streak);
+  if (!next) return null;
+  return { next, remaining: next - streak, streak };
+}
+
+function lastFocusSession() {
+  return state.history.find((s) => Number(s.minutes) > 0) || null;
+}
+
+function repeatLastBlock() {
+  if (state.running || state.phase !== "focus") return;
+  const last = lastFocusSession();
+  if (!last) return;
+  if (last.task) {
+    state.task = last.task;
+    els.taskInput.value = last.task;
+  }
+  if (CATEGORIES[last.category]) {
+    setCategory(last.category, { toast: false });
+  }
+  if (last.minutes && last.minutes !== state.settings.focusMins) {
+    state.settings.focusMins = clamp(last.minutes, LIMITS.focusMins);
+    saveSettings();
+    persistCategoryOverride();
+    setPhase("focus", { resetTime: true });
+  }
+  saveSession({ force: true });
+  render();
+  const label = last.task ? `«${last.task}»` : "Último bloque";
+  showToast(`${label} listo`);
+}
+
+function showShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  els.shortcutsOverlay.hidden = false;
+  const card = els.shortcutsOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+}
+
+function hideShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  clearFocusTrap();
+  els.shortcutsOverlay.hidden = true;
+}
+
+function weekCategoryBreakdown() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const counts = {};
+  for (const session of state.history) {
+    if (!keys.has(session.date)) continue;
+    const cat = session.category || "extra";
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
 function saveSession({ force = false } = {}) {
@@ -1263,6 +1366,7 @@ function resetStatsData() {
       saveCelebratedMilestones();
       localStorage.removeItem("foco-goal-celebrated");
       localStorage.removeItem(FREEZE_KEY);
+      localStorage.removeItem(PRESET_OVERRIDES_KEY);
       clearSession();
       render();
       renderStatsPanel();
@@ -1410,6 +1514,73 @@ function renderStreakFreeze() {
   }
 }
 
+function renderStreakMilestone() {
+  if (!els.streakMilestoneRow) return;
+  const info = nextStreakMilestone();
+  if (!info || info.streak < 1) {
+    els.streakMilestoneRow.hidden = true;
+    return;
+  }
+  els.streakMilestoneRow.hidden = false;
+  if (els.streakMilestoneText) {
+    els.streakMilestoneText.textContent =
+      info.remaining === 1
+        ? `Mañana puedes llegar a ${info.next} días de racha.`
+        : `Siguiente hito: ${info.next} días · faltan ${info.remaining}.`;
+  }
+  if (els.streakMilestoneFill) {
+    const prev = STREAK_MILESTONES.filter((m) => m <= info.streak).pop() || 0;
+    const span = info.next - prev;
+    const progress = span > 0 ? (info.streak - prev) / span : 1;
+    els.streakMilestoneFill.style.width = `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`;
+  }
+}
+
+function renderCategoryBreakdown() {
+  if (!els.categoryBreakdown) return;
+  const rows = weekCategoryBreakdown();
+  if (!rows.length) {
+    els.categoryBreakdown.hidden = true;
+    els.categoryBreakdown.innerHTML = "";
+    return;
+  }
+  const total = rows.reduce((sum, [, count]) => sum + count, 0);
+  els.categoryBreakdown.hidden = false;
+  els.categoryBreakdown.innerHTML = rows
+    .map(([cat, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="cat-breakdown-item">
+          <div class="cat-breakdown-head">
+            ${categoryTag(cat)}
+            <span>${count} · ${pct}%</span>
+          </div>
+          <div class="cat-breakdown-track" aria-hidden="true">
+            <div class="cat-breakdown-fill tag-${cat}" style="width:${pct}%"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderRepeatLast() {
+  if (!els.repeatLastBtn) return;
+  const last = lastFocusSession();
+  const show =
+    last &&
+    state.phase === "focus" &&
+    !state.running &&
+    state.remainingMs === state.totalMs &&
+    !(state.settings.deepFocus && state.running);
+  els.repeatLastBtn.hidden = !show;
+  if (show && last.task) {
+    els.repeatLastBtn.textContent = `Repetir «${last.task.slice(0, 18)}${last.task.length > 18 ? "…" : ""}»`;
+  } else if (show) {
+    els.repeatLastBtn.textContent = "Repetir último";
+  }
+}
+
 function renderStatsPanel() {
   renderWeekChart();
   renderTodayTimeline();
@@ -1419,6 +1590,8 @@ function renderStatsPanel() {
   renderFocusScore();
   renderInsight();
   renderStreakFreeze();
+  renderStreakMilestone();
+  renderCategoryBreakdown();
 }
 
 function recentTaskNames() {
@@ -1505,6 +1678,7 @@ function render() {
   renderGreeting();
   renderTodayStrip();
   renderBreakActivities();
+  renderRepeatLast();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1587,6 +1761,21 @@ async function shareWeek() {
     showToast("Resumen copiado");
   } catch {
     showToast("No se pudo compartir");
+  }
+}
+
+async function downloadWeekCard() {
+  try {
+    const file = await buildWeekCardFile();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Tarjeta semanal descargada");
+  } catch {
+    showToast("No se pudo generar la tarjeta");
   }
 }
 
@@ -1877,6 +2066,7 @@ function applyFocusPreset(minutes) {
   if (state.running || state.phase !== "focus") return;
   state.settings.focusMins = clamp(minutes, LIMITS.focusMins);
   saveSettings();
+  persistCategoryOverride();
   setPhase("focus", { resetTime: true });
   saveSession();
   showToast(`Enfoque a ${minutes} min`);
@@ -2458,6 +2648,9 @@ function adjustSetting(key, delta) {
   const [min, max] = LIMITS[key];
   state.settings[key] = clamp(state.settings[key] + delta, [min, max]);
   saveSettings();
+  if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
+    persistCategoryOverride();
+  }
   if (key === "dailyGoal" || key === "weeklyGoal") {
     render();
     return;
@@ -2694,6 +2887,12 @@ function bindEvents() {
     shareWeek();
   });
 
+  if (els.exportWeekPngBtn) {
+    els.exportWeekPngBtn.addEventListener("click", () => {
+      downloadWeekCard();
+    });
+  }
+
   els.exportBtn.addEventListener("click", () => {
     exportBackup();
   });
@@ -2757,6 +2956,17 @@ function bindEvents() {
       });
     });
   }
+
+  if (els.repeatLastBtn) {
+    els.repeatLastBtn.addEventListener("click", repeatLastBlock);
+  }
+
+  if (els.shortcutsClose) {
+    els.shortcutsClose.addEventListener("click", hideShortcuts);
+  }
+  els.shortcutsOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.shortcutsOverlay) hideShortcuts();
+  });
 
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
@@ -2837,6 +3047,10 @@ function bindEvents() {
         hideDaySummary();
         return;
       }
+      if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) {
+        hideShortcuts();
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -2849,6 +3063,7 @@ function bindEvents() {
     if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
     if (els.noteOverlay && !els.noteOverlay.hidden) return;
     if (els.dayOverlay && !els.dayOverlay.hidden) return;
+    if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -2880,7 +3095,12 @@ function bindEvents() {
     }
     if (key === "?") {
       event.preventDefault();
-      showToast("Espacio pausa · R reinicia · S salta · +1 · 1/2/3 presets", { duration: 4200 });
+      showShortcuts();
+      return;
+    }
+    if (key === "l") {
+      event.preventDefault();
+      repeatLastBlock();
     }
   });
 }

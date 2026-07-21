@@ -955,6 +955,132 @@ body.is-deep-focus .primary {
   color: var(--phase);
 }
 
+.repeat-last {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 8px;
+  min-height: 38px;
+  font-size: 0.86rem;
+}
+
+.repeat-last[hidden] {
+  display: none;
+}
+
+.streak-milestone-row {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.streak-milestone-row[hidden] {
+  display: none;
+}
+
+.streak-milestone-text {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.streak-milestone-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(16, 20, 17, 0.08);
+  overflow: hidden;
+}
+
+.streak-milestone-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--phase);
+  transition: width 0.45s ease;
+}
+
+.category-breakdown {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.category-breakdown[hidden] {
+  display: none;
+}
+
+.cat-breakdown-item {
+  display: grid;
+  gap: 6px;
+}
+
+.cat-breakdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.cat-breakdown-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(16, 20, 17, 0.08);
+  overflow: hidden;
+}
+
+.cat-breakdown-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--phase) 70%, transparent);
+}
+
+.cat-breakdown-fill.tag-trabajo { background: #2d6a5a; }
+.cat-breakdown-fill.tag-estudio { background: #3a6fad; }
+.cat-breakdown-fill.tag-personal { background: #8a5a2d; }
+.cat-breakdown-fill.tag-extra { background: #6a5a7a; }
+
+.shortcuts-card {
+  text-align: left;
+}
+
+.shortcuts-list {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.shortcuts-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.shortcuts-list kbd {
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.shortcuts-list span {
+  color: var(--ink);
+}
+
 .heatmap {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1226,7 +1352,8 @@ body.is-timer-running .primary::after {
 
 body.is-deep-focus .secondary-row,
 body.is-deep-focus .meta,
-body.is-deep-focus .presets {
+body.is-deep-focus .presets,
+body.is-deep-focus .repeat-last {
   opacity: 0;
   pointer-events: none;
   max-height: 0;
