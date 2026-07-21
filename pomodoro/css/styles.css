@@ -649,6 +649,61 @@ button {
   opacity: 1;
 }
 
+.install-tip {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + var(--safe-b));
+  transform: translateX(-50%);
+  z-index: 45;
+  width: min(92vw, 380px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 18px;
+  background: rgba(20, 32, 28, 0.94);
+  color: #f4faf7;
+  box-shadow: 0 12px 28px rgba(20, 32, 28, 0.18);
+}
+
+.install-tip[hidden] {
+  display: none;
+}
+
+.install-tip-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-tip-copy strong {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.install-tip-copy p {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: rgba(244, 250, 247, 0.82);
+}
+
+.install-tip-copy em {
+  font-style: normal;
+  color: #fff;
+  font-weight: 560;
+}
+
+.install-tip-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: #f4faf7;
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 @media (min-width: 720px) {
   .app {
     padding-top: 36px;
