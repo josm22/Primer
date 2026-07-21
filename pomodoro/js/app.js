@@ -42,6 +42,16 @@ const BREAK_TIPS = {
   ],
 };
 
+const CATEGORIES = {
+  trabajo: { key: "trabajo", label: "Trabajo" },
+  estudio: { key: "estudio", label: "Estudio" },
+  personal: { key: "personal", label: "Personal" },
+  extra: { key: "extra", label: "Extra" },
+};
+
+const STREAK_MILESTONES = [3, 7, 14, 30];
+const MILESTONE_KEY = "foco-streak-milestones-v1";
+
 const DEFAULTS = {
   focusMins: 25,
   shortMins: 5,
@@ -113,7 +123,10 @@ const els = {
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
   importInput: document.getElementById("importInput"),
+  pasteImportBtn: document.getElementById("pasteImportBtn"),
   recentTasks: document.getElementById("recentTasks"),
+  categoryRow: document.getElementById("categoryRow"),
+  insightText: document.getElementById("insightText"),
   roundDots: document.getElementById("roundDots"),
   todayTimeline: document.getElementById("todayTimeline"),
   todayEmpty: document.getElementById("todayEmpty"),
@@ -146,8 +159,10 @@ const state = {
   openSheet: null,
   audioCtx: null,
   task: "",
+  category: "trabajo",
   waitingWorker: null,
   goalCelebratedDate: localStorage.getItem("foco-goal-celebrated") || "",
+  celebratedMilestones: loadCelebratedMilestones(),
   lastSessionId: null,
   toastActionHandler: null,
   confirmHandler: null,
@@ -234,6 +249,29 @@ function saveHistory() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify({ sessions: state.history }));
 }
 
+function loadCelebratedMilestones() {
+  try {
+    const raw = localStorage.getItem(MILESTONE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCelebratedMilestones() {
+  localStorage.setItem(MILESTONE_KEY, JSON.stringify(state.celebratedMilestones));
+}
+
+function categoryLabel(key) {
+  return CATEGORIES[key]?.label || "Extra";
+}
+
+function categoryTag(key) {
+  const safe = CATEGORIES[key] ? key : "extra";
+  return `<span class="tag tag-${safe}">${categoryLabel(safe)}</span>`;
+}
+
 function recordFocusSession(minutes) {
   const now = new Date();
   const task = state.task.trim();
@@ -242,6 +280,7 @@ function recordFocusSession(minutes) {
     date: todayKey(now),
     minutes,
     task: task || null,
+    category: CATEGORIES[state.category] ? state.category : "extra",
     endedAt: now.toISOString(),
   };
   state.history.unshift(session);
@@ -336,6 +375,7 @@ function saveSession() {
     completedInCycle: state.completedInCycle,
     endAt: state.running ? state.endAt : null,
     task: state.task,
+    category: state.category,
     savedAt: Date.now(),
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
@@ -356,6 +396,7 @@ function restoreSession() {
     state.totalMs = Number(saved.totalMs) || phaseDurationMs(saved.phase);
     state.completedInCycle = Number(saved.completedInCycle) || 0;
     state.task = typeof saved.task === "string" ? saved.task : "";
+    state.category = CATEGORIES[saved.category] ? saved.category : "trabajo";
 
     if (saved.running && saved.endAt) {
       const left = Math.max(0, Number(saved.endAt) - Date.now());
@@ -590,7 +631,10 @@ function renderHistoryList() {
         : formatHistoryWhen(session);
       return `
       <li class="history-item">
-        <strong>${title}</strong>
+        <div>
+          <strong>${title}</strong>
+          ${categoryTag(session.category || "extra")}
+        </div>
         <span>${detail}</span>
       </li>
     `;
@@ -615,11 +659,54 @@ function renderTodayTimeline() {
           <div class="timeline-body">
             <strong>${title}</strong>
             <span>${session.minutes} min</span>
+            ${categoryTag(session.category || "extra")}
           </div>
         </li>
       `;
     })
     .join("");
+}
+
+function renderInsight() {
+  if (!els.insightText) return;
+  const { count, minutes, days } = weekSummary();
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const streak = currentStreak();
+  const avg = count ? Math.round(minutes / count) : 0;
+  const topCategory = Object.entries(
+    state.history.reduce((acc, session) => {
+      const key = session.category || "extra";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
+
+  if (!count && !today) {
+    els.insightText.textContent = "Empieza un enfoque para ver tu ritmo.";
+    return;
+  }
+  if (today >= goal) {
+    els.insightText.textContent = `Ritmo alto: media de ${avg || state.settings.focusMins} min · racha ${streak}.`;
+    return;
+  }
+  const remaining = Math.max(0, goal - today);
+  const cat = topCategory ? categoryLabel(topCategory[0]).toLowerCase() : "foco";
+  const best = days.reduce((acc, day) => (day.count > (acc?.count || 0) ? day : acc), null);
+  if (best && best.count > 0) {
+    els.insightText.textContent = `Te faltan ${remaining} para la meta. Suele irte bien los ${best.label}. Más en ${cat}.`;
+  } else {
+    els.insightText.textContent = `Te faltan ${remaining} para la meta de hoy. Media: ${avg || state.settings.focusMins} min.`;
+  }
+}
+
+function renderCategories() {
+  if (!els.categoryRow) return;
+  const show = state.phase === "focus";
+  els.categoryRow.hidden = !show;
+  els.categoryRow.querySelectorAll("[data-category]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.category === state.category);
+  });
 }
 
 function renderRoundDots() {
@@ -651,6 +738,7 @@ function renderStatsPanel() {
   renderTodayTimeline();
   renderHistoryList();
   renderBestDay();
+  renderInsight();
 }
 
 function recentTaskNames() {
@@ -712,6 +800,7 @@ function render() {
   renderGreeting();
   renderPresets();
   renderRecentTasks();
+  renderCategories();
   els.outputs.focusMins.value = state.settings.focusMins;
   els.outputs.shortMins.value = state.settings.shortMins;
   els.outputs.longMins.value = state.settings.longMins;
@@ -828,6 +917,7 @@ function importBackupText(text) {
       date: String(s.date),
       minutes: Number(s.minutes) || 0,
       task: s.task || null,
+      category: CATEGORIES[s.category] ? s.category : "extra",
       endedAt: s.endedAt || `${s.date}T12:00:00.000Z`,
     }));
 
@@ -1092,6 +1182,28 @@ function completePhaseQuietly() {
   showToast(finished === "focus" ? "Enfoque terminado mientras no estabas" : "Descanso terminado mientras no estabas");
 }
 
+function maybeCelebrateStreak() {
+  const streak = currentStreak();
+  const hit = STREAK_MILESTONES.find(
+    (n) => streak >= n && !state.celebratedMilestones.includes(n)
+  );
+  if (!hit) return false;
+  state.celebratedMilestones.push(hit);
+  saveCelebratedMilestones();
+  els.goalOverlayTitle.textContent = `Racha de ${hit} días`;
+  els.goalOverlayText.textContent =
+    hit >= 30
+      ? "Constancia de nivel alto. Esto ya es un hábito."
+      : hit >= 7
+        ? "Una semana entera de foco. Sigue así."
+        : "Tres días seguidos. El hábito empieza aquí.";
+  els.goalOverlay.hidden = false;
+  burstGoalSparks();
+  if (state.settings.sound) playChime();
+  hapticPulse();
+  return true;
+}
+
 function onPhaseComplete() {
   const finished = state.phase;
   const plannedMinutes = state.settings[PHASES[finished].setting];
@@ -1101,6 +1213,7 @@ function onPhaseComplete() {
   notifyEnd();
 
   let reachedGoal = false;
+  let celebratedSomething = false;
   if (finished === "focus") {
     recordFocusSession(plannedMinutes);
     const today = countTodayFocus();
@@ -1108,6 +1221,9 @@ function onPhaseComplete() {
     reachedGoal = today >= goal;
     if (reachedGoal) {
       showGoalCelebration(today, goal);
+      celebratedSomething = true;
+    } else if (maybeCelebrateStreak()) {
+      celebratedSomething = true;
     } else {
       showToast(`Enfoque completado · ${today}/${goal}`, {
         actionLabel: "Deshacer",
@@ -1123,7 +1239,7 @@ function onPhaseComplete() {
   setPhase(next, { resetTime: true });
   saveSession();
 
-  if (state.settings.autoAdvance && !reachedGoal) {
+  if (state.settings.autoAdvance && !celebratedSomething) {
     start();
   }
 }
@@ -1447,6 +1563,27 @@ function bindEvents() {
     const file = els.importInput.files && els.importInput.files[0];
     await handleImportFile(file);
     els.importInput.value = "";
+  });
+
+  els.pasteImportBtn.addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        showToast("El portapapeles está vacío");
+        return;
+      }
+      importBackupText(text);
+    } catch {
+      showToast("No se pudo leer el portapapeles");
+    }
+  });
+
+  els.categoryRow.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-category]");
+    if (!btn) return;
+    state.category = btn.dataset.category;
+    saveSession();
+    renderCategories();
   });
 
   els.recentTasks.addEventListener("click", (event) => {
