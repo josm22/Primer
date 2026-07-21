@@ -8,19 +8,19 @@ const PHASES = {
   focus: {
     key: "focus",
     label: "Enfoque",
-    support: "Un bloque para concentrarte sin distracciones.",
+    support: "Un bloque. Nada más importa.",
     setting: "focusMins",
   },
   short: {
     key: "short",
-    label: "Descanso corto",
-    support: "Levántate un momento y suelta la mirada.",
+    label: "Pausa corta",
+    support: "Suelta la mirada. Vuelve entero.",
     setting: "shortMins",
   },
   long: {
     key: "long",
-    label: "Descanso largo",
-    support: "Respira. Has completado un ciclo completo.",
+    label: "Pausa larga",
+    support: "Ciclo cerrado. Respira de verdad.",
     setting: "longMins",
   },
 };
@@ -550,8 +550,8 @@ function applyNightMode() {
 function updateThemeColor() {
   const night = applyNightMode();
   const colors = night
-    ? { focus: "#dfe8e3", short: "#d8e8e2", long: "#dce4ea" }
-    : { focus: "#e7f0eb", short: "#e4f1ed", long: "#e6eef4" };
+    ? { focus: "#cfd3cc", short: "#c5d2cc", long: "#c5ccd6" }
+    : { focus: "#e2e4df", short: "#dce8e4", long: "#dce4ec" };
   els.metaTheme.content = colors[state.phase] || colors.focus;
   const grads = {
     focus: "url(#ringGradFocus)",
@@ -565,12 +565,12 @@ function greetingText() {
   const hour = new Date().getHours();
   const today = countTodayFocus();
   const goal = state.settings.dailyGoal;
-  if (state.running && state.phase === "focus") return "Concéntrate. Yo cuido el tiempo.";
-  if (state.running && state.phase !== "focus") return "Respira. El siguiente foco espera.";
-  if (today >= goal) return "Meta del día cumplida. Qué bien.";
-  if (hour < 12) return today ? `Buenos días · ${today}/${goal} hoy` : "Buenos días. Empieza con calma.";
-  if (hour < 19) return today ? `Buenas tardes · ${today}/${goal} hoy` : "Buenas tardes. Un bloque y listo.";
-  return today ? `Buenas noches · ${today}/${goal} hoy` : "Buenas noches. Un último foco.";
+  if (state.running && state.phase === "focus") return "El sello está en marcha.";
+  if (state.running && state.phase !== "focus") return "Pausa con intención.";
+  if (today >= goal) return "Meta sellada. Qué bien.";
+  if (hour < 12) return today ? `Buenos días · ${today}/${goal}` : "Buenos días. Empieza con calma.";
+  if (hour < 19) return today ? `Buenas tardes · ${today}/${goal}` : "Buenas tardes. Un bloque y listo.";
+  return today ? `Buenas noches · ${today}/${goal}` : "Buenas noches. Un último sello.";
 }
 
 function renderGreeting() {
@@ -869,6 +869,7 @@ function render() {
   els.primaryBtn.textContent = state.running ? "Pausa" : state.remainingMs < state.totalMs ? "Continuar" : "Empezar";
   els.shell.classList.toggle("is-running", state.running);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
+  els.body.classList.toggle("is-timer-running", state.running);
   const rounds = state.settings.roundsUntilLong;
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
@@ -1060,8 +1061,8 @@ function showGoalCelebration(today, goal) {
   if (state.goalCelebratedDate === key) return;
   state.goalCelebratedDate = key;
   localStorage.setItem("foco-goal-celebrated", key);
-  els.goalOverlayTitle.textContent = "¡Meta cumplida!";
-  els.goalOverlayText.textContent = `Hoy llevas ${today} enfoques. Objetivo: ${goal}.`;
+  els.goalOverlayTitle.textContent = "Sello del día";
+  els.goalOverlayText.textContent = `${today} enfoques. Meta: ${goal}. Hoy ya es tuyo.`;
   els.goalOverlay.hidden = false;
   burstGoalSparks();
   if (state.settings.sound) playChime();
