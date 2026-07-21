@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Foco">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1f3d36"/>
-      <stop offset="100%" stop-color="#0f2420"/>
+    <linearGradient id="field" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1f1c"/>
+      <stop offset="100%" stop-color="#0d100e"/>
     </linearGradient>
-    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e85d3a"/>
-      <stop offset="100%" stop-color="#c43d1f"/>
+    <linearGradient id="seal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f04a2e"/>
+      <stop offset="100%" stop-color="#b81f0f"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="268" r="148" fill="none" stroke="#2d564c" stroke-width="28"/>
-  <circle cx="256" cy="268" r="148" fill="none" stroke="url(#ring)" stroke-width="28"
-          stroke-linecap="round" stroke-dasharray="620 930" transform="rotate(-90 256 268)"/>
-  <circle cx="256" cy="98" r="18" fill="#e85d3a"/>
-  <path d="M248 98c-6-28 10-46 34-52 4 22-8 42-34 52z" fill="#6dbf7a"/>
+  <rect width="512" height="512" rx="96" fill="url(#field)"/>
+  <rect x="86" y="86" width="340" height="340" rx="72" fill="none" stroke="#2a322e" stroke-width="18"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="#2a322e" stroke-width="22"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="url(#seal)" stroke-width="22"
+          stroke-linecap="butt" stroke-dasharray="520 742" transform="rotate(-90 256 256)"/>
+  <circle cx="256" cy="256" r="28" fill="url(#seal)"/>
 </svg>
