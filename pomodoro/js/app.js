@@ -614,6 +614,25 @@ function nextPhaseAfter(current) {
   return "focus";
 }
 
+function completePhaseQuietly() {
+  const finished = state.phase;
+  const plannedMinutes = state.settings[PHASES[finished].setting];
+  state.running = false;
+  state.endAt = null;
+  clearTick();
+  releaseWakeLock();
+  state.remainingMs = 0;
+
+  if (finished === "focus") {
+    recordFocusSession(plannedMinutes);
+  }
+
+  const next = nextPhaseAfter(finished);
+  setPhase(next, { resetTime: true });
+  saveSession();
+  showToast(finished === "focus" ? "Enfoque terminado mientras no estabas" : "Descanso terminado mientras no estabas");
+}
+
 function onPhaseComplete() {
   const finished = state.phase;
   const plannedMinutes = state.settings[PHASES[finished].setting];
