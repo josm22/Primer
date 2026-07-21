@@ -77,6 +77,13 @@ const els = {
   streakStat: document.getElementById("streakStat"),
   goalStat: document.getElementById("goalStat"),
   goalFill: document.getElementById("goalFill"),
+  presets: document.getElementById("presets"),
+  goalOverlay: document.getElementById("goalOverlay"),
+  goalOverlayTitle: document.getElementById("goalOverlayTitle"),
+  goalOverlayText: document.getElementById("goalOverlayText"),
+  goalOverlayClose: document.getElementById("goalOverlayClose"),
+  updateTip: document.getElementById("updateTip"),
+  updateTipBtn: document.getElementById("updateTipBtn"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -101,6 +108,8 @@ const state = {
   openSheet: null,
   audioCtx: null,
   task: "",
+  waitingWorker: null,
+  goalCelebratedDate: localStorage.getItem("foco-goal-celebrated") || "",
 };
 
 function todayKey(date = new Date()) {
@@ -474,6 +483,15 @@ function renderStatsPanel() {
   renderHistoryList();
 }
 
+function renderPresets() {
+  const show = state.phase === "focus" && !state.running && state.remainingMs === state.totalMs;
+  els.presets.hidden = !show;
+  els.presets.querySelectorAll("[data-preset]").forEach((btn) => {
+    const mins = Number(btn.dataset.preset);
+    btn.classList.toggle("is-active", mins === state.settings.focusMins);
+  });
+}
+
 function render() {
   els.timeDisplay.textContent = formatTime(state.remainingMs);
   const progress = state.totalMs > 0 ? 1 - state.remainingMs / state.totalMs : 0;
@@ -484,6 +502,7 @@ function render() {
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
   renderGoalProgress();
+  renderPresets();
   els.outputs.focusMins.value = state.settings.focusMins;
   els.outputs.shortMins.value = state.settings.shortMins;
   els.outputs.longMins.value = state.settings.longMins;
@@ -497,6 +516,31 @@ function render() {
   }
   els.taskInput.closest(".task-field").hidden = state.phase !== "focus";
   if (state.openSheet === "stats") renderStatsPanel();
+}
+
+function showGoalCelebration(today, goal) {
+  const key = todayKey();
+  if (state.goalCelebratedDate === key) return;
+  state.goalCelebratedDate = key;
+  localStorage.setItem("foco-goal-celebrated", key);
+  els.goalOverlayTitle.textContent = "¡Meta cumplida!";
+  els.goalOverlayText.textContent = `Hoy llevas ${today} enfoques. Objetivo: ${goal}.`;
+  els.goalOverlay.hidden = false;
+  if (state.settings.sound) playChime();
+  hapticPulse();
+}
+
+function hideGoalCelebration() {
+  els.goalOverlay.hidden = true;
+}
+
+function applyFocusPreset(minutes) {
+  if (state.running || state.phase !== "focus") return;
+  state.settings.focusMins = clamp(minutes, LIMITS.focusMins);
+  saveSettings();
+  setPhase("focus", { resetTime: true });
+  saveSession();
+  showToast(`Enfoque a ${minutes} min`);
 }
 
 function showToast(message) {
@@ -641,12 +685,14 @@ function onPhaseComplete() {
   render();
   notifyEnd();
 
+  let reachedGoal = false;
   if (finished === "focus") {
     recordFocusSession(plannedMinutes);
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
-    if (today >= goal) {
-      showToast(`Meta del día: ${today}/${goal}`);
+    reachedGoal = today >= goal;
+    if (reachedGoal) {
+      showGoalCelebration(today, goal);
     } else {
       showToast(`Enfoque completado · ${today}/${goal}`);
     }
@@ -658,7 +704,7 @@ function onPhaseComplete() {
   setPhase(next, { resetTime: true });
   saveSession();
 
-  if (state.settings.autoAdvance) {
+  if (state.settings.autoAdvance && !reachedGoal) {
     start();
   }
 }
@@ -732,6 +778,22 @@ function bindEvents() {
 
   els.resetBtn.addEventListener("click", resetCurrent);
   els.skipBtn.addEventListener("click", skipPhase);
+  els.goalOverlayClose.addEventListener("click", hideGoalCelebration);
+  els.goalOverlay.addEventListener("click", (event) => {
+    if (event.target === els.goalOverlay) hideGoalCelebration();
+  });
+
+  els.presets.querySelectorAll("[data-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => applyFocusPreset(Number(btn.dataset.preset)));
+  });
+
+  els.updateTipBtn.addEventListener("click", () => {
+    if (state.waitingWorker) {
+      state.waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    } else {
+      window.location.reload();
+    }
+  });
 
   els.settingsBtn.addEventListener("click", () => openSheet("settings"));
   els.statsBtn.addEventListener("click", () => openSheet("stats"));
@@ -805,10 +867,34 @@ function bindEvents() {
   });
 }
 
+function showUpdateTip(worker) {
+  state.waitingWorker = worker;
+  els.updateTip.hidden = false;
+  const install = document.getElementById("installTip");
+  if (install) install.hidden = true;
+}
+
 function registerSW() {
   if (!("serviceWorker" in navigator)) return;
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("./sw.js");
+      if (reg.waiting) showUpdateTip(reg.waiting);
+      reg.addEventListener("updatefound", () => {
+        const worker = reg.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            showUpdateTip(worker);
+          }
+        });
+      });
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.location.reload();
+      });
+    } catch {
+      // Sin service worker seguimos en modo online.
+    }
   });
 }
 
