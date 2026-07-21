@@ -13,14 +13,22 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
   <title>Foco — Pomodoro</title>
 </head>
 <body data-phase="focus">
+  <div class="ambiance" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+  </div>
   <div class="app">
     <header class="topbar">
-      <h1 class="brand">Foco</h1>
+      <h1 class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Foco
+      </h1>
       <div class="topbar-actions">
         <button class="icon-btn" id="statsBtn" type="button" aria-label="Progreso" aria-controls="statsSheet" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -43,8 +51,22 @@
     <main class="stage">
       <div class="timer-shell" id="timerShell" role="button" tabindex="0" aria-label="Empezar o pausar temporizador">
         <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="ringGradFocus" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ef6a3d"/>
+              <stop offset="100%" stop-color="#c63a1c"/>
+            </linearGradient>
+            <linearGradient id="ringGradShort" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#3a9a84"/>
+              <stop offset="100%" stop-color="#1f6a5a"/>
+            </linearGradient>
+            <linearGradient id="ringGradLong" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4a7fad"/>
+              <stop offset="100%" stop-color="#2a4f78"/>
+            </linearGradient>
+          </defs>
           <circle class="ring-track" cx="50" cy="50" r="46"></circle>
-          <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="46" pathLength="1"></circle>
+          <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="46" pathLength="1" stroke="url(#ringGradFocus)"></circle>
         </svg>
         <div class="timer-copy">
           <div class="phase-label" id="phaseLabel">Enfoque</div>
