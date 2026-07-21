@@ -48,6 +48,7 @@
         </svg>
         <div class="timer-copy">
           <div class="phase-label" id="phaseLabel">Enfoque</div>
+          <div class="round-dots" id="roundDots" aria-hidden="true"></div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
           <p class="support" id="supportText">Un bloque para concentrarte sin distracciones.</p>
           <label class="task-field">
@@ -68,7 +69,7 @@
       <button class="primary" id="primaryBtn" type="button">Empezar</button>
       <div class="secondary-row">
         <button class="secondary" id="skipBtn" type="button">Saltar</button>
-        <button class="secondary" id="extendBtn" type="button">+1 min</button>
+        <button class="secondary" id="extendBtn" type="button" title="Mantén pulsado para +5 min" aria-label="Sumar un minuto, mantener pulsado para cinco">+1 min</button>
         <button class="secondary" id="resetBtn" type="button">Reiniciar</button>
       </div>
       <div class="meta" aria-live="polite">
@@ -121,6 +122,10 @@
       <div class="goal-track" aria-hidden="true">
         <div class="goal-fill" id="goalFill"></div>
       </div>
+
+      <p class="section-label">Hoy</p>
+      <ul class="timeline" id="todayTimeline"></ul>
+      <p class="hint" id="todayEmpty">Todavía no hay enfoques hoy.</p>
 
       <p class="section-label">Últimos 7 días</p>
       <div class="week-chart" id="weekChart" aria-hidden="true"></div>
@@ -261,6 +266,18 @@
       <h2 id="goalOverlayTitle">¡Hecho!</h2>
       <p id="goalOverlayText">Has llegado a tu objetivo de enfoques.</p>
       <button class="primary" id="goalOverlayClose" type="button">Seguir</button>
+    </div>
+  </div>
+
+  <div class="goal-overlay" id="confirmOverlay" hidden>
+    <div class="goal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <p class="goal-kicker">Confirmar</p>
+      <h2 id="confirmTitle">¿Saltar este bloque?</h2>
+      <p id="confirmText">Llevas bastante avanzado. ¿Seguro?</p>
+      <div class="confirm-actions">
+        <button class="secondary" id="confirmCancel" type="button">Seguir aquí</button>
+        <button class="primary" id="confirmOk" type="button">Saltar</button>
+      </div>
     </div>
   </div>
 

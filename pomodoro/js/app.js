@@ -113,6 +113,14 @@ const els = {
   exportBtn: document.getElementById("exportBtn"),
   importInput: document.getElementById("importInput"),
   recentTasks: document.getElementById("recentTasks"),
+  roundDots: document.getElementById("roundDots"),
+  todayTimeline: document.getElementById("todayTimeline"),
+  todayEmpty: document.getElementById("todayEmpty"),
+  confirmOverlay: document.getElementById("confirmOverlay"),
+  confirmTitle: document.getElementById("confirmTitle"),
+  confirmText: document.getElementById("confirmText"),
+  confirmCancel: document.getElementById("confirmCancel"),
+  confirmOk: document.getElementById("confirmOk"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -141,6 +149,8 @@ const state = {
   goalCelebratedDate: localStorage.getItem("foco-goal-celebrated") || "",
   lastSessionId: null,
   toastActionHandler: null,
+  confirmHandler: null,
+  extendPressTimer: null,
 };
 
 function todayKey(date = new Date()) {
@@ -533,6 +543,43 @@ function renderHistoryList() {
     .join("");
 }
 
+function renderTodayTimeline() {
+  const key = todayKey();
+  const todaySessions = state.history.filter((s) => s.date === key).slice(0, 12);
+  els.todayEmpty.hidden = todaySessions.length > 0;
+  els.todayTimeline.innerHTML = todaySessions
+    .map((session) => {
+      const date = session.endedAt ? new Date(session.endedAt) : parseDayKey(session.date);
+      const time = Number.isNaN(date.getTime())
+        ? "--:--"
+        : date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+      const title = session.task ? escapeHtml(session.task) : "Enfoque";
+      return `
+        <li class="timeline-item">
+          <div class="timeline-time">${time}</div>
+          <div class="timeline-body">
+            <strong>${title}</strong>
+            <span>${session.minutes} min</span>
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function renderRoundDots() {
+  const rounds = state.settings.roundsUntilLong;
+  const done = state.completedInCycle;
+  const current = state.phase === "focus" ? Math.min(done + 1, rounds) : null;
+  els.roundDots.innerHTML = Array.from({ length: rounds }, (_, index) => {
+    const n = index + 1;
+    const classes = ["round-dot"];
+    if (n <= done) classes.push("is-done");
+    if (current && n === current) classes.push("is-current");
+    return `<span class="${classes.join(" ")}"></span>`;
+  }).join("");
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -543,6 +590,7 @@ function escapeHtml(value) {
 
 function renderStatsPanel() {
   renderWeekChart();
+  renderTodayTimeline();
   renderHistoryList();
   renderBestDay();
 }
@@ -601,6 +649,7 @@ function render() {
   const rounds = state.settings.roundsUntilLong;
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
+  renderRoundDots();
   renderGoalProgress();
   renderPresets();
   renderRecentTasks();
@@ -804,15 +853,29 @@ function showToast(message, { actionLabel = null, onAction = null, duration = 24
   }, duration);
 }
 
-function extendOneMinute() {
-  state.remainingMs += 60_000;
-  state.totalMs += 60_000;
+function extendMinutes(mins) {
+  const ms = mins * 60_000;
+  state.remainingMs += ms;
+  state.totalMs += ms;
   if (state.running) {
     state.endAt = Date.now() + state.remainingMs;
   }
   saveSession();
   render();
-  showToast("+1 minuto");
+  showToast(mins === 1 ? "+1 minuto" : `+${mins} minutos`);
+}
+
+function askConfirm({ title, text, okLabel = "Confirmar", onConfirm }) {
+  els.confirmTitle.textContent = title;
+  els.confirmText.textContent = text;
+  els.confirmOk.textContent = okLabel;
+  state.confirmHandler = onConfirm;
+  els.confirmOverlay.hidden = false;
+}
+
+function hideConfirm() {
+  els.confirmOverlay.hidden = true;
+  state.confirmHandler = null;
 }
 
 function toggleTimer() {
@@ -984,7 +1047,7 @@ function onPhaseComplete() {
   }
 }
 
-function skipPhase() {
+function doSkipPhase() {
   const finished = state.phase;
   pause();
   if (finished === "focus") {
@@ -1000,6 +1063,20 @@ function skipPhase() {
     setPhase("focus", { resetTime: true });
   }
   saveSession();
+}
+
+function skipPhase() {
+  const progressed = state.totalMs > 0 && state.remainingMs < state.totalMs * 0.5;
+  if (progressed) {
+    askConfirm({
+      title: "¿Saltar este bloque?",
+      text: "Ya llevas más de la mitad. ¿Seguro que quieres saltarlo?",
+      okLabel: "Saltar",
+      onConfirm: doSkipPhase,
+    });
+    return;
+  }
+  doSkipPhase();
 }
 
 function openSheet(name) {
@@ -1061,11 +1138,46 @@ function bindEvents() {
 
   els.resetBtn.addEventListener("click", resetCurrent);
   els.skipBtn.addEventListener("click", skipPhase);
-  els.extendBtn.addEventListener("click", extendOneMinute);
+
+  let extendHoldFired = false;
+  const clearExtendHold = () => {
+    clearTimeout(state.extendPressTimer);
+    state.extendPressTimer = null;
+  };
+  els.extendBtn.addEventListener("pointerdown", () => {
+    extendHoldFired = false;
+    clearExtendHold();
+    state.extendPressTimer = setTimeout(() => {
+      extendHoldFired = true;
+      extendMinutes(5);
+      if (navigator.vibrate && state.settings.haptic) navigator.vibrate(30);
+    }, 450);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((type) => {
+    els.extendBtn.addEventListener(type, clearExtendHold);
+  });
+  els.extendBtn.addEventListener("click", () => {
+    if (extendHoldFired) {
+      extendHoldFired = false;
+      return;
+    }
+    extendMinutes(1);
+  });
+
   els.toastAction.addEventListener("click", () => {
     if (typeof state.toastActionHandler === "function") {
       state.toastActionHandler();
     }
+  });
+
+  els.confirmCancel.addEventListener("click", hideConfirm);
+  els.confirmOk.addEventListener("click", () => {
+    const handler = state.confirmHandler;
+    hideConfirm();
+    if (typeof handler === "function") handler();
+  });
+  els.confirmOverlay.addEventListener("click", (event) => {
+    if (event.target === els.confirmOverlay) hideConfirm();
   });
   els.goalOverlayClose.addEventListener("click", hideGoalCelebration);
   els.goalOverlay.addEventListener("click", (event) => {
@@ -1189,7 +1301,13 @@ function bindEvents() {
   window.addEventListener("pagehide", saveSession);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.openSheet) closeSheet();
+    if (event.key === "Escape") {
+      if (!els.confirmOverlay.hidden) {
+        hideConfirm();
+        return;
+      }
+      if (state.openSheet) closeSheet();
+    }
   });
 }
 
