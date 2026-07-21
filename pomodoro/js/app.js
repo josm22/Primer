@@ -60,6 +60,12 @@ const CATEGORIES = {
   extra: { key: "extra", label: "Extra" },
 };
 
+const BREAK_ACTIVITIES = {
+  stretch: { label: "Estirar", tip: "Cuello y hombros. 30 segundos." },
+  water: { label: "Agua", tip: "Un vaso ahora vale más que dos después." },
+  walk: { label: "Caminar", tip: "Da diez pasos lejos de la pantalla." },
+};
+
 const STREAK_MILESTONES = [3, 7, 14, 30];
 const MILESTONE_KEY = "foco-streak-milestones-v1";
 
@@ -96,6 +102,7 @@ const els = {
   phaseLabel: document.getElementById("phaseLabel"),
   timeDisplay: document.getElementById("timeDisplay"),
   supportText: document.getElementById("supportText"),
+  breakActivities: document.getElementById("breakActivities"),
   primaryBtn: document.getElementById("primaryBtn"),
   skipBtn: document.getElementById("skipBtn"),
   extendBtn: document.getElementById("extendBtn"),
@@ -118,6 +125,7 @@ const els = {
   toastAction: document.getElementById("toastAction"),
   greeting: document.getElementById("greeting"),
   todayStrip: document.getElementById("todayStrip"),
+  offlineBadge: document.getElementById("offlineBadge"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -130,6 +138,9 @@ const els = {
   goalFill: document.getElementById("goalFill"),
   weekGoalStat: document.getElementById("weekGoalStat"),
   weekGoalFill: document.getElementById("weekGoalFill"),
+  focusScoreValue: document.getElementById("focusScoreValue"),
+  focusScoreCopy: document.getElementById("focusScoreCopy"),
+  focusScoreRing: document.getElementById("focusScoreRing"),
   bestDay: document.getElementById("bestDay"),
   presets: document.getElementById("presets"),
   goalOverlay: document.getElementById("goalOverlay"),
@@ -168,6 +179,15 @@ const els = {
   ritualTask: document.getElementById("ritualTask"),
   ritualStart: document.getElementById("ritualStart"),
   ritualSkip: document.getElementById("ritualSkip"),
+  dayOverlay: document.getElementById("dayOverlay"),
+  dayKicker: document.getElementById("dayKicker"),
+  dayTitle: document.getElementById("dayTitle"),
+  dayText: document.getElementById("dayText"),
+  dayClose: document.getElementById("dayClose"),
+  recapTip: document.getElementById("recapTip"),
+  recapTipText: document.getElementById("recapTipText"),
+  recapShareBtn: document.getElementById("recapShareBtn"),
+  recapCloseBtn: document.getElementById("recapCloseBtn"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -216,6 +236,7 @@ const state = {
   roundDotsKey: "",
   pendingNoteSessionId: null,
   deferReload: false,
+  breakActsDone: [],
 };
 
 function todayKey(date = new Date()) {
@@ -617,7 +638,12 @@ function setPhase(phase, { resetTime = true } = {}) {
   els.body.dataset.phase = phase;
   const info = PHASES[phase];
   swapText(els.phaseLabel, info.label);
-  swapText(els.supportText, phase === "focus" ? info.support : pickBreakTip(phase));
+  if (phase === "focus") {
+    swapText(els.supportText, info.support);
+  } else {
+    state.breakActsDone = [];
+    swapText(els.supportText, pickBreakTip(phase));
+  }
   if (resetTime) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
@@ -627,6 +653,202 @@ function setPhase(phase, { resetTime = true } = {}) {
   updateThemeColor();
   syncIdleLines();
   render();
+}
+
+function renderBreakActivities() {
+  if (!els.breakActivities) return;
+  const onBreak = state.phase !== "focus";
+  els.breakActivities.hidden = !onBreak;
+  if (!onBreak) return;
+  els.breakActivities.querySelectorAll(".break-act").forEach((btn) => {
+    const key = btn.dataset.act;
+    btn.classList.toggle("is-done", state.breakActsDone.includes(key));
+  });
+}
+
+function toggleBreakActivity(key) {
+  if (!BREAK_ACTIVITIES[key] || state.phase === "focus") return;
+  if (state.breakActsDone.includes(key)) {
+    state.breakActsDone = state.breakActsDone.filter((k) => k !== key);
+    swapText(els.supportText, pickBreakTip(state.phase));
+  } else {
+    state.breakActsDone.push(key);
+    swapText(els.supportText, BREAK_ACTIVITIES[key].tip);
+  }
+  renderBreakActivities();
+  if (state.breakActsDone.length === Object.keys(BREAK_ACTIVITIES).length) {
+    showToast("Descanso activo completo");
+  }
+}
+
+function computeFocusScore() {
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const { count: weekCount } = weekSummary();
+  const weekGoal = state.settings.weeklyGoal || 40;
+  const streak = currentStreak();
+
+  if (!today && !weekCount) return { score: 0, label: "Empieza un bloque para calcularla." };
+
+  const dailyPart = Math.min(40, Math.round((today / Math.max(1, goal)) * 40));
+  const weeklyPart = Math.min(30, Math.round((weekCount / Math.max(1, weekGoal)) * 30));
+  const streakPart = Math.min(20, Math.round((streak / 14) * 20));
+  const activePart = today > 0 ? 10 : 0;
+  const score = Math.min(100, dailyPart + weeklyPart + streakPart + activePart);
+
+  let label = "Ritmo en construcción.";
+  if (score >= 85) label = "Ritmo excelente. Sigue sellando.";
+  else if (score >= 65) label = "Buen impulso. La constancia suma.";
+  else if (score >= 40) label = "Vas encaminado. Un bloque más.";
+  else if (today > 0) label = "Has empezado. Eso ya cuenta.";
+
+  return { score, label };
+}
+
+function renderFocusScore() {
+  if (!els.focusScoreValue) return;
+  const { score, label } = computeFocusScore();
+  els.focusScoreValue.textContent = score > 0 ? String(score) : "—";
+  if (els.focusScoreCopy) els.focusScoreCopy.textContent = label;
+  if (els.focusScoreRing) {
+    els.focusScoreRing.dataset.score = String(score);
+    const alpha = 0.15 + (score / 100) * 0.65;
+    els.focusScoreRing.style.borderColor = score > 0
+      ? `rgba(214, 40, 24, ${alpha})`
+      : "";
+  }
+}
+
+function daySummaryFor(dateKey) {
+  const sessions = state.history.filter((s) => s.date === dateKey);
+  const count = sessions.length;
+  const minutes = sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  const cats = sessions.reduce((acc, s) => {
+    const k = s.category || "extra";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  const lastNote = sessions.find((s) => s.note)?.note || null;
+  return { count, minutes, topCat, lastNote };
+}
+
+function showDaySummary(forKey, { kicker = "Resumen del día" } = {}) {
+  if (!els.dayOverlay) return;
+  const summary = daySummaryFor(forKey);
+  if (!summary.count) return;
+
+  const goal = state.settings.dailyGoal;
+  const isToday = forKey === todayKey();
+  const yesterdayKey = shiftDayKey(forKey, -1);
+  const yesterday = daySummaryFor(yesterdayKey).count;
+  const catLabel = summary.topCat ? categoryLabel(summary.topCat[0]).toLowerCase() : "foco";
+
+  let compare = "";
+  if (yesterday > 0 && summary.count !== yesterday) {
+    compare =
+      summary.count > yesterday
+        ? ` Más que ayer (+${summary.count - yesterday}).`
+        : ` Menos que ayer (${summary.count - yesterday}).`;
+  }
+
+  if (els.dayKicker) els.dayKicker.textContent = kicker;
+  if (els.dayTitle) {
+    els.dayTitle.textContent = isToday ? "Tu día en foco" : "Ayer en foco";
+  }
+  if (els.dayText) {
+    els.dayText.textContent = [
+      `${summary.count} enfoques · ${summary.minutes} min`,
+      isToday ? `Meta: ${summary.count}/${goal}.${compare}` : compare.trim(),
+      `Más en ${catLabel}.`,
+      summary.lastNote ? `Nota: «${summary.lastNote}»` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  els.dayOverlay.hidden = false;
+  localStorage.setItem(`foco-day-summary-${forKey}`, "1");
+}
+
+function hideDaySummary() {
+  if (!els.dayOverlay) return;
+  els.dayOverlay.hidden = true;
+}
+
+function maybeShowDaySummary() {
+  const hour = new Date().getHours();
+  const key = todayKey();
+  const shownToday = localStorage.getItem(`foco-day-summary-${key}`) === "1";
+
+  if (hour >= 20 && !shownToday) {
+    const today = daySummaryFor(key);
+    if (today.count > 0) {
+      showDaySummary(key);
+      return;
+    }
+  }
+
+  if (hour < 12) {
+    const yesterday = shiftDayKey(key, -1);
+    if (localStorage.getItem(`foco-day-summary-${yesterday}`) === "1") return;
+    const y = daySummaryFor(yesterday);
+    if (y.count > 0) {
+      showDaySummary(yesterday, { kicker: "Ayer en Foco" });
+    }
+  }
+}
+
+function weekRecapKey() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? 0 : day;
+  d.setDate(d.getDate() - diff);
+  return todayKey(d);
+}
+
+function setupWeeklyRecap() {
+  if (!els.recapTip) return;
+  const key = weekRecapKey();
+  if (localStorage.getItem(`foco-week-recap-${key}`) === "1") return;
+  if (new Date().getDay() !== 0) return;
+
+  const { count, minutes } = weekSummary();
+  if (count < 2) return;
+
+  const streak = currentStreak();
+  if (els.recapTipText) {
+    els.recapTipText.textContent = `${count} enfoques · ${minutes} min · racha ${streak}`;
+  }
+  els.recapTip.hidden = false;
+
+  els.recapCloseBtn?.addEventListener("click", () => {
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+
+  els.recapShareBtn?.addEventListener("click", () => {
+    shareWeek();
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+}
+
+function setupOfflineBadge() {
+  if (!els.offlineBadge) return;
+  const sync = () => {
+    els.offlineBadge.hidden = navigator.onLine;
+  };
+  window.addEventListener("online", sync);
+  window.addEventListener("offline", sync);
+  sync();
+}
+
+function streakMilestoneCopy(hit) {
+  if (hit >= 30) return "Constancia de nivel alto. Esto ya es un hábito.";
+  if (hit >= 14) return "Dos semanas de racha. Imparable.";
+  if (hit >= 7) return "Una semana entera de foco. Sigue así.";
+  return "Tres días seguidos. El hábito empieza aquí.";
 }
 
 function stopIdleLines() {
@@ -759,6 +981,10 @@ function renderTodayStrip() {
   const { count } = weekSummary();
   const weekGoal = state.settings.weeklyGoal || 40;
   parts.push(`<span class="today-pill">Sem <strong>${count}/${weekGoal}</strong></span>`);
+  const { score } = computeFocusScore();
+  if (score > 0) {
+    parts.push(`<span class="today-pill today-score">Foco <strong>${score}</strong></span>`);
+  }
   for (const task of chips) {
     parts.push(
       `<button type="button" class="today-chip" data-task="${escapeHtml(task)}">${escapeHtml(task)}</button>`
@@ -929,12 +1155,16 @@ function renderTodayTimeline() {
         ? "--:--"
         : date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
       const title = session.task ? escapeHtml(session.task) : "Enfoque";
+      const note = session.note
+        ? `<span class="history-note">${escapeHtml(session.note)}</span>`
+        : "";
       return `
         <li class="timeline-item">
           <div class="timeline-time">${time}</div>
           <div class="timeline-body">
             <strong>${title}</strong>
             <span>${session.minutes} min</span>
+            ${note}
             ${categoryTag(session.category || "extra")}
           </div>
         </li>
@@ -1031,6 +1261,7 @@ function renderStatsPanel() {
   renderHeatmap();
   renderHistoryList();
   renderBestDay();
+  renderFocusScore();
   renderInsight();
 }
 
@@ -1117,6 +1348,7 @@ function render() {
   renderGoalProgress();
   renderGreeting();
   renderTodayStrip();
+  renderBreakActivities();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1763,12 +1995,7 @@ function maybeCelebrateStreak() {
   state.celebratedMilestones.push(hit);
   saveCelebratedMilestones();
   els.goalOverlayTitle.textContent = `Racha de ${hit} días`;
-  els.goalOverlayText.textContent =
-    hit >= 30
-      ? "Constancia de nivel alto. Esto ya es un hábito."
-      : hit >= 7
-        ? "Una semana entera de foco. Sigue así."
-        : "Tres días seguidos. El hábito empieza aquí.";
+  els.goalOverlayText.textContent = streakMilestoneCopy(hit);
   els.goalOverlay.hidden = false;
   burstGoalSparks();
   return true;
@@ -2151,6 +2378,21 @@ function bindEvents() {
     if (event.target === els.goalOverlay) hideGoalCelebration();
   });
 
+  if (els.dayClose) {
+    els.dayClose.addEventListener("click", hideDaySummary);
+  }
+  els.dayOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.dayOverlay) hideDaySummary();
+  });
+
+  if (els.breakActivities) {
+    els.breakActivities.addEventListener("click", (event) => {
+      const btn = event.target.closest(".break-act");
+      if (!btn) return;
+      toggleBreakActivity(btn.dataset.act);
+    });
+  }
+
   els.presets.querySelectorAll("[data-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyFocusPreset(Number(btn.dataset.preset)));
   });
@@ -2401,6 +2643,10 @@ function bindEvents() {
         skipSessionNote();
         return;
       }
+      if (els.dayOverlay && !els.dayOverlay.hidden) {
+        hideDaySummary();
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -2412,6 +2658,7 @@ function bindEvents() {
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
     if (els.noteOverlay && !els.noteOverlay.hidden) return;
+    if (els.dayOverlay && !els.dayOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -2570,6 +2817,13 @@ function setupRitual() {
   setTimeout(() => els.ritualTask?.focus(), 350);
 }
 
+function scheduleDaySummary() {
+  setTimeout(() => {
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    maybeShowDaySummary();
+  }, 1400);
+}
+
 function init() {
   if (CATEGORIES[state.settings.category]) {
     state.category = state.settings.category;
@@ -2585,8 +2839,11 @@ function init() {
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
   registerSW();
+  setupOfflineBadge();
   setupRitual();
   setupInstallTip();
+  setupWeeklyRecap();
+  scheduleDaySummary();
 }
 
 init();
