@@ -91,7 +91,8 @@ export class EscobaNet {
       clientId: this.clientId,
       ts: Date.now(),
     };
-    this.client.publish(this.topic, JSON.stringify(msg), { qos: 0 });
+    const critical = /^(move|state|reject|ping|requestState)$/.test(payload?.type || '');
+    this.client.publish(this.topic, JSON.stringify(msg), { qos: critical ? 1 : 0 });
     return true;
   }
 
@@ -165,7 +166,7 @@ export class EscobaNet {
       }, 12000);
 
       client.on('connect', () => {
-        client.subscribe(this.topic, { qos: 0 }, (err) => {
+        client.subscribe(this.topic, { qos: 1 }, (err) => {
           if (err) {
             if (!settled) {
               settled = true;
