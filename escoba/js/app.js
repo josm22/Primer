@@ -33,6 +33,8 @@ const state = {
   skipNextPilePaint: false,
   animSeat: null,
   holdLeftoverIds: null,
+  holdHandReveal: false,
+  playGen: 0,
   lastSeenLog: 0,
   feed: [],
   pendingSnap: null,
@@ -178,6 +180,7 @@ async function runDealIfNeeded() {
   state.dealHandsOnly = false;
   state.dealing = true;
   state.busy = true;
+  state.holdHandReveal = false;
   const screen = $('#screenGame');
   screen?.classList.add('dealing');
   if (handsOnly) screen?.classList.add('dealing-hands');
@@ -276,7 +279,10 @@ function markFeltCleared() {
 
 function enqueueNet(task) {
   state.netChain = state.netChain
-    .then(() => task())
+    .then(() => {
+      if (!state.net || state.mode !== 'online') return;
+      return task();
+    })
     .catch((err) => console.error(err));
   return state.netChain;
 }
@@ -340,10 +346,10 @@ async function finishAfterMove() {
 
   if (g.message === 'Nueva mano repartida' && g.phase === 'play') {
     setMsg('Nueva mano');
+    state.holdHandReveal = true;
     render();
     await sleep(320);
     requestDeal({ handsOnly: true });
-    render();
     await runDealIfNeeded();
     return;
   }
@@ -370,6 +376,7 @@ async function finishAfterMove() {
   } else {
     render();
   }
+  state.busy = false;
   maybeAiOrWait();
 }
 
@@ -743,7 +750,9 @@ function openOverlay(overlaySel, focusSel) {
   focusReturnEl = document.activeElement;
   setAppInert(true);
   $(overlaySel)?.classList.add('open');
-  requestAnimationFrame(() => $(focusSel)?.focus?.());
+  if (focusSel) {
+    requestAnimationFrame(() => $(focusSel)?.focus?.());
+  }
 }
 
 function closeOverlay(overlaySel) {
@@ -812,11 +821,13 @@ function render(opts = {}) {
 
   const oppHand = $('#oppHand');
   oppHand.innerHTML = '';
-  const oppLen = g.hands[opp].length;
-  for (let i = 0; i < oppLen; i++) {
-    const el = cardEl(null, { face: false, last: oppLen === 1 });
-    applyFan(el, i, oppLen);
-    oppHand.appendChild(el);
+  if (!state.holdHandReveal) {
+    const oppLen = g.hands[opp].length;
+    for (let i = 0; i < oppLen; i++) {
+      const el = cardEl(null, { face: false, last: oppLen === 1 });
+      applyFan(el, i, oppLen);
+      oppHand.appendChild(el);
+    }
   }
 
   const felt = $('#felt');
@@ -867,16 +878,19 @@ function render(opts = {}) {
 
   tableCards.forEach((c, i) => {
     const selected = state.selectedTable.has(c.id);
-    const selecting = myTurn && !!state.selectedHand && !stagedLeft;
+    // Botón en tu turno (aunque aún no hayas elegido carta de mano)
+    const canPickTable = myTurn && !stagedLeft;
+    const selecting = canPickTable && !!state.selectedHand;
     const el = cardEl(c, {
       face: true,
-      selectable: selecting,
+      selectable: canPickTable,
+      selected: false,
       capture: selected,
     });
     const rot = ((i * 17) % 11) - 5;
     el.style.setProperty('--table-rot', `${rot}deg`);
     if (selecting) el.onclick = () => toggleTable(c.id);
-    else if (myTurn && !stagedLeft) {
+    else if (canPickTable) {
       el.onclick = () => setMsg('Elige primero una carta de tu mano');
     } else el.onclick = null;
     felt.appendChild(el);
@@ -884,20 +898,22 @@ function render(opts = {}) {
 
   const myHand = $('#myHand');
   myHand.innerHTML = '';
-  const myCards = g.hands[state.me];
-  myCards.forEach((c, i) => {
-    const selected = state.selectedHand === c.id;
-    const el = cardEl(c, {
-      face: true,
-      selectable: myTurn,
-      selected,
-      dim: myTurn && state.selectedHand && !selected,
-      last: myCards.length === 1,
+  if (!state.holdHandReveal) {
+    const myCards = g.hands[state.me];
+    myCards.forEach((c, i) => {
+      const selected = state.selectedHand === c.id;
+      const el = cardEl(c, {
+        face: true,
+        selectable: myTurn,
+        selected,
+        dim: myTurn && state.selectedHand && !selected,
+        last: myCards.length === 1,
+      });
+      applyFan(el, i, myCards.length);
+      if (myTurn) el.addEventListener('click', () => selectHand(c.id));
+      myHand.appendChild(el);
     });
-    applyFan(el, i, myCards.length);
-    if (myTurn) el.addEventListener('click', () => selectHand(c.id));
-    myHand.appendChild(el);
-  });
+  }
 
   const canPlay = myTurn && !!state.selectedHand;
   const canTryCapture = canPlay && state.selectedTable.size > 0;
@@ -1010,6 +1026,9 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
             ? 'Capturando…'
             : 'Dejando carta…'
       );
+      if (state.game.message === 'Nueva mano repartida') {
+        state.holdHandReveal = true;
+      }
       await playTableAnim(snap, mv.type, {
         onSfx: playSfx,
         onBeforeClear: async () => {
@@ -1019,14 +1038,17 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
         },
       });
     }
-  } finally {
     state.lastSeenLog = (state.game.moveLog || []).length;
+    state.animSeat = null;
+    clearGhosts();
+    clearSending();
+    await finishAfterMove();
+  } finally {
     state.busy = false;
     state.animSeat = null;
     clearGhosts();
     clearSending();
   }
-  await finishAfterMove();
 }
 
 async function commitLocalMove(move) {
@@ -1263,9 +1285,7 @@ function showRoundPanel(g) {
   home.textContent = 'Salir al inicio';
   home.onclick = () => leaveToHome();
   actions.appendChild(home);
-  focusReturnEl = document.activeElement;
-  setAppInert(true);
-  panel.classList.add('open');
+  openOverlay('#roundOverlay', null);
   const inner = panel.querySelector('.panel');
   if (inner) {
     inner.classList.remove('reveal-score', 'match-win', 'match-lose', 'match-draw');
@@ -1283,8 +1303,7 @@ function showRoundPanel(g) {
 }
 
 function closeRoundOverlay() {
-  $('#roundOverlay')?.classList.remove('open');
-  if (!anyOverlayOpen()) setAppInert(false);
+  closeOverlay('#roundOverlay');
 }
 
 function nextRound() {
@@ -1302,6 +1321,8 @@ function nextRound() {
 }
 
 function leaveToHome() {
+  state.playGen += 1;
+  state.netChain = Promise.resolve();
   state.net?.destroy();
   state.net = null;
   state.game = null;
@@ -1311,6 +1332,7 @@ function leaveToHome() {
   state.animSeat = null;
   state.pendingSnap = null;
   state.holdLeftoverIds = null;
+  state.holdHandReveal = false;
   state.needDeal = false;
   state.dealHandsOnly = false;
   state.lastSeenLog = 0;
@@ -1441,7 +1463,12 @@ async function startJoin() {
 }
 
 async function ingestRemoteState(game, meta = {}) {
+  const gen = state.playGen;
+  const stillHere = () =>
+    state.playGen === gen && state.mode === 'online' && !!state.net;
+
   clearMoveWatch();
+  if (!stillHere()) return;
   if (meta.names) applyRemoteNames(meta.names);
 
   const prevLog = state.lastSeenLog || 0;
@@ -1528,72 +1555,86 @@ async function ingestRemoteState(game, meta = {}) {
     state.net.send({ type: 'hello', playerName: myDisplayName() });
   }
 
+  state.busy = true;
   try {
     if (mv && snap) {
       pushFeed(mv);
-      state.busy = true;
       state.animSeat = mv.player;
+      if (game.message === 'Nueva mano repartida') {
+        state.holdHandReveal = true;
+      }
       await playTableAnim(snap, mv.type, {
         onSfx: playSfx,
         onBeforeClear: async () => {
+          if (!stillHere()) return;
           state.skipNextPilePaint = true;
           stageRoundLeftoversForAnim();
           render();
         },
       });
+      if (!stillHere()) return;
       if (mv.type === 'escoba') markFeltCleared();
     }
-  } finally {
     state.lastSeenLog = log.length;
-    state.busy = false;
     state.animSeat = null;
     clearGhosts();
     clearSending();
-  }
 
-  if (isFreshDeal && game.phase === 'play' && !mv) {
-    state.feed = [];
-    requestDeal();
-    render();
-    await runDealIfNeeded();
-    return;
-  }
+    if (!stillHere()) return;
 
-  // Guest se une a mitad de partida: pinta el estado sin falso reparto
-  if (!wasPlaying && game.phase === 'play' && log.length > 0 && !mv) {
-    render();
-    return;
-  }
+    if (isFreshDeal && game.phase === 'play' && !mv) {
+      state.feed = [];
+      requestDeal();
+      render();
+      await runDealIfNeeded();
+      return;
+    }
 
-  // Mid-round redeal after a move (o catch-up con varias jugadas)
-  if (
-    game.phase === 'play' &&
-    game.message === 'Nueva mano repartida' &&
-    (mv || gap > 1)
-  ) {
-    setMsg('Nueva mano');
-    render();
-    await sleep(320);
-    requestDeal({ handsOnly: true });
-    render();
-    await runDealIfNeeded();
-    return;
-  }
+    // Guest se une a mitad de partida: pinta el estado sin falso reparto
+    if (!wasPlaying && game.phase === 'play' && log.length > 0 && !mv) {
+      render();
+      return;
+    }
 
-  if (game.phase === 'roundEnd' || game.phase === 'matchEnd') {
-    setMsg(game.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
-    await sweepRoundLeftovers(game);
-    render();
-    await sleep(550);
-    if (state.game === game) showRoundPanel(game);
-    return;
-  }
+    // Mid-round redeal after a move (o catch-up con varias jugadas)
+    if (
+      game.phase === 'play' &&
+      game.message === 'Nueva mano repartida' &&
+      (mv || gap > 1)
+    ) {
+      setMsg('Nueva mano');
+      state.holdHandReveal = true;
+      render();
+      await sleep(320);
+      if (!stillHere()) return;
+      requestDeal({ handsOnly: true });
+      await runDealIfNeeded();
+      return;
+    }
 
-  if (state.skipNextPilePaint) {
-    state.skipNextPilePaint = false;
-    render({ skipPiles: true });
-  } else {
-    render();
+    if (game.phase === 'roundEnd' || game.phase === 'matchEnd') {
+      setMsg(game.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
+      await sweepRoundLeftovers(game);
+      if (!stillHere()) return;
+      render();
+      await sleep(550);
+      if (stillHere() && state.game === game) showRoundPanel(game);
+      return;
+    }
+
+    if (state.skipNextPilePaint) {
+      state.skipNextPilePaint = false;
+      render({ skipPiles: true });
+    } else {
+      render();
+    }
+  } finally {
+    if (state.playGen === gen) {
+      state.busy = false;
+      state.animSeat = null;
+      clearGhosts();
+      clearSending();
+    }
   }
 }
 
@@ -1812,6 +1853,11 @@ function bindUi() {
   $('#inviteOverlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'inviteOverlay' && !state.game) leaveToHome();
   });
+  $('#roundOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'roundOverlay') {
+      $('#roundActions .btn-ghost')?.focus?.();
+    }
+  });
   $('#joinCode').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') startJoin();
   });
@@ -1832,7 +1878,9 @@ function bindUi() {
       return;
     }
     if ($('#roundOverlay')?.classList.contains('open')) {
-      $('#roundActions .btn-ghost')?.focus?.();
+      const primary = $('#roundActions button:not([disabled])');
+      const leave = $('#roundActions .btn-ghost');
+      (leave || primary)?.focus?.();
     }
   });
   const unlock = () => {
@@ -1863,7 +1911,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=22').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=23').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

@@ -12,7 +12,7 @@ export function cardBackUrl() {
 
 export function buildCardFaceHtml(card) {
   const src = cardImageUrl(card);
-  return `<img class="card-img" src="${src}" alt="${card.label}" draggable="false">`;
+  return `<img class="card-img" src="${src}" alt="" draggable="false">`;
 }
 
 export function buildCardBackHtml() {
