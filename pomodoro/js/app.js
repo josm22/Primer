@@ -569,15 +569,13 @@ function renderTodayTimeline() {
 
 function renderRoundDots() {
   const rounds = state.settings.roundsUntilLong;
-  const current = Math.min(state.completedInCycle + 1, rounds);
+  const done = state.completedInCycle;
+  const current = state.phase === "focus" ? Math.min(done + 1, rounds) : null;
   els.roundDots.innerHTML = Array.from({ length: rounds }, (_, index) => {
     const n = index + 1;
     const classes = ["round-dot"];
-    if (n < current || (state.phase !== "focus" && n <= state.completedInCycle)) {
-      classes.push("is-done");
-    }
-    if (state.phase === "focus" && n === current) classes.push("is-current");
-    if (state.phase !== "focus" && n === state.completedInCycle) classes.push("is-done");
+    if (n <= done) classes.push("is-done");
+    if (current && n === current) classes.push("is-current");
     return `<span class="${classes.join(" ")}"></span>`;
   }).join("");
 }
