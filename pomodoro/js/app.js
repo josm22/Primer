@@ -114,6 +114,7 @@ const els = {
   toastMessage: document.getElementById("toastMessage"),
   toastAction: document.getElementById("toastAction"),
   greeting: document.getElementById("greeting"),
+  todayStrip: document.getElementById("todayStrip"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -197,6 +198,9 @@ const state = {
   idleLineIndex: 0,
   sheetFocusReturn: null,
   focusTrapHandler: null,
+  lastExtendMs: 0,
+  lastDisplaySecond: -1,
+  roundDotsKey: "",
 };
 
 function todayKey(date = new Date()) {
@@ -492,7 +496,7 @@ function restoreSession() {
         state.running = true;
         state.warnPlayed = left <= 60_000;
         clearTick();
-        state.tickId = setInterval(tick, 250);
+        scheduleNextTick();
         acquireWakeLock();
       } else {
         // Terminó mientras la app estaba cerrada: cierra el bloque, sin autoarrancar.
@@ -686,6 +690,50 @@ function renderGreeting() {
   if (els.greeting.textContent !== next) {
     els.greeting.textContent = next;
   }
+}
+
+function renderTodayStrip() {
+  if (!els.todayStrip) return;
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  if (deepActive) {
+    els.todayStrip.hidden = true;
+    return;
+  }
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const key = todayKey();
+  const chips = [];
+  const seen = new Set();
+  for (const session of state.history) {
+    if (session.date !== key) continue;
+    const task = (session.task || "").trim();
+    if (!task) continue;
+    const low = task.toLocaleLowerCase("es");
+    if (seen.has(low)) continue;
+    seen.add(low);
+    chips.push(task);
+    if (chips.length >= 2) break;
+  }
+
+  if (!today && !chips.length && !state.task) {
+    els.todayStrip.hidden = true;
+    els.todayStrip.innerHTML = "";
+    return;
+  }
+
+  const parts = [
+    `<span class="today-pill">Hoy <strong>${today}/${goal}</strong></span>`,
+  ];
+  for (const task of chips) {
+    parts.push(
+      `<button type="button" class="today-chip" data-task="${escapeHtml(task)}">${escapeHtml(task)}</button>`
+    );
+  }
+  if (state.task && !seen.has(state.task.toLocaleLowerCase("es")) && state.phase === "focus") {
+    parts.push(`<span class="today-chip" aria-current="true">${escapeHtml(state.task)}</span>`);
+  }
+  els.todayStrip.hidden = false;
+  els.todayStrip.innerHTML = parts.join("");
 }
 
 function renderGoalProgress() {
@@ -907,6 +955,12 @@ function renderRoundDots() {
   const done = state.completedInCycle;
   const current = state.phase === "focus" ? Math.min(done + 1, rounds) : null;
   const popped = done > state.prevCompletedInCycle ? done : 0;
+  const key = `${rounds}:${done}:${current}:${popped}`;
+  if (key === state.roundDotsKey && els.roundDots.childElementCount === rounds) {
+    state.prevCompletedInCycle = done;
+    return;
+  }
+  state.roundDotsKey = key;
   els.roundDots.innerHTML = Array.from({ length: rounds }, (_, index) => {
     const n = index + 1;
     const classes = ["round-dot"];
@@ -1008,6 +1062,7 @@ function render() {
   renderRoundDots();
   renderGoalProgress();
   renderGreeting();
+  renderTodayStrip();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1035,6 +1090,14 @@ function render() {
   if (state.openSheet === "stats") renderStatsPanel();
 }
 
+function renderTimerChrome() {
+  els.timeDisplay.textContent = formatTime(state.remainingMs);
+  const progress = state.totalMs > 0 ? 1 - state.remainingMs / state.totalMs : 0;
+  els.ring.style.strokeDashoffset = String(Math.min(1, Math.max(0, progress)));
+  els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
+  updateDocumentTitle();
+}
+
 function weekShareText() {
   const { count, minutes, days } = weekSummary();
   const today = countTodayFocus();
@@ -1053,8 +1116,14 @@ function weekShareText() {
 
 async function shareWeek() {
   const text = weekShareText();
+  const file = await buildWeekCardFile().catch(() => null);
+
   try {
     if (navigator.share) {
+      if (file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Foco — semana", text, files: [file] });
+        return;
+      }
       await navigator.share({ title: "Foco — semana", text });
       return;
     }
@@ -1067,6 +1136,80 @@ async function shareWeek() {
   } catch {
     showToast("No se pudo compartir");
   }
+}
+
+async function buildWeekCardFile() {
+  const { count, minutes, days } = weekSummary();
+  const today = countTodayFocus();
+  const streak = currentStreak();
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+
+  const bg = ctx.createLinearGradient(0, 0, 1080, 1350);
+  bg.addColorStop(0, "#eceee9");
+  bg.addColorStop(0.45, "#e2e4df");
+  bg.addColorStop(1, "#c5c9c0");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1080, 1350);
+
+  ctx.fillStyle = "rgba(214,40,24,0.14)";
+  ctx.beginPath();
+  ctx.arc(840, 180, 220, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#101411";
+  ctx.font = "800 96px Syne, sans-serif";
+  ctx.fillText("FOCO", 88, 170);
+  ctx.font = "600 28px Sora, sans-serif";
+  ctx.fillStyle = "#4a524c";
+  ctx.fillText("RESUMEN DE LA SEMANA", 92, 220);
+
+  ctx.fillStyle = "#101411";
+  ctx.font = "italic 120px 'Instrument Serif', serif";
+  ctx.fillText(String(count), 88, 400);
+  ctx.font = "500 36px Sora, sans-serif";
+  ctx.fillStyle = "#4a524c";
+  ctx.fillText("enfoques", 88, 455);
+
+  ctx.fillStyle = "#101411";
+  ctx.font = "italic 84px 'Instrument Serif', serif";
+  ctx.fillText(`${minutes}`, 520, 400);
+  ctx.font = "500 36px Sora, sans-serif";
+  ctx.fillStyle = "#4a524c";
+  ctx.fillText("minutos", 520, 455);
+
+  ctx.font = "500 34px Sora, sans-serif";
+  ctx.fillStyle = "#101411";
+  ctx.fillText(`Hoy ${today}/${state.settings.dailyGoal}  ·  Racha ${streak}`, 88, 540);
+
+  const max = Math.max(1, ...days.map((d) => d.count));
+  const barW = 96;
+  const gap = 28;
+  const baseX = 88;
+  const baseY = 1080;
+  days.forEach((day, i) => {
+    const h = Math.round((day.count / max) * 320);
+    const x = baseX + i * (barW + gap);
+    ctx.fillStyle = day.isToday ? "#d62818" : "rgba(16,20,17,0.18)";
+    ctx.fillRect(x, baseY - h, barW, Math.max(8, h));
+    ctx.fillStyle = "#4a524c";
+    ctx.font = "700 26px Syne, sans-serif";
+    ctx.fillText(day.label, x + 18, baseY + 48);
+    ctx.font = "500 24px Sora, sans-serif";
+    ctx.fillText(String(day.count), x + 34, baseY - h - 18);
+  });
+
+  ctx.fillStyle = "#4a524c";
+  ctx.font = "500 28px Sora, sans-serif";
+  ctx.fillText("Tu tiempo · tu sello", 88, 1260);
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("blob"))), "image/png");
+  });
+  return new File([blob], `foco-semana-${todayKey()}.png`, { type: "image/png" });
 }
 
 async function exportBackup() {
@@ -1240,12 +1383,34 @@ function extendMinutes(mins) {
   const ms = mins * 60_000;
   state.remainingMs += ms;
   state.totalMs += ms;
+  state.lastExtendMs = ms;
   if (state.running) {
     state.endAt = Date.now() + state.remainingMs;
   }
-  saveSession();
+  if (state.remainingMs > 60_000) state.warnPlayed = false;
+  saveSession({ force: true });
   render();
-  showToast(mins === 1 ? "+1 minuto" : `+${mins} minutos`);
+  showToast(mins === 1 ? "+1 minuto" : `+${mins} minutos`, {
+    actionLabel: "Deshacer",
+    onAction: undoExtend,
+    duration: 4000,
+  });
+}
+
+function undoExtend() {
+  if (!state.lastExtendMs) return false;
+  const ms = state.lastExtendMs;
+  const elapsed = Math.max(0, state.totalMs - state.remainingMs);
+  const nextTotal = Math.max(elapsed + 1000, state.totalMs - ms);
+  const removed = state.totalMs - nextTotal;
+  state.totalMs = nextTotal;
+  state.remainingMs = Math.max(1000, state.remainingMs - removed);
+  if (state.running) state.endAt = Date.now() + state.remainingMs;
+  state.lastExtendMs = 0;
+  saveSession({ force: true });
+  render();
+  showToast("Tiempo deshecho");
+  return true;
 }
 
 function askConfirm({ title, text, okLabel = "Confirmar", onConfirm }) {
@@ -1336,9 +1501,23 @@ async function releaseWakeLock() {
 
 function clearTick() {
   if (state.tickId) {
+    clearTimeout(state.tickId);
     clearInterval(state.tickId);
     state.tickId = null;
   }
+}
+
+function scheduleNextTick() {
+  clearTick();
+  if (!state.running) return;
+  const delay =
+    document.visibilityState === "hidden"
+      ? 2000
+      : Math.min(1000, Math.max(200, 1000 - (Date.now() % 1000)));
+  state.tickId = setTimeout(() => {
+    tick();
+    if (state.running) scheduleNextTick();
+  }, delay);
 }
 
 function tick() {
@@ -1349,7 +1528,11 @@ function tick() {
     playChime("warn");
     if (state.settings.haptic && navigator.vibrate) navigator.vibrate([20, 30, 20]);
   }
-  render();
+  const sec = Math.ceil(state.remainingMs / 1000);
+  if (sec !== state.lastDisplaySecond || state.remainingMs <= 0) {
+    state.lastDisplaySecond = sec;
+    renderTimerChrome();
+  }
   saveSession();
   if (state.remainingMs <= 0) {
     onPhaseComplete();
@@ -1365,9 +1548,9 @@ function start({ silent = false } = {}) {
   state.running = true;
   state.endAt = Date.now() + state.remainingMs;
   state.warnPlayed = state.remainingMs <= 60_000;
-  clearTick();
+  state.lastDisplaySecond = -1;
   stopIdleLines();
-  state.tickId = setInterval(tick, 250);
+  scheduleNextTick();
   acquireWakeLock();
   saveSession({ force: true });
   if (!silent) {
@@ -1831,7 +2014,10 @@ function bindEvents() {
   els.hapticToggle.addEventListener("click", () => {
     state.settings.haptic = !state.settings.haptic;
     saveSettings();
-    if (state.settings.haptic) hapticPulse();
+    if (state.settings.haptic) {
+      if (navigator.vibrate) hapticPulse();
+      else showToast("En iPhone usa el sonido; la vibración web no está disponible");
+    }
     render();
   });
 
@@ -1860,6 +2046,35 @@ function bindEvents() {
     render();
     showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
   });
+
+  document.querySelector(".brand")?.addEventListener("click", () => {
+    if (!(state.settings.deepFocus && state.running && state.phase === "focus")) return;
+    state.settings.deepFocus = false;
+    saveSettings();
+    render();
+    showToast("Saliste del modo profundo");
+  });
+
+  if (els.todayStrip) {
+    els.todayStrip.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-task]");
+      if (!btn) return;
+      const task = btn.dataset.task.slice(0, 48);
+      state.task = task;
+      els.taskInput.value = task;
+      const match = state.history.find(
+        (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
+      );
+      if (match && CATEGORIES[match.category]) {
+        state.category = match.category;
+        state.settings.category = match.category;
+        saveSettings();
+      }
+      saveSession({ force: true });
+      render();
+      showToast("Tarea lista");
+    });
+  }
 
   if (els.nightToggle) {
     els.nightToggle.addEventListener("click", () => {
@@ -1939,9 +2154,13 @@ function bindEvents() {
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
       tick();
-      if (state.running) await acquireWakeLock();
+      if (state.running) {
+        scheduleNextTick();
+        await acquireWakeLock();
+      }
     } else {
       saveSession({ force: true });
+      if (state.running) scheduleNextTick();
     }
   });
 

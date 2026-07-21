@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#e2e4df" id="metaTheme">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Foco">
   <meta name="description" content="Foco — temporizador Pomodoro para iPhone: enfoque, descanso corto y descanso largo.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,6 +35,7 @@
           FOCO
         </h1>
         <p class="greeting" id="greeting">Listo cuando tú lo estés.</p>
+        <div class="today-strip" id="todayStrip" aria-label="Resumen de hoy" hidden></div>
       </div>
       <div class="topbar-actions">
         <button class="icon-btn" id="statsBtn" type="button" aria-label="Progreso" aria-controls="statsSheet" aria-expanded="false">
@@ -265,7 +267,7 @@
       <div class="toggle-row">
         <div>
           <div>Vibración</div>
-          <p class="hint">Un toque háptico al terminar cada bloque.</p>
+          <p class="hint">En Android vibra al terminar. En iPhone no hay API háptica en web; usa el sonido.</p>
         </div>
         <button class="toggle" id="hapticToggle" type="button" role="switch" aria-checked="true" aria-label="Vibración"></button>
       </div>
@@ -289,7 +291,7 @@
       <div class="toggle-row">
         <div>
           <div>Modo profundo</div>
-          <p class="hint">Durante el enfoque oculta saltar, reiniciar y contadores.</p>
+          <p class="hint">Durante el enfoque deja solo el anillo y Pausar. Toca el sello FOCO para salir.</p>
         </div>
         <button class="toggle" id="deepToggle" type="button" role="switch" aria-checked="false" aria-label="Modo profundo"></button>
       </div>

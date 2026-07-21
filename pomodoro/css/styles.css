@@ -240,6 +240,65 @@ button {
   transition: opacity 0.35s ease;
 }
 
+.today-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 34ch;
+}
+
+.today-strip[hidden] {
+  display: none;
+}
+
+.today-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-family: var(--display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.today-pill strong {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.today-chip {
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.today-chip:active {
+  transform: scale(0.97);
+}
+
 .topbar-actions {
   display: flex;
   gap: 8px;
@@ -614,6 +673,41 @@ body.is-deep-focus .category-row {
   pointer-events: none;
   max-height: 0;
   overflow: hidden;
+}
+
+body.is-deep-focus .brand-kicker,
+body.is-deep-focus .greeting,
+body.is-deep-focus .today-strip,
+body.is-deep-focus .topbar-actions,
+body.is-deep-focus .support,
+body.is-deep-focus .phase-label {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+body.is-deep-focus .brand {
+  font-size: clamp(1.6rem, 7vw, 2rem);
+  opacity: 0.55;
+  transition: font-size 0.35s ease, opacity 0.35s ease;
+}
+
+body.is-deep-focus .brand-mark {
+  opacity: 1;
+}
+
+body.is-deep-focus .brand {
+  cursor: pointer;
+}
+
+body.is-deep-focus .timer-shell {
+  width: min(88vw, 360px);
+}
+
+body.is-deep-focus .primary {
+  min-width: min(100%, 220px);
 }
 
 .tag {
