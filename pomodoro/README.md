@@ -2,15 +2,13 @@
 
 Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso largo, con ciclos automáticos.
 
-## Usar en iPhone
-
-Tras el deploy de GitHub Pages:
+## Usar en iPhone (sin Mac)
 
 **https://josm22.github.io/Primer/pomodoro/**
 
-1. Ábrela en **Safari**.
+1. Ábrela en **Safari** (no Chrome).
 2. Pulsa **Compartir** → **Añadir a pantalla de inicio**.
-3. Ábrela desde el icono (modo app, pantalla completa).
+3. Ábrela desde el icono **Foco** (pantalla completa, offline).
 
 ## Qué incluye
 
