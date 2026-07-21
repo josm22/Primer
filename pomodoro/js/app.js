@@ -472,6 +472,12 @@ function updateThemeColor() {
     long: "#e6eef4",
   };
   els.metaTheme.content = colors[state.phase] || colors.focus;
+  const grads = {
+    focus: "url(#ringGradFocus)",
+    short: "url(#ringGradShort)",
+    long: "url(#ringGradLong)",
+  };
+  els.ring.setAttribute("stroke", grads[state.phase] || grads.focus);
 }
 
 function renderGoalProgress() {
