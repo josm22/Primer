@@ -1,9 +1,10 @@
-const CACHE = "foco-v18";
+const CACHE = "foco-v19";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icon.svg",
+  "./icon-180.png",
   "./css/styles.css",
   "./js/app.js",
 ];
