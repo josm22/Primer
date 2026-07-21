@@ -22,7 +22,11 @@ Temporizador Pomodoro instalable en iOS: enfoque, descanso corto y descanso larg
 - Compartir semana, exportar e importar backup
 - Atajos de tareas recientes
 - Tocar el anillo para empezar/pausar
-- +1 minuto y deshacer el último enfoque
+- Puntos de ronda del ciclo Pomodoro
+- Línea de tiempo de hoy en Progreso
+- Confirmar al saltar si ya vas por la mitad
+- +1 min (mantén pulsado para +5)
+- Deshacer el último enfoque
 - Vibración opcional y mejor día de la semana
 - Aviso visual en el último minuto
 - Celebración al cumplir la meta diaria
