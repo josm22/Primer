@@ -38,6 +38,7 @@
         <div class="today-strip" id="todayStrip" aria-label="Resumen de hoy" hidden></div>
       </div>
       <div class="topbar-actions">
+        <span class="offline-badge" id="offlineBadge" hidden>Sin conexión</span>
         <button class="icon-btn" id="statsBtn" type="button" aria-label="Progreso" aria-controls="statsSheet" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 19V5"></path>
@@ -82,6 +83,11 @@
           <div class="round-dots" id="roundDots" aria-hidden="true"></div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
           <p class="support" id="supportText">Un bloque. Nada más importa.</p>
+          <div class="break-activities" id="breakActivities" hidden role="group" aria-label="Descanso activo">
+            <button type="button" class="break-act" data-act="stretch">Estirar</button>
+            <button type="button" class="break-act" data-act="water">Agua</button>
+            <button type="button" class="break-act" data-act="walk">Caminar</button>
+          </div>
           <label class="task-field">
             <span class="visually-hidden">Tarea actual</span>
             <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" list="taskSuggestions" autocomplete="off" enterkeyhint="done">
@@ -163,6 +169,21 @@
         <div class="goal-track week-goal-track" aria-hidden="true">
           <div class="goal-fill" id="weekGoalFill"></div>
         </div>
+      </div>
+
+      <div class="focus-score-row" aria-label="Puntuación de foco">
+        <div class="focus-score-ring" id="focusScoreRing" data-score="0">
+          <span class="focus-score-value" id="focusScoreValue">—</span>
+        </div>
+        <div>
+          <div class="stat-label">Puntuación de foco</div>
+          <p class="focus-score-copy" id="focusScoreCopy">Empieza un bloque para calcularla.</p>
+        </div>
+      </div>
+
+      <div class="streak-freeze-row" id="streakFreezeRow" hidden>
+        <p class="streak-freeze-copy" id="streakFreezeCopy">—</p>
+        <button class="secondary streak-freeze-btn" id="streakFreezeBtn" type="button">Proteger racha</button>
       </div>
 
       <p class="best-day" id="bestDay">Tu mejor día aparecerá aquí.</p>
@@ -287,6 +308,23 @@
         <button class="toggle" id="soundToggle" type="button" role="switch" aria-checked="true" aria-label="Sonido al terminar"></button>
       </div>
 
+      <div class="field sound-theme-field">
+        <p class="section-label">Tono de campanilla</p>
+        <div class="sound-theme-row" id="soundThemeRow" role="group" aria-label="Tono de campanilla">
+          <button type="button" class="sound-theme" data-theme="soft" aria-pressed="true">Suave</button>
+          <button type="button" class="sound-theme" data-theme="bell" aria-pressed="false">Campana</button>
+          <button type="button" class="sound-theme" data-theme="wood" aria-pressed="false">Madera</button>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Plantillas por categoría</div>
+          <p class="hint">Ajusta minutos al cambiar Trabajo, Estudio, Personal o Extra.</p>
+        </div>
+        <button class="toggle" id="categoryPresetsToggle" type="button" role="switch" aria-checked="true" aria-label="Plantillas por categoría"></button>
+      </div>
+
       <div class="toggle-row">
         <div>
           <div>Vibración</div>
@@ -397,6 +435,24 @@
       <button class="primary" id="ritualStart" type="button">Empezar</button>
       <button class="secondary ritual-skip" id="ritualSkip" type="button">Más tarde</button>
     </div>
+  </div>
+
+  <div class="goal-overlay" id="dayOverlay" hidden>
+    <div class="goal-card day-card" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+      <p class="goal-kicker" id="dayKicker">Resumen del día</p>
+      <h2 id="dayTitle">Tu día en foco</h2>
+      <p id="dayText">—</p>
+      <button class="primary" id="dayClose" type="button">Seguir</button>
+    </div>
+  </div>
+
+  <div class="recap-tip" id="recapTip" hidden>
+    <div class="install-tip-copy">
+      <strong>Tu semana en Foco</strong>
+      <p id="recapTipText">—</p>
+    </div>
+    <button class="update-tip-btn" id="recapShareBtn" type="button">Compartir</button>
+    <button class="install-tip-close" id="recapCloseBtn" type="button" aria-label="Cerrar">×</button>
   </div>
 
   <div class="update-tip" id="updateTip" hidden>
