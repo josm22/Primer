@@ -69,12 +69,14 @@ const DEFAULTS = {
   longMins: 15,
   roundsUntilLong: 4,
   dailyGoal: 8,
+  weeklyGoal: 40,
   sound: true,
   haptic: true,
   notify: true,
   autoAdvance: true,
   deepFocus: false,
   nightSoft: true,
+  quietHours: false,
   category: "trabajo",
 };
 
@@ -84,6 +86,7 @@ const LIMITS = {
   longMins: [1, 60],
   roundsUntilLong: [2, 8],
   dailyGoal: [1, 20],
+  weeklyGoal: [5, 100],
 };
 
 const els = {
@@ -125,25 +128,34 @@ const els = {
   streakStat: document.getElementById("streakStat"),
   goalStat: document.getElementById("goalStat"),
   goalFill: document.getElementById("goalFill"),
+  weekGoalStat: document.getElementById("weekGoalStat"),
+  weekGoalFill: document.getElementById("weekGoalFill"),
   bestDay: document.getElementById("bestDay"),
   presets: document.getElementById("presets"),
   goalOverlay: document.getElementById("goalOverlay"),
   goalOverlayTitle: document.getElementById("goalOverlayTitle"),
   goalOverlayText: document.getElementById("goalOverlayText"),
   goalOverlayClose: document.getElementById("goalOverlayClose"),
+  noteOverlay: document.getElementById("noteOverlay"),
+  noteInput: document.getElementById("noteInput"),
+  noteSave: document.getElementById("noteSave"),
+  noteSkip: document.getElementById("noteSkip"),
   updateTip: document.getElementById("updateTip"),
   updateTipBtn: document.getElementById("updateTipBtn"),
   deepToggle: document.getElementById("deepToggle"),
   nightToggle: document.getElementById("nightToggle"),
+  quietToggle: document.getElementById("quietToggle"),
   resetDataBtn: document.getElementById("resetDataBtn"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  exportIcsBtn: document.getElementById("exportIcsBtn"),
   importInput: document.getElementById("importInput"),
   pasteImportBtn: document.getElementById("pasteImportBtn"),
   recentTasks: document.getElementById("recentTasks"),
   categoryRow: document.getElementById("categoryRow"),
   insightText: document.getElementById("insightText"),
   heatmap: document.getElementById("heatmap"),
+  taskSuggestions: document.getElementById("taskSuggestions"),
   roundDots: document.getElementById("roundDots"),
   todayTimeline: document.getElementById("todayTimeline"),
   todayEmpty: document.getElementById("todayEmpty"),
@@ -162,6 +174,7 @@ const els = {
     longMins: document.getElementById("longMins"),
     roundsUntilLong: document.getElementById("roundsUntilLong"),
     dailyGoal: document.getElementById("dailyGoal"),
+    weeklyGoal: document.getElementById("weeklyGoal"),
   },
 };
 
@@ -201,6 +214,8 @@ const state = {
   lastExtendMs: 0,
   lastDisplaySecond: -1,
   roundDotsKey: "",
+  pendingNoteSessionId: null,
+  deferReload: false,
 };
 
 function todayKey(date = new Date()) {
@@ -312,6 +327,7 @@ function recordFocusSession(minutes) {
     date: todayKey(now),
     minutes,
     task: task || null,
+    note: null,
     category: CATEGORIES[state.category] ? state.category : "extra",
     endedAt: now.toISOString(),
   };
@@ -357,8 +373,14 @@ function playTone(ctx, frequency, startAt, duration, gainValue) {
   osc.stop(startAt + duration + 0.02);
 }
 
+function isQuietHours() {
+  if (!state.settings.quietHours) return false;
+  const hour = new Date().getHours();
+  return hour >= 22 || hour < 8;
+}
+
 function playChime(kind = "soft") {
-  if (!state.settings.sound) return;
+  if (!state.settings.sound || isQuietHours()) return;
   const ctx = ensureAudio();
   if (!ctx) return;
   const t = ctx.currentTime;
@@ -388,7 +410,7 @@ function playChime(kind = "soft") {
 }
 
 function hapticPulse(kind = "end") {
-  if (!state.settings.haptic || !navigator.vibrate) return;
+  if (!state.settings.haptic || !navigator.vibrate || isQuietHours()) return;
   if (kind === "focus-end") {
     navigator.vibrate([40, 30, 40, 30, 90]);
     return;
@@ -646,8 +668,18 @@ function buildRingTicks() {
     line.setAttribute("y1", String(50 + Math.sin(angle) * inner));
     line.setAttribute("x2", String(50 + Math.cos(angle) * outer));
     line.setAttribute("y2", String(50 + Math.sin(angle) * outer));
+    line.dataset.index = String(i);
     ticks.appendChild(line);
   }
+}
+
+function updateRingTicks(progress) {
+  const ticks = document.getElementById("ringTicks");
+  if (!ticks) return;
+  const elapsed = Math.floor(Math.min(1, Math.max(0, progress)) * 24);
+  ticks.querySelectorAll("line").forEach((line, index) => {
+    line.classList.toggle("is-elapsed", index < elapsed);
+  });
 }
 
 function applyNightMode() {
@@ -724,6 +756,9 @@ function renderTodayStrip() {
   const parts = [
     `<span class="today-pill">Hoy <strong>${today}/${goal}</strong></span>`,
   ];
+  const { count } = weekSummary();
+  const weekGoal = state.settings.weeklyGoal || 40;
+  parts.push(`<span class="today-pill">Sem <strong>${count}/${weekGoal}</strong></span>`);
   for (const task of chips) {
     parts.push(
       `<button type="button" class="today-chip" data-task="${escapeHtml(task)}">${escapeHtml(task)}</button>`
@@ -746,6 +781,12 @@ function renderGoalProgress() {
   els.goalStat.textContent = `${today}/${goal}`;
   els.goalFill.style.width = `${pct}%`;
   els.todayDisplay.textContent = `${today}/${goal}`;
+
+  const { count } = weekSummary();
+  const weekGoal = state.settings.weeklyGoal || 40;
+  const weekPct = Math.min(100, Math.round((count / Math.max(1, weekGoal)) * 100));
+  if (els.weekGoalStat) els.weekGoalStat.textContent = `${count}/${weekGoal}`;
+  if (els.weekGoalFill) els.weekGoalFill.style.width = `${weekPct}%`;
 }
 
 function renderBestDay() {
@@ -795,11 +836,15 @@ function renderHistoryList() {
       const detail = session.task
         ? `${session.minutes} min · ${formatHistoryWhen(session)}`
         : formatHistoryWhen(session);
+      const note = session.note
+        ? `<span class="history-note">${escapeHtml(session.note)}</span>`
+        : "";
       return `
       <li class="history-item" data-id="${escapeHtml(session.id)}">
         <div class="history-main">
           <strong>${title}</strong>
           ${categoryTag(session.category || "extra")}
+          ${note}
         </div>
         <span class="history-detail">${detail}</span>
         <button type="button" class="history-delete" data-del="${escapeHtml(session.id)}" aria-label="Borrar sesión">×</button>
@@ -999,9 +1044,17 @@ function recentTaskNames() {
     if (seen.has(key)) continue;
     seen.add(key);
     names.push(task);
-    if (names.length >= 4) break;
+    if (names.length >= 8) break;
   }
   return names;
+}
+
+function renderTaskSuggestions() {
+  if (!els.taskSuggestions) return;
+  const names = recentTaskNames();
+  els.taskSuggestions.innerHTML = names
+    .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
 }
 
 function renderRecentTasks() {
@@ -1051,6 +1104,7 @@ function render() {
   els.timeDisplay.textContent = formatTime(state.remainingMs);
   const progress = state.totalMs > 0 ? 1 - state.remainingMs / state.totalMs : 0;
   els.ring.style.strokeDashoffset = String(Math.min(1, Math.max(0, progress)));
+  updateRingTicks(progress);
   els.primaryBtn.textContent = state.running ? "Pausa" : state.remainingMs < state.totalMs ? "Continuar" : "Empezar";
   els.shell.classList.toggle("is-running", state.running);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
@@ -1071,6 +1125,7 @@ function render() {
   els.outputs.longMins.value = state.settings.longMins;
   els.outputs.roundsUntilLong.value = state.settings.roundsUntilLong;
   els.outputs.dailyGoal.value = state.settings.dailyGoal;
+  if (els.outputs.weeklyGoal) els.outputs.weeklyGoal.value = state.settings.weeklyGoal;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.hapticToggle.setAttribute("aria-checked", String(state.settings.haptic));
@@ -1079,6 +1134,10 @@ function render() {
   if (els.nightToggle) {
     els.nightToggle.setAttribute("aria-checked", String(state.settings.nightSoft));
   }
+  if (els.quietToggle) {
+    els.quietToggle.setAttribute("aria-checked", String(state.settings.quietHours));
+  }
+  renderTaskSuggestions();
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
   updateThemeColor();
@@ -1094,6 +1153,7 @@ function renderTimerChrome() {
   els.timeDisplay.textContent = formatTime(state.remainingMs);
   const progress = state.totalMs > 0 ? 1 - state.remainingMs / state.totalMs : 0;
   els.ring.style.strokeDashoffset = String(Math.min(1, Math.max(0, progress)));
+  updateRingTicks(progress);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   updateDocumentTitle();
 }
@@ -1248,6 +1308,66 @@ async function exportBackup() {
   }
 }
 
+function toIcsDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function buildIcs() {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Foco//Pomodoro//ES",
+    "CALSCALE:GREGORIAN",
+  ];
+  for (const session of state.history.slice(0, 120)) {
+    const end = session.endedAt ? new Date(session.endedAt) : parseDayKey(session.date);
+    if (Number.isNaN(end.getTime())) continue;
+    const start = new Date(end.getTime() - Math.max(1, Number(session.minutes) || 25) * 60_000);
+    const title = (session.task || "Enfoque").replace(/[,;\\]/g, " ");
+    const note = (session.note || "").replace(/[,;\\]/g, " ");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${session.id}@foco`,
+      `DTSTAMP:${toIcsDate(new Date())}`,
+      `DTSTART:${toIcsDate(start)}`,
+      `DTEND:${toIcsDate(end)}`,
+      `SUMMARY:Foco · ${title}`,
+      note ? `DESCRIPTION:${note}` : "DESCRIPTION:Sesión de enfoque",
+      "END:VEVENT"
+    );
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
+async function exportIcs() {
+  if (!state.history.length) {
+    showToast("Aún no hay sesiones para exportar");
+    return;
+  }
+  const ics = buildIcs();
+  const filename = `foco-${todayKey()}.ics`;
+  try {
+    if (navigator.share && navigator.canShare) {
+      const file = new File([ics], filename, { type: "text/calendar" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Foco calendario" });
+        return;
+      }
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+  const blob = new Blob([ics], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Calendario exportado");
+}
+
 function importBackupText(text) {
   let parsed;
   try {
@@ -1268,12 +1388,13 @@ function importBackupText(text) {
   }
 
   const normalized = sessions
-    .filter((s) => s && s.date && (s.minutes || s.minutes === 0))
+    .filter((s) => s && s.date && Number(s.minutes) > 0)
     .map((s, index) => ({
       id: s.id || `import-${Date.now()}-${index}`,
       date: String(s.date),
       minutes: Number(s.minutes) || 0,
       task: s.task || null,
+      note: typeof s.note === "string" ? s.note.slice(0, 80) : null,
       category: CATEGORIES[s.category] ? s.category : "extra",
       endedAt: s.endedAt || `${s.date}T12:00:00.000Z`,
     }));
@@ -1346,6 +1467,18 @@ function hideGoalCelebration() {
   els.goalOverlay.hidden = true;
   const host = document.getElementById("goalSparks");
   if (host) host.innerHTML = "";
+  if (state.lastSessionId) {
+    showToast("Enfoque guardado", {
+      actionLabel: "Deshacer",
+      onAction: undoLastFocusSession,
+      duration: 5000,
+    });
+  }
+  if (state.pendingNoteSessionId) {
+    openNotePrompt(state.pendingNoteSessionId);
+  } else if (state.settings.autoAdvance && !state.running) {
+    start({ silent: true });
+  }
 }
 
 function applyFocusPreset(minutes) {
@@ -1458,6 +1591,7 @@ async function requestNotifyPermission() {
 function notifyEnd(kind = "soft") {
   playChime(kind);
   hapticPulse(kind === "soft" ? "end" : kind);
+  if (isQuietHours()) return;
   if (!state.settings.notify || !("Notification" in window) || Notification.permission !== "granted") return;
   const title = state.phase === "focus" ? "Enfoque terminado" : "Descanso terminado";
   const body =
@@ -1574,6 +1708,10 @@ function pause() {
   hapticPulse("pause");
   syncIdleLines();
   render();
+  if (state.deferReload) {
+    state.deferReload = false;
+    window.location.reload();
+  }
 }
 
 function resetCurrent() {
@@ -1636,6 +1774,52 @@ function maybeCelebrateStreak() {
   return true;
 }
 
+function openNotePrompt(sessionId) {
+  if (!els.noteOverlay) return;
+  state.pendingNoteSessionId = sessionId;
+  if (els.noteInput) els.noteInput.value = "";
+  els.noteOverlay.hidden = false;
+  const card = els.noteOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+  setTimeout(() => els.noteInput?.focus(), 200);
+}
+
+function closeNotePrompt() {
+  if (!els.noteOverlay) return;
+  clearFocusTrap();
+  els.noteOverlay.hidden = true;
+  state.pendingNoteSessionId = null;
+}
+
+function saveSessionNote() {
+  const id = state.pendingNoteSessionId;
+  const note = (els.noteInput?.value || "").trim().slice(0, 80);
+  if (id && note) {
+    const session = state.history.find((s) => s.id === id);
+    if (session) {
+      session.note = note;
+      saveHistory();
+    }
+  }
+  closeNotePrompt();
+  renderStatsPanel();
+  maybeStartAfterNote();
+}
+
+function skipSessionNote() {
+  closeNotePrompt();
+  maybeStartAfterNote();
+}
+
+function maybeStartAfterNote() {
+  if (state.settings.autoAdvance && !state.running) {
+    start({ silent: true });
+  }
+}
+
 function onPhaseComplete() {
   if (state.completing || !state.running) return;
   state.completing = true;
@@ -1657,8 +1841,9 @@ function onPhaseComplete() {
   notifyEnd(chimeKind);
 
   let celebratedSomething = false;
+  let recorded = null;
   if (finished === "focus") {
-    recordFocusSession(minutes);
+    recorded = recordFocusSession(minutes);
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
     if (today >= goal) {
@@ -1682,6 +1867,15 @@ function onPhaseComplete() {
   saveSession({ force: true });
   state.completing = false;
 
+  if (finished === "focus" && recorded && !celebratedSomething) {
+    openNotePrompt(recorded.id);
+    return;
+  }
+
+  if (celebratedSomething && recorded) {
+    state.pendingNoteSessionId = recorded.id;
+  }
+
   if (state.settings.autoAdvance && !celebratedSomething) {
     start({ silent: true });
   }
@@ -1690,19 +1884,14 @@ function onPhaseComplete() {
 function doSkipPhase() {
   const finished = state.phase;
   pause();
+  // Saltar no cuenta el enfoque hacia el descanso largo.
   if (finished === "focus") {
-    const nextCount = state.completedInCycle + 1;
-    if (nextCount >= state.settings.roundsUntilLong) {
-      state.completedInCycle = 0;
-      setPhase("long", { resetTime: true });
-    } else {
-      state.completedInCycle = nextCount;
-      setPhase("short", { resetTime: true });
-    }
+    setPhase("short", { resetTime: true });
   } else {
     setPhase("focus", { resetTime: true });
   }
-  saveSession();
+  saveSession({ force: true });
+  showToast(finished === "focus" ? "Enfoque saltado" : "Pausa saltada");
 }
 
 function skipPhase() {
@@ -1876,7 +2065,7 @@ function adjustSetting(key, delta) {
   const [min, max] = LIMITS[key];
   state.settings[key] = clamp(state.settings[key] + delta, [min, max]);
   saveSettings();
-  if (key === "dailyGoal") {
+  if (key === "dailyGoal" || key === "weeklyGoal") {
     render();
     return;
   }
@@ -2103,6 +2292,34 @@ function bindEvents() {
     exportBackup();
   });
 
+  if (els.exportIcsBtn) {
+    els.exportIcsBtn.addEventListener("click", () => {
+      exportIcs();
+    });
+  }
+
+  if (els.noteSave) {
+    els.noteSave.addEventListener("click", saveSessionNote);
+  }
+  if (els.noteSkip) {
+    els.noteSkip.addEventListener("click", skipSessionNote);
+  }
+  els.noteInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveSessionNote();
+    }
+  });
+
+  if (els.quietToggle) {
+    els.quietToggle.addEventListener("click", () => {
+      state.settings.quietHours = !state.settings.quietHours;
+      saveSettings();
+      render();
+      showToast(state.settings.quietHours ? "Horas quietas on (22–8)" : "Horas quietas off");
+    });
+  }
+
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
     await handleImportFile(file);
@@ -2180,6 +2397,10 @@ function bindEvents() {
         hideGoalCelebration();
         return;
       }
+      if (els.noteOverlay && !els.noteOverlay.hidden) {
+        skipSessionNote();
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -2190,6 +2411,7 @@ function bindEvents() {
     if (typing) return;
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
+    if (els.noteOverlay && !els.noteOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -2249,7 +2471,15 @@ function registerSW() {
         });
       });
       navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (state.running) {
+          state.deferReload = true;
+          showToast("Actualización lista. Se aplicará al pausar.");
+          return;
+        }
         window.location.reload();
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reg.update().catch(() => {});
       });
     } catch {
       // Sin service worker seguimos en modo online.
