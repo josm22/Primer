@@ -125,8 +125,6 @@ body[data-phase="focus"] {
   filter: blur(52px);
   opacity: 0.5;
   will-change: transform;
-  --tilt-x: 0px;
-  --tilt-y: 0px;
 }
 
 .orb-a {
@@ -138,7 +136,7 @@ body[data-phase="focus"] {
   left: -16%;
   background: var(--phase-soft);
   animation: drift-a 16s ease-in-out infinite;
-  translate: var(--tilt-x) var(--tilt-y);
+  translate: var(--tilt-x, 0px) var(--tilt-y, 0px);
 }
 
 .orb-b {
@@ -151,7 +149,7 @@ body[data-phase="focus"] {
   background: rgba(255, 255, 255, 0.45);
   border-radius: 55% 45% 40% 60%;
   animation: drift-b 20s ease-in-out infinite;
-  translate: calc(var(--tilt-x) * -0.7) calc(var(--tilt-y) * -0.7);
+  translate: calc(var(--tilt-x, 0px) * -0.7) calc(var(--tilt-y, 0px) * -0.7);
 }
 
 @keyframes drift-a {
@@ -1816,7 +1814,18 @@ body.is-stamping .timer-shell::before {
   .ritual-seal,
   .timer-shell::after,
   .timer-shell.is-running .ring-progress,
-  .timer-shell.is-running .time {
+  .timer-shell.is-running .time,
+  .timer-shell.is-ending .ring-progress,
+  .round-dot.is-pop,
+  .day-bar,
+  .spark {
+    animation: none !important;
+  }
+
+  body.is-stamping .brand-mark,
+  body.is-stamping .timer-shell::before,
+  .phase-label.is-swap,
+  .support.is-swap {
     animation: none !important;
   }
 

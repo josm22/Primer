@@ -42,6 +42,17 @@ const BREAK_TIPS = {
   ],
 };
 
+const FOCUS_IDLE_LINES = [
+  "Un bloque. Nada más importa.",
+  "Elige una sola cosa y protégela.",
+  "El sello espera tu decisión.",
+  "Menos pestañas. Más presencia.",
+  "Empieza imperfecto. Sigue entero.",
+  "Hoy también se construye a bloques.",
+];
+
+const DAY_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
 const CATEGORIES = {
   trabajo: { key: "trabajo", label: "Trabajo" },
   estudio: { key: "estudio", label: "Estudio" },
@@ -64,6 +75,7 @@ const DEFAULTS = {
   autoAdvance: true,
   deepFocus: false,
   nightSoft: true,
+  category: "trabajo",
 };
 
 const LIMITS = {
@@ -180,6 +192,11 @@ const state = {
   completing: false,
   lastSessionSaveAt: 0,
   stampTimer: null,
+  warnPlayed: false,
+  idleLineTimer: null,
+  idleLineIndex: 0,
+  sheetFocusReturn: null,
+  focusTrapHandler: null,
 };
 
 function todayKey(date = new Date()) {
@@ -357,6 +374,11 @@ function playChime(kind = "soft") {
     playTone(ctx, 880, t, 0.1, 0.05);
     return;
   }
+  if (kind === "warn") {
+    playTone(ctx, 698.46, t, 0.12, 0.05);
+    playTone(ctx, 698.46, t + 0.18, 0.18, 0.045);
+    return;
+  }
   playTone(ctx, 784, t, 0.22, 0.08);
   playTone(ctx, 1046.5, t + 0.16, 0.34, 0.07);
 }
@@ -468,6 +490,7 @@ function restoreSession() {
         state.remainingMs = left;
         state.endAt = Number(saved.endAt);
         state.running = true;
+        state.warnPlayed = left <= 60_000;
         clearTick();
         state.tickId = setInterval(tick, 250);
         acquireWakeLock();
@@ -573,9 +596,37 @@ function setPhase(phase, { resetTime = true } = {}) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
     state.endAt = null;
+    state.warnPlayed = false;
   }
   updateThemeColor();
+  syncIdleLines();
   render();
+}
+
+function stopIdleLines() {
+  if (state.idleLineTimer) {
+    clearInterval(state.idleLineTimer);
+    state.idleLineTimer = null;
+  }
+}
+
+function syncIdleLines() {
+  stopIdleLines();
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const idleFocus =
+    !state.running &&
+    !state.completing &&
+    state.phase === "focus" &&
+    state.remainingMs === state.totalMs;
+  if (!idleFocus || reduced) return;
+  state.idleLineTimer = setInterval(() => {
+    if (state.running || state.phase !== "focus") {
+      stopIdleLines();
+      return;
+    }
+    state.idleLineIndex = (state.idleLineIndex + 1) % FOCUS_IDLE_LINES.length;
+    swapText(els.supportText, FOCUS_IDLE_LINES[state.idleLineIndex]);
+  }, 14000);
 }
 
 function buildRingTicks() {
@@ -806,30 +857,40 @@ function renderInsight() {
   const goal = state.settings.dailyGoal;
   const streak = currentStreak();
   const avg = count ? Math.round(minutes / count) : 0;
+  const weekCats = days.flatMap((d) =>
+    state.history.filter((s) => s.date === d.key).map((s) => s.category || "extra")
+  );
   const topCategory = Object.entries(
-    state.history.reduce((acc, session) => {
-      const key = session.category || "extra";
+    weekCats.reduce((acc, key) => {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})
   ).sort((a, b) => b[1] - a[1])[0];
+
+  const yesterdayKey = shiftDayKey(todayKey(), -1);
+  const yesterday = state.history.filter((s) => s.date === yesterdayKey).length;
 
   if (!count && !today) {
     els.insightText.textContent = "Empieza un enfoque para ver tu ritmo.";
     return;
   }
   if (today >= goal) {
-    els.insightText.textContent = `Ritmo alto: media de ${avg || state.settings.focusMins} min · racha ${streak}.`;
+    els.insightText.textContent = `Meta sellada. Media ${avg || state.settings.focusMins} min · racha ${streak}.`;
     return;
   }
   const remaining = Math.max(0, goal - today);
+  if (yesterday > 0 && today < yesterday) {
+    els.insightText.textContent = `Ayer ${yesterday}, hoy ${today}. Te faltan ${remaining} para la meta.`;
+    return;
+  }
   const cat = topCategory ? categoryLabel(topCategory[0]).toLowerCase() : "foco";
   const best = days.reduce((acc, day) => (day.count > (acc?.count || 0) ? day : acc), null);
   if (best && best.count > 0) {
-    els.insightText.textContent = `Te faltan ${remaining} para la meta. Suele irte bien los ${best.label}. Más en ${cat}.`;
-  } else {
-    els.insightText.textContent = `Te faltan ${remaining} para la meta de hoy. Media: ${avg || state.settings.focusMins} min.`;
+    const dayName = DAY_LONG[best.date.getDay()];
+    els.insightText.textContent = `Te faltan ${remaining}. Suele irte bien el ${dayName}. Esta semana gana ${cat}.`;
+    return;
   }
+  els.insightText.textContent = `Te faltan ${remaining} para la meta. Media: ${avg || state.settings.focusMins} min.`;
 }
 
 function renderCategories() {
@@ -1192,12 +1253,27 @@ function askConfirm({ title, text, okLabel = "Confirmar", onConfirm }) {
   els.confirmText.textContent = text;
   els.confirmOk.textContent = okLabel;
   state.confirmHandler = onConfirm;
+  state.sheetFocusReturn = state.sheetFocusReturn || document.activeElement;
   els.confirmOverlay.hidden = false;
+  const card = els.confirmOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
 }
 
 function hideConfirm() {
+  clearFocusTrap();
   els.confirmOverlay.hidden = true;
   state.confirmHandler = null;
+  if (!state.openSheet && state.sheetFocusReturn?.focus) {
+    state.sheetFocusReturn.focus();
+    state.sheetFocusReturn = null;
+  } else if (state.openSheet) {
+    const sheet = state.openSheet === "stats" ? els.statsSheet : els.settingsSheet;
+    const panel = sheet.querySelector(".sheet-panel");
+    if (panel) trapFocus(panel);
+  }
 }
 
 function toggleTimer() {
@@ -1236,6 +1312,12 @@ async function acquireWakeLock() {
     state.wakeLock = await navigator.wakeLock.request("screen");
     state.wakeLock.addEventListener("release", () => {
       state.wakeLock = null;
+      if (!state.running || document.visibilityState !== "visible") return;
+      setTimeout(() => {
+        if (state.running && document.visibilityState === "visible" && !state.wakeLock) {
+          acquireWakeLock().catch(() => {});
+        }
+      }, 900);
     });
   } catch {
     // User denied or unsupported in background tab.
@@ -1262,6 +1344,11 @@ function clearTick() {
 function tick() {
   if (!state.running || state.endAt == null || state.completing) return;
   state.remainingMs = Math.max(0, state.endAt - Date.now());
+  if (!state.warnPlayed && state.remainingMs > 0 && state.remainingMs <= 60_000) {
+    state.warnPlayed = true;
+    playChime("warn");
+    if (state.settings.haptic && navigator.vibrate) navigator.vibrate([20, 30, 20]);
+  }
   render();
   saveSession();
   if (state.remainingMs <= 0) {
@@ -1277,7 +1364,9 @@ function start({ silent = false } = {}) {
   }
   state.running = true;
   state.endAt = Date.now() + state.remainingMs;
+  state.warnPlayed = state.remainingMs <= 60_000;
   clearTick();
+  stopIdleLines();
   state.tickId = setInterval(tick, 250);
   acquireWakeLock();
   saveSession({ force: true });
@@ -1300,6 +1389,7 @@ function pause() {
   releaseWakeLock();
   saveSession({ force: true });
   hapticPulse("pause");
+  syncIdleLines();
   render();
 }
 
@@ -1446,18 +1536,64 @@ function skipPhase() {
   doSkipPhase();
 }
 
+function getFocusable(container) {
+  return [...container.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+  )].filter((el) => el.offsetParent !== null || el === document.activeElement);
+}
+
+function clearFocusTrap() {
+  if (state.focusTrapHandler) {
+    document.removeEventListener("keydown", state.focusTrapHandler, true);
+    state.focusTrapHandler = null;
+  }
+}
+
+function trapFocus(container) {
+  clearFocusTrap();
+  const focusables = getFocusable(container);
+  const target = focusables[0] || container;
+  target.focus?.();
+  state.focusTrapHandler = (event) => {
+    if (event.key !== "Tab" || !container.isConnected) return;
+    const items = getFocusable(container);
+    if (!items.length) {
+      event.preventDefault();
+      container.focus?.();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  document.addEventListener("keydown", state.focusTrapHandler, true);
+}
+
 function openSheet(name) {
-  closeSheet();
+  closeSheet({ restoreFocus: false });
   state.openSheet = name;
+  state.sheetFocusReturn = document.activeElement;
   const sheet = name === "stats" ? els.statsSheet : els.settingsSheet;
   const btn = name === "stats" ? els.statsBtn : els.settingsBtn;
   sheet.classList.add("is-open");
   sheet.setAttribute("aria-hidden", "false");
   btn.setAttribute("aria-expanded", "true");
   if (name === "stats") renderStatsPanel();
+  const panel = sheet.querySelector(".sheet-panel");
+  if (panel) {
+    if (!panel.hasAttribute("tabindex")) panel.setAttribute("tabindex", "-1");
+    trapFocus(panel);
+  }
 }
 
-function closeSheet() {
+function closeSheet({ restoreFocus = true } = {}) {
+  clearFocusTrap();
   [els.statsSheet, els.settingsSheet].forEach((sheet) => {
     sheet.classList.remove("is-open");
     sheet.setAttribute("aria-hidden", "true");
@@ -1470,6 +1606,10 @@ function closeSheet() {
   els.statsBtn.setAttribute("aria-expanded", "false");
   els.settingsBtn.setAttribute("aria-expanded", "false");
   state.openSheet = null;
+  if (restoreFocus && state.sheetFocusReturn?.focus) {
+    state.sheetFocusReturn.focus();
+  }
+  state.sheetFocusReturn = null;
 }
 
 function setupSheetGestures(sheet) {
@@ -1771,16 +1911,28 @@ function bindEvents() {
     const btn = event.target.closest("[data-category]");
     if (!btn) return;
     state.category = btn.dataset.category;
-    saveSession();
+    state.settings.category = state.category;
+    saveSettings();
+    saveSession({ force: true });
     renderCategories();
   });
 
   els.recentTasks.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-task]");
     if (!btn) return;
-    state.task = btn.dataset.task.slice(0, 48);
-    els.taskInput.value = state.task;
-    saveSession();
+    const task = btn.dataset.task.slice(0, 48);
+    state.task = task;
+    els.taskInput.value = task;
+    const match = state.history.find(
+      (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
+    );
+    if (match && CATEGORIES[match.category]) {
+      state.category = match.category;
+      state.settings.category = match.category;
+      saveSettings();
+    }
+    saveSession({ force: true });
+    renderCategories();
     showToast("Tarea lista");
   });
 
@@ -1810,6 +1962,47 @@ function bindEvents() {
         return;
       }
       if (state.openSheet) closeSheet();
+      return;
+    }
+
+    const typing =
+      event.target &&
+      (event.target.closest("input, textarea, select") || event.target.isContentEditable);
+    if (typing) return;
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
+    if (state.openSheet) return;
+
+    const key = event.key.toLowerCase();
+    if (key === " " || key === "k") {
+      event.preventDefault();
+      toggleTimer();
+      return;
+    }
+    if (key === "r") {
+      event.preventDefault();
+      resetCurrent();
+      return;
+    }
+    if (key === "s") {
+      event.preventDefault();
+      skipPhase();
+      return;
+    }
+    if (key === "+" || key === "=") {
+      event.preventDefault();
+      extendMinutes(1);
+      return;
+    }
+    if (key === "1" || key === "2" || key === "3") {
+      const map = { 1: 15, 2: 25, 3: 50 };
+      event.preventDefault();
+      applyFocusPreset(map[key]);
+      return;
+    }
+    if (key === "?") {
+      event.preventDefault();
+      showToast("Espacio pausa · R reinicia · S salta · +1 · 1/2/3 presets", { duration: 4200 });
     }
   });
 }
@@ -1929,12 +2122,16 @@ function setupRitual() {
 }
 
 function init() {
+  if (CATEGORIES[state.settings.category]) {
+    state.category = state.settings.category;
+  }
   bindEvents();
   buildRingTicks();
   if (!restoreSession()) {
     setPhase("focus", { resetTime: true });
   } else {
     render();
+    syncIdleLines();
   }
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
