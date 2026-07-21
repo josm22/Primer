@@ -49,6 +49,7 @@ const DEFAULTS = {
   roundsUntilLong: 4,
   dailyGoal: 8,
   sound: true,
+  haptic: true,
   notify: true,
   autoAdvance: true,
   deepFocus: false,
@@ -71,6 +72,7 @@ const els = {
   supportText: document.getElementById("supportText"),
   primaryBtn: document.getElementById("primaryBtn"),
   skipBtn: document.getElementById("skipBtn"),
+  extendBtn: document.getElementById("extendBtn"),
   resetBtn: document.getElementById("resetBtn"),
   roundDisplay: document.getElementById("roundDisplay"),
   todayDisplay: document.getElementById("todayDisplay"),
@@ -82,9 +84,12 @@ const els = {
   closeStatsBtn: document.getElementById("closeStatsBtn"),
   notifyToggle: document.getElementById("notifyToggle"),
   soundToggle: document.getElementById("soundToggle"),
+  hapticToggle: document.getElementById("hapticToggle"),
   autoToggle: document.getElementById("autoToggle"),
   taskInput: document.getElementById("taskInput"),
   toast: document.getElementById("toast"),
+  toastMessage: document.getElementById("toastMessage"),
+  toastAction: document.getElementById("toastAction"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -95,6 +100,7 @@ const els = {
   streakStat: document.getElementById("streakStat"),
   goalStat: document.getElementById("goalStat"),
   goalFill: document.getElementById("goalFill"),
+  bestDay: document.getElementById("bestDay"),
   presets: document.getElementById("presets"),
   goalOverlay: document.getElementById("goalOverlay"),
   goalOverlayTitle: document.getElementById("goalOverlayTitle"),
@@ -133,6 +139,8 @@ const state = {
   task: "",
   waitingWorker: null,
   goalCelebratedDate: localStorage.getItem("foco-goal-celebrated") || "",
+  lastSessionId: null,
+  toastActionHandler: null,
 };
 
 function todayKey(date = new Date()) {
@@ -216,14 +224,29 @@ function saveHistory() {
 function recordFocusSession(minutes) {
   const now = new Date();
   const task = state.task.trim();
-  state.history.unshift({
+  const session = {
     id: `${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
     date: todayKey(now),
     minutes,
     task: task || null,
     endedAt: now.toISOString(),
-  });
+  };
+  state.history.unshift(session);
+  state.lastSessionId = session.id;
   saveHistory();
+  return session;
+}
+
+function undoLastFocusSession() {
+  if (!state.lastSessionId) return false;
+  const before = state.history.length;
+  state.history = state.history.filter((s) => s.id !== state.lastSessionId);
+  if (state.history.length === before) return false;
+  state.lastSessionId = null;
+  saveHistory();
+  render();
+  showToast("Enfoque deshecho");
+  return true;
 }
 
 function ensureAudio() {
@@ -261,6 +284,7 @@ function playChime() {
 }
 
 function hapticPulse() {
+  if (!state.settings.haptic) return;
   if (navigator.vibrate) navigator.vibrate([70, 40, 90]);
 }
 
@@ -452,6 +476,16 @@ function renderGoalProgress() {
   els.todayDisplay.textContent = `${today}/${goal}`;
 }
 
+function renderBestDay() {
+  const { days } = weekSummary();
+  const best = days.reduce((acc, day) => (day.count > (acc?.count || 0) ? day : acc), null);
+  if (!best || best.count <= 0) {
+    els.bestDay.textContent = "Tu mejor día aparecerá aquí.";
+    return;
+  }
+  els.bestDay.textContent = `Mejor día: ${best.label} · ${best.count} enfoques · ${best.minutes} min`;
+}
+
 function renderWeekChart() {
   const { days, count, minutes } = weekSummary();
   const max = Math.max(1, ...days.map((d) => d.count));
@@ -510,6 +544,7 @@ function escapeHtml(value) {
 function renderStatsPanel() {
   renderWeekChart();
   renderHistoryList();
+  renderBestDay();
 }
 
 function recentTaskNames() {
@@ -576,10 +611,12 @@ function render() {
   els.outputs.dailyGoal.value = state.settings.dailyGoal;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
+  els.hapticToggle.setAttribute("aria-checked", String(state.settings.haptic));
   els.autoToggle.setAttribute("aria-checked", String(state.settings.autoAdvance));
   els.deepToggle.setAttribute("aria-checked", String(state.settings.deepFocus));
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
+  els.shell.setAttribute("aria-label", state.running ? "Pausar temporizador" : "Empezar o continuar temporizador");
   if (document.activeElement !== els.taskInput) {
     els.taskInput.value = state.task;
   }
@@ -748,11 +785,40 @@ function applyFocusPreset(minutes) {
   showToast(`Enfoque a ${minutes} min`);
 }
 
-function showToast(message) {
-  els.toast.textContent = message;
+function showToast(message, { actionLabel = null, onAction = null, duration = 2400 } = {}) {
+  els.toast.hidden = false;
+  els.toastMessage.textContent = message;
+  state.toastActionHandler = onAction;
+  if (actionLabel && onAction) {
+    els.toastAction.hidden = false;
+    els.toastAction.textContent = actionLabel;
+  } else {
+    els.toastAction.hidden = true;
+  }
   els.toast.classList.add("is-show");
   clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => els.toast.classList.remove("is-show"), 2400);
+  state.toastTimer = setTimeout(() => {
+    els.toast.classList.remove("is-show");
+    state.toastActionHandler = null;
+    els.toastAction.hidden = true;
+  }, duration);
+}
+
+function extendOneMinute() {
+  state.remainingMs += 60_000;
+  state.totalMs += 60_000;
+  if (state.running) {
+    state.endAt = Date.now() + state.remainingMs;
+  }
+  saveSession();
+  render();
+  showToast("+1 minuto");
+}
+
+function toggleTimer() {
+  ensureAudio();
+  if (state.running) pause();
+  else start();
 }
 
 async function requestNotifyPermission() {
@@ -899,7 +965,11 @@ function onPhaseComplete() {
     if (reachedGoal) {
       showGoalCelebration(today, goal);
     } else {
-      showToast(`Enfoque completado · ${today}/${goal}`);
+      showToast(`Enfoque completado · ${today}/${goal}`, {
+        actionLabel: "Deshacer",
+        onAction: undoLastFocusSession,
+        duration: 5000,
+      });
     }
   } else {
     showToast("Descanso completado");
@@ -975,14 +1045,28 @@ function bindEvents() {
     document.addEventListener(type, unlockAudio, { once: true, passive: true });
   });
 
-  els.primaryBtn.addEventListener("click", () => {
-    ensureAudio();
-    if (state.running) pause();
-    else start();
+  els.primaryBtn.addEventListener("click", toggleTimer);
+
+  els.shell.addEventListener("click", (event) => {
+    if (event.target.closest("input, button, label, a")) return;
+    toggleTimer();
+  });
+
+  els.shell.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleTimer();
+    }
   });
 
   els.resetBtn.addEventListener("click", resetCurrent);
   els.skipBtn.addEventListener("click", skipPhase);
+  els.extendBtn.addEventListener("click", extendOneMinute);
+  els.toastAction.addEventListener("click", () => {
+    if (typeof state.toastActionHandler === "function") {
+      state.toastActionHandler();
+    }
+  });
   els.goalOverlayClose.addEventListener("click", hideGoalCelebration);
   els.goalOverlay.addEventListener("click", (event) => {
     if (event.target === els.goalOverlay) hideGoalCelebration();
@@ -1034,6 +1118,13 @@ function bindEvents() {
       ensureAudio();
       playChime();
     }
+    render();
+  });
+
+  els.hapticToggle.addEventListener("click", () => {
+    state.settings.haptic = !state.settings.haptic;
+    saveSettings();
+    if (state.settings.haptic) hapticPulse();
     render();
   });
 
