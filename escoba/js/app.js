@@ -52,6 +52,8 @@ const state = {
   guestPoll: null,
   netChain: Promise.resolve(),
   nameHelloSent: false,
+  waitRetry: false,
+  stateEchoTimer: null,
 };
 
 let audioCtx = null;
@@ -365,6 +367,8 @@ function patchSelection() {
 async function finishAfterMove() {
   const g = state.game;
   if (!g) return;
+  const gen = state.playGen;
+  const cancelled = () => state.playGen !== gen || state.game !== g;
 
   const last = normalizeLogMove(lastMoveFrom(g));
   if (last?.type === 'escoba') {
@@ -376,6 +380,7 @@ async function finishAfterMove() {
     state.holdHandReveal = true;
     render();
     await sleep(320);
+    if (cancelled()) return;
     requestDeal({ handsOnly: true });
     await runDealIfNeeded();
     return;
@@ -385,8 +390,16 @@ async function finishAfterMove() {
     setMsg(g.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
     // Mantener cartas en el DOM para el barrido de restos
     await sweepRoundLeftovers(g);
+    if (cancelled()) {
+      state.busy = false;
+      return;
+    }
     render();
     await sleep(550);
+    if (cancelled()) {
+      state.busy = false;
+      return;
+    }
     if (state.game === g) showRoundPanel(g);
     state.busy = false;
     return;
@@ -441,20 +454,39 @@ function armMoveWatch() {
   clearTimeout(state.moveWatch);
   state.moveWatch = setTimeout(() => {
     if (!state.busy || state.role !== 'guest') return;
-    const snap = state.pendingSnap;
+    // No restaurar selección: evita reenvío duplicado si el host ya aplicó
     clearGhosts();
     clearSending();
-    state.busy = false;
     state.animSeat = null;
-    if (snap?.move) {
-      state.selectedHand = snap.move.cardId || null;
-      state.selectedTable = new Set(snap.move.captureIds || []);
-    }
-    state.pendingSnap = null;
-    flashBad('Sin respuesta — reintentando');
+    flashBad('Sin respuesta — sincronizando');
     setNetChip('Sincronizando', 'warn');
+    setMsg('Sincronizando…');
     requestStateFromHost();
-    render();
+    // Segundo intento un poco después por si el ping se pierde
+    setTimeout(() => {
+      if (state.role !== 'guest' || !state.busy) return;
+      requestStateFromHost();
+    }, 2500);
+    // Si tras ~6s más sigue sin estado, libera para reintentar a mano
+    clearTimeout(state.moveWatch);
+    state.moveWatch = setTimeout(() => {
+      if (!state.busy || state.role !== 'guest') return;
+      const snap = state.pendingSnap;
+      clearGhosts();
+      clearSending();
+      state.busy = false;
+      state.animSeat = null;
+      if (snap?.move) {
+        state.selectedHand = snap.move.cardId || null;
+        state.selectedTable = new Set(snap.move.captureIds || []);
+      }
+      state.pendingSnap = null;
+      state.waitRetry = false;
+      flashBad('Sin respuesta — puedes reintentar');
+      setNetChip('Sync…', 'warn');
+      requestStateFromHost();
+      render();
+    }, 6000);
   }, 16000);
 }
 
@@ -1030,9 +1062,24 @@ function sendState(game = state.game) {
     game: serializeState(game),
     names: state.names,
   };
-  if (state.net.send(payload)) return true;
-  setTimeout(() => state.net?.send(payload), 500);
-  return false;
+  const ok = state.net.send(payload);
+  if (!ok) {
+    setTimeout(() => state.net?.send(payload), 500);
+  }
+  // Ecos retrasados por si un publish se pierde (QoS no es magia absoluta)
+  clearTimeout(state.stateEchoTimer);
+  const gen = state.playGen;
+  const logLen = (game.moveLog || []).length;
+  state.stateEchoTimer = setTimeout(() => {
+    if (state.playGen !== gen || state.role !== 'host' || !state.net || !state.game) return;
+    if ((state.game.moveLog || []).length !== logLen) return;
+    state.net.send({
+      type: 'state',
+      game: serializeState(state.game),
+      names: state.names,
+    });
+  }, 900);
+  return ok;
 }
 
 async function applyAndReveal(move, { broadcast = false } = {}) {
@@ -1111,6 +1158,7 @@ async function commitLocalMove(move) {
     });
     return true;
   } catch (err) {
+    state.busy = false;
     const reason = err?.message || 'Jugada inválida';
     // Mensajes cortos de regla, sin calcular por ti
     if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
@@ -1123,9 +1171,14 @@ async function commitLocalMove(move) {
 
 function submitMove(move) {
   if (state.busy) return;
+  // Latch inmediato: evita doble toque antes del microtask de applyAndReveal
+  state.busy = true;
+  $('#btnCapture').disabled = true;
+  $('#btnDiscard').disabled = true;
+
   if (state.mode === 'online' && state.role === 'guest') {
-    state.busy = true;
     state.animSeat = state.me;
+    state.waitRetry = false;
     // Snapshot ahora; no ocultar cartas hasta que arranque el vuelo
     state.pendingSnap = snapshotAnim(move, { me: state.me, game: state.game });
     markSending([move.cardId, ...(move.captureIds || [])]);
@@ -1146,8 +1199,6 @@ function submitMove(move) {
     setMsg('Enviando jugada…');
     armMoveWatch();
     patchSelection();
-    $('#btnCapture').disabled = true;
-    $('#btnDiscard').disabled = true;
     // Mantén el glow en tu asiento mientras envías
     const seat = flyingOrCurrentPlayer();
     $('#scoreMe')?.classList.toggle('active', seat === state.me);
@@ -1183,6 +1234,13 @@ async function maybeAiOrWait() {
   const g = state.game;
   if (!g || g.phase !== 'play') return;
   if (state.mode === 'cpu' && g.currentPlayer !== state.me && !state.busy) {
+    const gen = state.playGen;
+    const stillCpu = () =>
+      state.playGen === gen &&
+      state.mode === 'cpu' &&
+      state.game &&
+      state.game.phase === 'play' &&
+      state.game.currentPlayer !== state.me;
     state.busy = true;
     const oppName = state.names[1 - state.me] || 'Rival';
     setMsg(`${oppName} piensa…`);
@@ -1190,6 +1248,11 @@ async function maybeAiOrWait() {
     render();
     const firstBeat = (g.moveLog || []).length === 0 ? 380 : 0;
     await sleep(firstBeat + 700 + Math.floor(Math.random() * 420));
+    if (!stillCpu()) {
+      $('#scoreOpp')?.classList.remove('thinking');
+      if (state.playGen === gen) state.busy = false;
+      return;
+    }
     const move = chooseAiMove(state.game, 1 - state.me);
     if (!move) {
       $('#scoreOpp')?.classList.remove('thinking');
@@ -1201,6 +1264,11 @@ async function maybeAiOrWait() {
       move.captureIds.length === state.game.table.length;
     const pause = clearing ? 640 : move.captureIds?.length ? 420 : 240;
     await sleep(pause);
+    if (!stillCpu()) {
+      $('#scoreOpp')?.classList.remove('thinking');
+      if (state.playGen === gen) state.busy = false;
+      return;
+    }
     // Mantener “thinking” hasta que arranque el vuelo
     state.busy = false;
     const flying = applyAndReveal(move);
@@ -1391,7 +1459,10 @@ function leaveToHome() {
   state.lastSeenLog = 0;
   state.feed = [];
   state.feltClearedUntil = 0;
+  state.waitRetry = false;
   clearTimeout(state.feltClearTimer);
+  clearTimeout(state.stateEchoTimer);
+  state.stateEchoTimer = null;
   clearMoveWatch();
   stopGuestIdlePoll();
   clearGhosts();
@@ -1408,6 +1479,8 @@ function leaveToHome() {
   focusReturnEl = null;
   $('#inviteStatus')?.classList.remove('waiting-pulse');
   $('#joinWaitStatus')?.classList.remove('waiting-pulse');
+  resetJoinUi();
+  clearInviteQuery();
   showScreen('screenHome');
   startHeroIdle();
 }
@@ -1525,6 +1598,8 @@ async function ingestRemoteState(game, meta = {}) {
   clearMoveWatch();
   if (!stillHere()) return;
   if (meta.names) applyRemoteNames(meta.names);
+
+  state.waitRetry = false;
 
   const prevLog = state.lastSeenLog || 0;
   const wasPlaying = !!state.game;
@@ -1768,9 +1843,41 @@ function wireNet(net) {
     if (data.type === 'reject' && state.role === 'guest') {
       clearMoveWatch();
       const snap = state.pendingSnap;
+      const reason = data.reason || 'Jugada rechazada';
+      const waitBusy = /espera/i.test(reason);
+
+      // Host ocupado: reenvía una vez sin soltar la selección
+      if (waitBusy && snap?.move && !state.waitRetry) {
+        state.waitRetry = true;
+        setNetChip('Sincronizando', 'warn');
+        setMsg('Esperando al anfitrión…');
+        flashBad('Espera un momento');
+        setTimeout(() => {
+          if (state.role !== 'guest' || !state.net || !state.pendingSnap?.move) return;
+          if (!state.busy) return;
+          const ok = state.net.send({ type: 'move', move: state.pendingSnap.move });
+          if (ok) {
+            setMsg('Reenviando jugada…');
+            armMoveWatch();
+          } else {
+            state.busy = false;
+            state.animSeat = null;
+            state.pendingSnap = null;
+            state.waitRetry = false;
+            clearSending();
+            clearGhosts();
+            flashBad('Sin conexión — reinténtalo');
+            setNetChip('Sin red', 'bad');
+            render();
+          }
+        }, 550);
+        return;
+      }
+
       state.busy = false;
       state.animSeat = null;
       state.pendingSnap = null;
+      state.waitRetry = false;
       clearGhosts();
       clearSending();
       // Restaura la selección para reintentar con un toque
@@ -1778,9 +1885,9 @@ function wireNet(net) {
         state.selectedHand = snap.move.cardId || null;
         state.selectedTable = new Set(snap.move.captureIds || []);
       }
-      const reason = data.reason || 'Jugada rechazada';
       if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
-      else if (/inválida|sumar 15|espera/i.test(reason)) flashBad(reason.includes('Espera') ? 'Espera un momento' : 'Esa captura no vale');
+      else if (/inválida|sumar 15/i.test(reason)) flashBad('Esa captura no vale');
+      else if (waitBusy) flashBad('Espera un momento');
       else flashBad(reason);
       render();
     }
@@ -1853,6 +1960,25 @@ async function copyInviteCode() {
   }
 }
 
+function clearInviteQuery() {
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has('code')) return;
+    url.searchParams.delete('code');
+    const qs = url.searchParams.toString();
+    history.replaceState(null, '', url.pathname + (qs ? `?${qs}` : '') + url.hash);
+  } catch (_) {}
+}
+
+function resetJoinUi() {
+  const btn = $('#btnJoin');
+  if (btn) btn.textContent = 'Unirme';
+  const input = $('#joinCode');
+  if (input && !input.value) {
+    /* keep typed code if any */
+  }
+}
+
 function applyInviteFromUrl() {
   const params = new URLSearchParams(location.search);
   const code = normalizeCode(params.get('code') || '');
@@ -1864,6 +1990,7 @@ function applyInviteFromUrl() {
       btn.textContent = `Unirme con ${code}`;
       setTimeout(() => btn.focus(), 80);
     }
+    clearInviteQuery();
   }
 }
 
@@ -1880,9 +2007,14 @@ function bindUi() {
   $('#btnShowJoin').addEventListener('click', () => {
     showScreen('screenJoin');
     $('#joinCode').value = '';
+    resetJoinUi();
     $('#joinCode').focus();
   });
-  $('#btnJoinBack').addEventListener('click', () => showScreen('screenHome'));
+  $('#btnJoinBack').addEventListener('click', () => {
+    resetJoinUi();
+    clearInviteQuery();
+    showScreen('screenHome');
+  });
   $('#btnJoin').addEventListener('click', startJoin);
   $('#btnJoinWaitHome').addEventListener('click', leaveToHome);
   $('#btnShare').addEventListener('click', shareInvite);
@@ -1990,7 +2122,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=24').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=25').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
