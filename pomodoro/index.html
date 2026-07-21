@@ -50,6 +50,10 @@
           <div class="phase-label" id="phaseLabel">Enfoque</div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
           <p class="support" id="supportText">Un bloque para concentrarte sin distracciones.</p>
+          <label class="task-field">
+            <span class="visually-hidden">Tarea actual</span>
+            <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" autocomplete="off" enterkeyhint="done">
+          </label>
         </div>
       </div>
     </main>
@@ -155,6 +159,14 @@
             <button type="button" data-setting="roundsUntilLong" data-delta="1" aria-label="Más rondas">+</button>
           </div>
         </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Sonido al terminar</div>
+          <p class="hint">Una campanilla corta al acabar cada bloque.</p>
+        </div>
+        <button class="toggle" id="soundToggle" type="button" role="switch" aria-checked="true" aria-label="Sonido al terminar"></button>
       </div>
 
       <div class="toggle-row">

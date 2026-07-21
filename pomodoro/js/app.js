@@ -29,6 +29,7 @@ const DEFAULTS = {
   shortMins: 5,
   longMins: 15,
   roundsUntilLong: 4,
+  sound: true,
   notify: true,
   autoAdvance: true,
 };
@@ -59,7 +60,9 @@ const els = {
   closeSettingsBtn: document.getElementById("closeSettingsBtn"),
   closeStatsBtn: document.getElementById("closeStatsBtn"),
   notifyToggle: document.getElementById("notifyToggle"),
+  soundToggle: document.getElementById("soundToggle"),
   autoToggle: document.getElementById("autoToggle"),
+  taskInput: document.getElementById("taskInput"),
   toast: document.getElementById("toast"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
@@ -88,6 +91,8 @@ const state = {
   wakeLock: null,
   toastTimer: null,
   openSheet: null,
+  audioCtx: null,
+  task: "",
 };
 
 function todayKey(date = new Date()) {
@@ -170,13 +175,53 @@ function saveHistory() {
 
 function recordFocusSession(minutes) {
   const now = new Date();
+  const task = state.task.trim();
   state.history.unshift({
     id: `${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
     date: todayKey(now),
     minutes,
+    task: task || null,
     endedAt: now.toISOString(),
   });
   saveHistory();
+}
+
+function ensureAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!state.audioCtx) state.audioCtx = new Ctx();
+  if (state.audioCtx.state === "suspended") {
+    state.audioCtx.resume().catch(() => {});
+  }
+  return state.audioCtx;
+}
+
+function playTone(ctx, frequency, startAt, duration, gainValue) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = frequency;
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.02);
+}
+
+function playChime() {
+  if (!state.settings.sound) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  // Campanilla suave en dos tonos (sin archivos externos).
+  playTone(ctx, 784, t, 0.22, 0.08);
+  playTone(ctx, 1046.5, t + 0.16, 0.34, 0.07);
+}
+
+function hapticPulse() {
+  if (navigator.vibrate) navigator.vibrate([70, 40, 90]);
 }
 
 function countTodayFocus() {
@@ -294,15 +339,29 @@ function renderHistoryList() {
   const recent = state.history.slice(0, 8);
   els.historyEmpty.hidden = recent.length > 0;
   els.historyList.innerHTML = recent
-    .map(
-      (session) => `
+    .map((session) => {
+      const title = session.task
+        ? escapeHtml(session.task)
+        : `${session.minutes} min`;
+      const detail = session.task
+        ? `${session.minutes} min · ${formatHistoryWhen(session)}`
+        : formatHistoryWhen(session);
+      return `
       <li class="history-item">
-        <strong>${session.minutes} min</strong>
-        <span>${formatHistoryWhen(session)}</span>
+        <strong>${title}</strong>
+        <span>${detail}</span>
       </li>
-    `
-    )
+    `;
+    })
     .join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function renderStatsPanel() {
@@ -325,7 +384,12 @@ function render() {
   els.outputs.longMins.value = state.settings.longMins;
   els.outputs.roundsUntilLong.value = state.settings.roundsUntilLong;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
+  els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.autoToggle.setAttribute("aria-checked", String(state.settings.autoAdvance));
+  if (document.activeElement !== els.taskInput) {
+    els.taskInput.value = state.task;
+  }
+  els.taskInput.closest(".task-field").hidden = state.phase !== "focus";
   if (state.openSheet === "stats") renderStatsPanel();
 }
 
@@ -345,6 +409,8 @@ async function requestNotifyPermission() {
 }
 
 function notifyEnd() {
+  playChime();
+  hapticPulse();
   if (!state.settings.notify || !("Notification" in window) || Notification.permission !== "granted") return;
   const title = state.phase === "focus" ? "Enfoque terminado" : "Descanso terminado";
   const body =
@@ -356,7 +422,6 @@ function notifyEnd() {
   } catch {
     // iOS may ignore Notification constructor outside service worker in some contexts.
   }
-  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 }
 
 async function acquireWakeLock() {
@@ -512,7 +577,13 @@ function adjustSetting(key, delta) {
 }
 
 function bindEvents() {
+  const unlockAudio = () => ensureAudio();
+  ["pointerdown", "keydown"].forEach((type) => {
+    document.addEventListener(type, unlockAudio, { once: true, passive: true });
+  });
+
   els.primaryBtn.addEventListener("click", () => {
+    ensureAudio();
     if (state.running) pause();
     else start();
   });
@@ -533,6 +604,27 @@ function bindEvents() {
     btn.addEventListener("click", () => {
       adjustSetting(btn.dataset.setting, Number(btn.dataset.delta));
     });
+  });
+
+  els.taskInput.addEventListener("input", () => {
+    state.task = els.taskInput.value.slice(0, 48);
+  });
+
+  els.taskInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      els.taskInput.blur();
+    }
+  });
+
+  els.soundToggle.addEventListener("click", () => {
+    state.settings.sound = !state.settings.sound;
+    saveSettings();
+    if (state.settings.sound) {
+      ensureAudio();
+      playChime();
+    }
+    render();
   });
 
   els.notifyToggle.addEventListener("click", async () => {

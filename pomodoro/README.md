@@ -19,7 +19,8 @@ Tras el deploy de GitHub Pages:
 - Descanso largo cada 4 pomodoros
 - Contador de enfoques de hoy
 - Panel de progreso: semana, minutos y recientes
-- Avisos al terminar (si das permiso)
+- Tarea actual opcional en cada enfoque
+- Sonido y avisos al terminar
 - Funciona offline (PWA)
 
 ## Desarrollo local
