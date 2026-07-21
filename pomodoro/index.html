@@ -59,6 +59,11 @@
     </main>
 
     <footer class="controls">
+      <div class="presets" id="presets" role="group" aria-label="Duración de enfoque">
+        <button type="button" class="preset" data-preset="15">15</button>
+        <button type="button" class="preset" data-preset="25">25</button>
+        <button type="button" class="preset" data-preset="50">50</button>
+      </div>
       <button class="primary" id="primaryBtn" type="button">Empezar</button>
       <div class="secondary-row">
         <button class="secondary" id="skipBtn" type="button">Saltar</button>
@@ -215,6 +220,23 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="goal-overlay" id="goalOverlay" hidden>
+    <div class="goal-card" role="status" aria-live="polite">
+      <p class="goal-kicker">Meta del día</p>
+      <h2 id="goalOverlayTitle">¡Hecho!</h2>
+      <p id="goalOverlayText">Has llegado a tu objetivo de enfoques.</p>
+      <button class="primary" id="goalOverlayClose" type="button">Seguir</button>
+    </div>
+  </div>
+
+  <div class="update-tip" id="updateTip" hidden>
+    <div class="install-tip-copy">
+      <strong>Nueva versión de Foco</strong>
+      <p>Toca para cargar la actualización.</p>
+    </div>
+    <button class="update-tip-btn" id="updateTipBtn" type="button">Actualizar</button>
+  </div>
 
   <div class="install-tip" id="installTip" hidden>
     <div class="install-tip-copy">
