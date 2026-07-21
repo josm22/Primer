@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#e7f0eb" id="metaTheme">
+  <meta name="theme-color" content="#e2e4df" id="metaTheme">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Foco">
@@ -13,22 +13,25 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
   <title>Foco — Pomodoro</title>
 </head>
 <body data-phase="focus">
   <div class="ambiance" aria-hidden="true">
+    <span class="wash"></span>
     <span class="orb orb-a"></span>
     <span class="orb orb-b"></span>
-    <span class="orb orb-c"></span>
+    <span class="meridian"></span>
+    <span class="grain"></span>
   </div>
   <div class="app">
     <header class="topbar">
       <div class="brand-block">
+        <p class="brand-kicker">Tu tiempo · tu sello</p>
         <h1 class="brand">
           <span class="brand-mark" aria-hidden="true"></span>
-          Foco
+          FOCO
         </h1>
         <p class="greeting" id="greeting">Listo cuando tú lo estés.</p>
       </div>
@@ -56,16 +59,16 @@
         <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
           <defs>
             <linearGradient id="ringGradFocus" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ef6a3d"/>
-              <stop offset="100%" stop-color="#c63a1c"/>
+              <stop offset="0%" stop-color="#f04a2e"/>
+              <stop offset="100%" stop-color="#b81f0f"/>
             </linearGradient>
             <linearGradient id="ringGradShort" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#3a9a84"/>
-              <stop offset="100%" stop-color="#1f6a5a"/>
+              <stop offset="0%" stop-color="#1a8f78"/>
+              <stop offset="100%" stop-color="#0a5548"/>
             </linearGradient>
             <linearGradient id="ringGradLong" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#4a7fad"/>
-              <stop offset="100%" stop-color="#2a4f78"/>
+              <stop offset="0%" stop-color="#3a6fad"/>
+              <stop offset="100%" stop-color="#1a3f72"/>
             </linearGradient>
           </defs>
           <circle class="ring-track" cx="50" cy="50" r="46"></circle>
