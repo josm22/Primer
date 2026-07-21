@@ -161,7 +161,7 @@
 
       <p class="section-label">Hoy</p>
       <ul class="timeline" id="todayTimeline"></ul>
-      <p class="hint" id="todayEmpty">Todavía no hay enfoques hoy.</p>
+      <p class="hint empty-state" id="todayEmpty">Todavía no hay enfoques hoy.<br><span>Empieza un bloque y aparecerá aquí.</span></p>
 
       <p class="section-label">Últimos 7 días</p>
       <div class="week-chart" id="weekChart" aria-hidden="true"></div>
@@ -172,7 +172,7 @@
 
       <p class="section-label">Recientes</p>
       <ul class="history-list" id="historyList"></ul>
-      <p class="hint" id="historyEmpty">Aún no hay enfoques completados. Termina un bloque para verlo aquí.</p>
+      <p class="hint empty-state" id="historyEmpty">Aún no hay sellos.<br><span>Termina tu primer enfoque para verlo aquí.</span></p>
 
       <div class="share-actions">
         <button class="secondary" id="shareWeekBtn" type="button">Compartir semana</button>
@@ -334,6 +334,21 @@
         <button class="secondary" id="confirmCancel" type="button">Seguir aquí</button>
         <button class="primary" id="confirmOk" type="button">Saltar</button>
       </div>
+    </div>
+  </div>
+
+  <div class="ritual" id="ritualOverlay" hidden>
+    <div class="ritual-card" role="dialog" aria-modal="true" aria-labelledby="ritualTitle">
+      <span class="ritual-seal" aria-hidden="true"></span>
+      <p class="brand-kicker">Primer sello</p>
+      <h2 id="ritualTitle" class="ritual-title">¿En qué vas a enfocar?</h2>
+      <p class="ritual-copy">Un bloque. Nada más importa.</p>
+      <label class="ritual-field">
+        <span class="visually-hidden">Primera tarea</span>
+        <input id="ritualTask" type="text" maxlength="48" placeholder="Escribe tu tarea" autocomplete="off" enterkeyhint="go">
+      </label>
+      <button class="primary" id="ritualStart" type="button">Empezar</button>
+      <button class="secondary ritual-skip" id="ritualSkip" type="button">Más tarde</button>
     </div>
   </div>
 

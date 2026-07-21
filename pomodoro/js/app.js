@@ -139,6 +139,10 @@ const els = {
   confirmText: document.getElementById("confirmText"),
   confirmCancel: document.getElementById("confirmCancel"),
   confirmOk: document.getElementById("confirmOk"),
+  ritualOverlay: document.getElementById("ritualOverlay"),
+  ritualTask: document.getElementById("ritualTask"),
+  ritualStart: document.getElementById("ritualStart"),
+  ritualSkip: document.getElementById("ritualSkip"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -173,6 +177,9 @@ const state = {
   extendPressTimer: null,
   parallaxReady: false,
   prevCompletedInCycle: 0,
+  completing: false,
+  lastSessionSaveAt: 0,
+  stampTimer: null,
 };
 
 function todayKey(date = new Date()) {
@@ -329,19 +336,65 @@ function playTone(ctx, frequency, startAt, duration, gainValue) {
   osc.stop(startAt + duration + 0.02);
 }
 
-function playChime() {
+function playChime(kind = "soft") {
   if (!state.settings.sound) return;
   const ctx = ensureAudio();
   if (!ctx) return;
   const t = ctx.currentTime;
-  // Campanilla suave en dos tonos (sin archivos externos).
+  if (kind === "focus-end") {
+    playTone(ctx, 659.25, t, 0.16, 0.09);
+    playTone(ctx, 523.25, t + 0.13, 0.2, 0.08);
+    playTone(ctx, 392, t + 0.3, 0.42, 0.07);
+    return;
+  }
+  if (kind === "break-end") {
+    playTone(ctx, 523.25, t, 0.14, 0.07);
+    playTone(ctx, 659.25, t + 0.12, 0.18, 0.08);
+    playTone(ctx, 784, t + 0.28, 0.34, 0.07);
+    return;
+  }
+  if (kind === "start") {
+    playTone(ctx, 880, t, 0.1, 0.05);
+    return;
+  }
   playTone(ctx, 784, t, 0.22, 0.08);
   playTone(ctx, 1046.5, t + 0.16, 0.34, 0.07);
 }
 
-function hapticPulse() {
-  if (!state.settings.haptic) return;
-  if (navigator.vibrate) navigator.vibrate([70, 40, 90]);
+function hapticPulse(kind = "end") {
+  if (!state.settings.haptic || !navigator.vibrate) return;
+  if (kind === "focus-end") {
+    navigator.vibrate([40, 30, 40, 30, 90]);
+    return;
+  }
+  if (kind === "break-end") {
+    navigator.vibrate([28, 36, 70]);
+    return;
+  }
+  if (kind === "start") {
+    navigator.vibrate(16);
+    return;
+  }
+  if (kind === "pause") {
+    navigator.vibrate([12, 24, 12]);
+    return;
+  }
+  navigator.vibrate([70, 40, 90]);
+}
+
+function playPhaseStamp() {
+  els.body.classList.remove("is-stamping");
+  // Force reflow so the animation can restart.
+  void els.body.offsetWidth;
+  els.body.classList.add("is-stamping");
+  clearTimeout(state.stampTimer);
+  state.stampTimer = setTimeout(() => {
+    els.body.classList.remove("is-stamping");
+  }, 700);
+}
+
+function sessionMinutes() {
+  return Math.max(1, Math.round(state.totalMs / 60_000));
 }
 
 function countTodayFocus() {
@@ -370,7 +423,10 @@ function currentStreak() {
   return streak;
 }
 
-function saveSession() {
+function saveSession({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && state.running && now - state.lastSessionSaveAt < 1000) return;
+  state.lastSessionSaveAt = now;
   const payload = {
     phase: state.phase,
     remainingMs: state.remainingMs,
@@ -380,7 +436,7 @@ function saveSession() {
     endAt: state.running ? state.endAt : null,
     task: state.task,
     category: state.category,
-    savedAt: Date.now(),
+    savedAt: now,
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
 }
@@ -862,6 +918,20 @@ function renderPresets() {
   });
 }
 
+function updateDocumentTitle() {
+  const time = formatTime(state.remainingMs);
+  const label = PHASES[state.phase].label;
+  if (state.running) {
+    document.title = `${time} · ${label}`;
+    return;
+  }
+  if (state.remainingMs > 0 && state.remainingMs < state.totalMs) {
+    document.title = `${time} · pausa`;
+    return;
+  }
+  document.title = "Foco — Pomodoro";
+}
+
 function render() {
   els.timeDisplay.textContent = formatTime(state.remainingMs);
   const progress = state.totalMs > 0 ? 1 - state.remainingMs / state.totalMs : 0;
@@ -870,6 +940,7 @@ function render() {
   els.shell.classList.toggle("is-running", state.running);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   els.body.classList.toggle("is-timer-running", state.running);
+  updateDocumentTitle();
   const rounds = state.settings.roundsUntilLong;
   const current = Math.min(state.completedInCycle + 1, rounds);
   els.roundDisplay.textContent = `${current}/${rounds}`;
@@ -1065,8 +1136,6 @@ function showGoalCelebration(today, goal) {
   els.goalOverlayText.textContent = `${today} enfoques. Meta: ${goal}. Hoy ya es tuyo.`;
   els.goalOverlay.hidden = false;
   burstGoalSparks();
-  if (state.settings.sound) playChime();
-  hapticPulse();
 }
 
 function hideGoalCelebration() {
@@ -1100,6 +1169,9 @@ function showToast(message, { actionLabel = null, onAction = null, duration = 24
     els.toast.classList.remove("is-show");
     state.toastActionHandler = null;
     els.toastAction.hidden = true;
+    state.toastTimer = setTimeout(() => {
+      if (!els.toast.classList.contains("is-show")) els.toast.hidden = true;
+    }, 320);
   }, duration);
 }
 
@@ -1142,9 +1214,9 @@ async function requestNotifyPermission() {
   return result === "granted";
 }
 
-function notifyEnd() {
-  playChime();
-  hapticPulse();
+function notifyEnd(kind = "soft") {
+  playChime(kind);
+  hapticPulse(kind === "soft" ? "end" : kind);
   if (!state.settings.notify || !("Notification" in window) || Notification.permission !== "granted") return;
   const title = state.phase === "focus" ? "Enfoque terminado" : "Descanso terminado";
   const body =
@@ -1188,7 +1260,7 @@ function clearTick() {
 }
 
 function tick() {
-  if (!state.running || state.endAt == null) return;
+  if (!state.running || state.endAt == null || state.completing) return;
   state.remainingMs = Math.max(0, state.endAt - Date.now());
   render();
   saveSession();
@@ -1197,8 +1269,8 @@ function tick() {
   }
 }
 
-function start() {
-  if (state.running) return;
+function start({ silent = false } = {}) {
+  if (state.running || state.completing) return;
   if (state.remainingMs <= 0) {
     state.totalMs = phaseDurationMs();
     state.remainingMs = state.totalMs;
@@ -1208,28 +1280,33 @@ function start() {
   clearTick();
   state.tickId = setInterval(tick, 250);
   acquireWakeLock();
-  saveSession();
-  if (state.settings.haptic && navigator.vibrate) navigator.vibrate(18);
+  saveSession({ force: true });
+  if (!silent) {
+    playChime("start");
+    hapticPulse("start");
+  }
   enableParallax().catch(() => {});
   render();
 }
 
 function pause() {
-  if (!state.running) return;
-  tick();
+  if (!state.running || state.completing) return;
+  if (state.endAt != null) {
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+  }
   state.running = false;
   state.endAt = null;
   clearTick();
   releaseWakeLock();
-  saveSession();
-  if (state.settings.haptic && navigator.vibrate) navigator.vibrate([12, 24, 12]);
+  saveSession({ force: true });
+  hapticPulse("pause");
   render();
 }
 
 function resetCurrent() {
   pause();
   setPhase(state.phase, { resetTime: true });
-  saveSession();
+  saveSession({ force: true });
 }
 
 function nextPhaseAfter(current) {
@@ -1247,7 +1324,8 @@ function nextPhaseAfter(current) {
 
 function completePhaseQuietly() {
   const finished = state.phase;
-  const plannedMinutes = state.settings[PHASES[finished].setting];
+  const minutes = sessionMinutes();
+  state.completing = true;
   state.running = false;
   state.endAt = null;
   clearTick();
@@ -1255,12 +1333,13 @@ function completePhaseQuietly() {
   state.remainingMs = 0;
 
   if (finished === "focus") {
-    recordFocusSession(plannedMinutes);
+    recordFocusSession(minutes);
   }
 
   const next = nextPhaseAfter(finished);
   setPhase(next, { resetTime: true });
-  saveSession();
+  saveSession({ force: true });
+  state.completing = false;
   showToast(finished === "focus" ? "Enfoque terminado mientras no estabas" : "Descanso terminado mientras no estabas");
 }
 
@@ -1281,27 +1360,35 @@ function maybeCelebrateStreak() {
         : "Tres días seguidos. El hábito empieza aquí.";
   els.goalOverlay.hidden = false;
   burstGoalSparks();
-  if (state.settings.sound) playChime();
-  hapticPulse();
   return true;
 }
 
 function onPhaseComplete() {
+  if (state.completing || !state.running) return;
+  state.completing = true;
+
   const finished = state.phase;
-  const plannedMinutes = state.settings[PHASES[finished].setting];
-  pause();
+  const minutes = sessionMinutes();
+  const chimeKind = finished === "focus" ? "focus-end" : "break-end";
+
+  if (state.endAt != null) {
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+  }
+  state.running = false;
+  state.endAt = null;
+  clearTick();
+  releaseWakeLock();
   state.remainingMs = 0;
   render();
-  notifyEnd();
+  playPhaseStamp();
+  notifyEnd(chimeKind);
 
-  let reachedGoal = false;
   let celebratedSomething = false;
   if (finished === "focus") {
-    recordFocusSession(plannedMinutes);
+    recordFocusSession(minutes);
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
-    reachedGoal = today >= goal;
-    if (reachedGoal) {
+    if (today >= goal) {
       showGoalCelebration(today, goal);
       celebratedSomething = true;
     } else if (maybeCelebrateStreak()) {
@@ -1319,10 +1406,11 @@ function onPhaseComplete() {
 
   const next = nextPhaseAfter(finished);
   setPhase(next, { resetTime: true });
-  saveSession();
+  saveSession({ force: true });
+  state.completing = false;
 
   if (state.settings.autoAdvance && !celebratedSomething) {
-    start();
+    start({ silent: true });
   }
 }
 
@@ -1701,16 +1789,24 @@ function bindEvents() {
       tick();
       if (state.running) await acquireWakeLock();
     } else {
-      saveSession();
+      saveSession({ force: true });
     }
   });
 
-  window.addEventListener("pagehide", saveSession);
+  window.addEventListener("pagehide", () => saveSession({ force: true }));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (els.ritualOverlay && !els.ritualOverlay.hidden) {
+        dismissRitual();
+        return;
+      }
       if (!els.confirmOverlay.hidden) {
         hideConfirm();
+        return;
+      }
+      if (!els.goalOverlay.hidden) {
+        hideGoalCelebration();
         return;
       }
       if (state.openSheet) closeSheet();
@@ -1780,6 +1876,58 @@ function setupInstallTip() {
   });
 }
 
+const RITUAL_KEY = "foco-ritual-done";
+
+function shouldShowRitual() {
+  if (localStorage.getItem(RITUAL_KEY) === "1") return false;
+  if (state.history.length > 0) return false;
+  if (state.running) return false;
+  if (state.remainingMs > 0 && state.remainingMs < state.totalMs) return false;
+  return true;
+}
+
+function dismissRitual() {
+  if (!els.ritualOverlay) return;
+  els.ritualOverlay.hidden = true;
+  localStorage.setItem(RITUAL_KEY, "1");
+}
+
+function setupRitual() {
+  if (!els.ritualOverlay || !els.ritualStart || !els.ritualSkip) return;
+
+  els.ritualSkip.addEventListener("click", () => {
+    dismissRitual();
+    showToast("Cuando quieras, empieza tu primer sello");
+  });
+
+  const begin = () => {
+    const task = (els.ritualTask?.value || "").trim().slice(0, 48);
+    if (task) {
+      state.task = task;
+      els.taskInput.value = task;
+    }
+    dismissRitual();
+    ensureAudio();
+    setPhase("focus", { resetTime: true });
+    start();
+    showToast(task ? "Sello en marcha" : "Primer bloque en marcha");
+  };
+
+  els.ritualStart.addEventListener("click", begin);
+  els.ritualTask?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      begin();
+    }
+  });
+
+  if (!shouldShowRitual()) return;
+  els.ritualOverlay.hidden = false;
+  const install = document.getElementById("installTip");
+  if (install) install.hidden = true;
+  setTimeout(() => els.ritualTask?.focus(), 350);
+}
+
 function init() {
   bindEvents();
   buildRingTicks();
@@ -1791,6 +1939,7 @@ function init() {
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
   registerSW();
+  setupRitual();
   setupInstallTip();
 }
 
