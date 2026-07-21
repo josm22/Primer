@@ -81,6 +81,8 @@ body[data-phase="focus"] {
   filter: blur(40px);
   opacity: 0.55;
   will-change: transform;
+  --tilt-x: 0px;
+  --tilt-y: 0px;
 }
 
 .orb-a {
@@ -92,6 +94,7 @@ body[data-phase="focus"] {
   left: -12%;
   background: var(--phase-soft);
   animation: drift-a 14s ease-in-out infinite;
+  translate: var(--tilt-x) var(--tilt-y);
 }
 
 .orb-b {
@@ -103,6 +106,7 @@ body[data-phase="focus"] {
   top: 28%;
   background: rgba(255, 255, 255, 0.55);
   animation: drift-b 18s ease-in-out infinite;
+  translate: calc(var(--tilt-x) * -0.7) calc(var(--tilt-y) * -0.7);
 }
 
 .orb-c {
@@ -114,6 +118,7 @@ body[data-phase="focus"] {
   bottom: -10%;
   background: rgba(20, 32, 28, 0.06);
   animation: drift-c 16s ease-in-out infinite;
+  translate: calc(var(--tilt-x) * 0.45) calc(var(--tilt-y) * 0.45);
 }
 
 @keyframes drift-a {
@@ -183,10 +188,25 @@ button {
 
 .topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   min-height: 44px;
   gap: 12px;
+}
+
+.brand-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.greeting {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  max-width: 22ch;
+  transition: opacity 0.35s ease;
 }
 
 .topbar-actions {
@@ -393,6 +413,26 @@ button {
 .round-dot.is-current {
   opacity: 1;
   transform: scale(1.2);
+}
+
+.round-dot.is-pop {
+  animation: dot-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  55% {
+    transform: scale(1.45);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.sheet-panel.is-dragging {
+  transition: none;
 }
 
 .time {
@@ -854,6 +894,11 @@ body.is-deep-focus .task-field {
   border-radius: 18px;
   background: #fff;
   border: 1px solid var(--line);
+  transition: transform 0.2s ease;
+}
+
+.stat-block:active {
+  transform: scale(0.98);
 }
 
 .stat-value {
