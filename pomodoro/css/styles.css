@@ -1126,13 +1126,111 @@ body.is-deep-focus .primary {
 
 .queue-item {
   display: grid;
-  grid-template-columns: 32px 1fr auto 32px;
+  grid-template-columns: 28px 32px 1fr auto 32px;
   align-items: center;
   gap: 4px;
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--paper);
+  touch-action: none;
+}
+
+.queue-item.is-dragging {
+  opacity: 0.55;
+}
+
+.queue-item.is-drop {
+  border-color: color-mix(in srgb, var(--phase) 45%, var(--line));
+  background: color-mix(in srgb, var(--phase) 8%, var(--paper));
+}
+
+.queue-handle {
+  width: 28px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  letter-spacing: -0.12em;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sprint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+
+.sprint-row[hidden] {
+  display: none;
+}
+
+.sprint-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-family: var(--display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sprint-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  min-height: 0;
+}
+
+.sprint-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--phase) 35%, var(--line));
+  background: color-mix(in srgb, var(--phase) 12%, var(--paper));
+  color: var(--phase);
+  font-family: var(--display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sprint-chip[hidden],
+.sprint-stop[hidden] {
+  display: none;
+}
+
+.sprint-stop {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.hour-col.is-current .hour-bar {
+  background: var(--phase);
+}
+
+.hour-col.is-current .hour-name {
+  color: var(--phase);
+}
+
+.hour-today {
+  font-size: 0.64rem;
+  color: var(--ink-soft);
+}
+
+body.is-deep-focus .sprint-row,
+body.is-deep-focus .sprint-status {
+  display: none;
 }
 
 .queue-move {
@@ -1743,7 +1841,9 @@ body.is-timer-running .primary::after {
 body.is-deep-focus .secondary-row,
 body.is-deep-focus .meta,
 body.is-deep-focus .presets,
-body.is-deep-focus .repeat-last {
+body.is-deep-focus .repeat-last,
+body.is-deep-focus .sprint-row,
+body.is-deep-focus .sprint-status {
   opacity: 0;
   pointer-events: none;
   max-height: 0;

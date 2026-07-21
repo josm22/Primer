@@ -182,6 +182,8 @@ const DEFAULTS = {
   queueOnly: false,
 };
 
+const SPRINT_OPTIONS = [2, 3, 4];
+
 const LIMITS = {
   focusMins: [1, 90],
   shortMins: [1, 30],
@@ -324,6 +326,9 @@ const els = {
   queueClearDoneBtn: document.getElementById("queueClearDoneBtn"),
   hourChart: document.getElementById("hourChart"),
   hourInsight: document.getElementById("hourInsight"),
+  sprintRow: document.getElementById("sprintRow"),
+  sprintChip: document.getElementById("sprintChip"),
+  sprintStopBtn: document.getElementById("sprintStopBtn"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -376,6 +381,8 @@ const state = {
   breakActsDone: [],
   intention: loadIntention(),
   queue: loadQueue(),
+  sprint: null,
+  dragQueueId: null,
 };
 
 function loadIntention() {
@@ -485,6 +492,74 @@ function moveQueueItem(id, direction) {
   renderTaskQueue();
 }
 
+function reorderQueueById(fromId, toId) {
+  ensureQueueFresh();
+  if (!fromId || !toId || fromId === toId) return;
+  const from = state.queue.items.findIndex((q) => q.id === fromId);
+  const to = state.queue.items.findIndex((q) => q.id === toId);
+  if (from < 0 || to < 0) return;
+  const items = state.queue.items;
+  const [item] = items.splice(from, 1);
+  items.splice(to, 0, item);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function startSprint(total) {
+  const n = clamp(Number(total) || 0, [2, 8]);
+  state.sprint = { total: n, done: 0 };
+  state.settings.autoAdvance = true;
+  saveSettings();
+  render();
+  showToast(`Sprint ×${n} en marcha`);
+  if (!state.running && state.phase === "focus") {
+    start();
+  }
+}
+
+function stopSprint({ toast = true } = {}) {
+  if (!state.sprint) return;
+  state.sprint = null;
+  render();
+  if (toast) showToast("Sprint cancelado");
+}
+
+function advanceSprintOnFocus() {
+  if (!state.sprint) return false;
+  state.sprint.done += 1;
+  if (state.sprint.done >= state.sprint.total) {
+    const total = state.sprint.total;
+    state.sprint = null;
+    showToast(`Sprint ×${total} completado`, { duration: 4200 });
+    return true;
+  }
+  return false;
+}
+
+function renderSprint() {
+  if (els.sprintRow) {
+    const show =
+      state.phase === "focus" &&
+      !state.running &&
+      state.remainingMs === state.totalMs &&
+      !state.sprint &&
+      !(state.settings.deepFocus && state.running);
+    els.sprintRow.hidden = !show;
+  }
+  if (els.sprintChip) {
+    if (!state.sprint) {
+      els.sprintChip.hidden = true;
+    } else {
+      els.sprintChip.hidden = false;
+      els.sprintChip.textContent = `Sprint ${state.sprint.done}/${state.sprint.total}`;
+    }
+  }
+  if (els.sprintStopBtn) {
+    els.sprintStopBtn.hidden = !state.sprint;
+  }
+  els.body.classList.toggle("is-sprint", Boolean(state.sprint));
+}
+
 function clearDoneQueueItems() {
   ensureQueueFresh();
   const before = state.queue.items.length;
@@ -583,6 +658,7 @@ function renderTaskQueue() {
       const downDisabled = index === items.length - 1 ? " disabled" : "";
       return `
         <li class="queue-item${doneClass}" data-id="${escapeHtml(item.id)}">
+          <button type="button" class="queue-handle" data-drag="${escapeHtml(item.id)}" aria-label="Arrastrar">⋮⋮</button>
           <button type="button" class="queue-check" data-toggle="${escapeHtml(item.id)}" aria-label="${item.done ? "Marcar pendiente" : "Marcar hecho"}">${item.done ? "✓" : ""}</button>
           <button type="button" class="queue-text" data-pull="${escapeHtml(item.id)}">${escapeHtml(item.text)}</button>
           <div class="queue-move">
@@ -600,22 +676,33 @@ function hourBucketsForWeek() {
   const { days } = weekSummary();
   const keys = new Set(days.map((d) => d.key));
   const buckets = [
-    { key: "morning", label: "Mañana", range: "6–12", count: 0 },
-    { key: "afternoon", label: "Tarde", range: "12–18", count: 0 },
-    { key: "evening", label: "Noche", range: "18–24", count: 0 },
-    { key: "night", label: "Madrugada", range: "0–6", count: 0 },
+    { key: "morning", label: "Mañana", range: "6–12", count: 0, today: 0 },
+    { key: "afternoon", label: "Tarde", range: "12–18", count: 0, today: 0 },
+    { key: "evening", label: "Noche", range: "18–24", count: 0, today: 0 },
+    { key: "night", label: "Madrugada", range: "0–6", count: 0, today: 0 },
   ];
+  const today = todayKey();
   for (const session of state.history) {
     if (!keys.has(session.date)) continue;
     const date = session.endedAt ? new Date(session.endedAt) : null;
     if (!date || Number.isNaN(date.getTime())) continue;
     const hour = date.getHours();
-    if (hour >= 6 && hour < 12) buckets[0].count += 1;
-    else if (hour >= 12 && hour < 18) buckets[1].count += 1;
-    else if (hour >= 18) buckets[2].count += 1;
-    else buckets[3].count += 1;
+    let idx = 3;
+    if (hour >= 6 && hour < 12) idx = 0;
+    else if (hour >= 12 && hour < 18) idx = 1;
+    else if (hour >= 18) idx = 2;
+    buckets[idx].count += 1;
+    if (session.date === today) buckets[idx].today += 1;
   }
   return buckets;
+}
+
+function currentHourBand() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 18) return "afternoon";
+  if (hour >= 18) return "evening";
+  return "night";
 }
 
 function renderHourChart() {
@@ -623,17 +710,20 @@ function renderHourChart() {
   const buckets = hourBucketsForWeek();
   const total = buckets.reduce((sum, b) => sum + b.count, 0);
   const max = Math.max(1, ...buckets.map((b) => b.count));
+  const nowBand = currentHourBand();
   els.hourChart.innerHTML = buckets
     .map((bucket) => {
       const height = Math.max(4, Math.round((bucket.count / max) * 100));
+      const current = bucket.key === nowBand ? " is-current" : "";
       return `
-        <div class="hour-col" title="${bucket.label}: ${bucket.count}">
+        <div class="hour-col${current}" title="${bucket.label}: ${bucket.count} · hoy ${bucket.today}">
           <div class="hour-bar-wrap">
             <div class="hour-bar" style="height:${bucket.count ? height : 4}%"></div>
           </div>
           <div class="hour-count">${bucket.count || "·"}</div>
           <div class="hour-name">${bucket.label}</div>
           <div class="hour-range">${bucket.range}</div>
+          <div class="hour-today">Hoy ${bucket.today}</div>
         </div>
       `;
     })
@@ -645,9 +735,15 @@ function renderHourChart() {
       return;
     }
     const top = buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null);
-    els.hourInsight.textContent = top && top.count
-      ? `Esta semana enfocas más de ${top.label.toLowerCase()} (${top.range}h).`
-      : "Cuando completes sellos verás tu franja fuerte.";
+    const now = buckets.find((b) => b.key === nowBand);
+    const parts = [];
+    if (top && top.count) {
+      parts.push(`Suele irte bien de ${top.label.toLowerCase()} (${top.range}h)`);
+    }
+    if (now) {
+      parts.push(`ahora ${now.today} en ${now.label.toLowerCase()}`);
+    }
+    els.hourInsight.textContent = `${parts.join(" · ")}.`;
   }
 }
 
@@ -2287,6 +2383,7 @@ function render() {
   renderTodayStrip();
   renderBreakActivities();
   renderRepeatLast();
+  renderSprint();
   renderEta();
   renderCycleEta();
   renderIntentionChip();
@@ -3034,7 +3131,7 @@ function skipSessionNote() {
 }
 
 function maybeStartAfterNote() {
-  if (state.settings.autoAdvance && !state.running) {
+  if ((state.settings.autoAdvance || state.sprint) && !state.running) {
     start({ silent: true });
   }
 }
@@ -3062,9 +3159,11 @@ function onPhaseComplete() {
 
   let celebratedSomething = false;
   let recorded = null;
+  let sprintFinished = false;
   if (finished === "focus") {
     recorded = recordFocusSession(minutes);
     markQueueDoneByTask(finishedTask);
+    sprintFinished = advanceSprintOnFocus();
     const upcoming = nextQueueItem();
     if (
       upcoming &&
@@ -3081,15 +3180,18 @@ function onPhaseComplete() {
       celebratedSomething = true;
     } else if (maybeCelebrateStreak()) {
       celebratedSomething = true;
-    } else {
-      showToast(`Enfoque completado · ${today}/${goal}`, {
+    } else if (!sprintFinished) {
+      const sprintLabel = state.sprint
+        ? ` · sprint ${state.sprint.done}/${state.sprint.total}`
+        : "";
+      showToast(`Enfoque completado · ${today}/${goal}${sprintLabel}`, {
         actionLabel: "Deshacer",
         onAction: undoLastFocusSession,
         duration: 5000,
       });
     }
   } else {
-    showToast("Descanso completado");
+    showToast(state.sprint ? `Descanso · sprint ${state.sprint.done}/${state.sprint.total}` : "Descanso completado");
   }
 
   const next = nextPhaseAfter(finished);
@@ -3097,7 +3199,7 @@ function onPhaseComplete() {
   saveSession({ force: true });
   state.completing = false;
 
-  if (finished === "focus" && recorded && !celebratedSomething) {
+  if (finished === "focus" && recorded && !celebratedSomething && !state.sprint && !sprintFinished) {
     openNotePrompt(recorded.id);
     return;
   }
@@ -3106,7 +3208,7 @@ function onPhaseComplete() {
     state.pendingNoteSessionId = recorded.id;
   }
 
-  if (state.settings.autoAdvance && !celebratedSomething) {
+  if ((state.settings.autoAdvance || state.sprint) && !celebratedSomething) {
     start({ silent: true });
   }
 }
@@ -3637,6 +3739,7 @@ function bindEvents() {
   });
   if (els.queueList) {
     els.queueList.addEventListener("click", (event) => {
+      if (state.dragQueueId) return;
       const toggle = event.target.closest("[data-toggle]");
       if (toggle) {
         toggleQueueItem(toggle.dataset.toggle);
@@ -3657,6 +3760,52 @@ function bindEvents() {
         removeQueueItem(remove.dataset.remove);
       }
     });
+
+    let dragFrom = null;
+    els.queueList.addEventListener("pointerdown", (event) => {
+      const handle = event.target.closest("[data-drag]");
+      if (!handle) return;
+      event.preventDefault();
+      dragFrom = handle.dataset.drag;
+      state.dragQueueId = dragFrom;
+      handle.closest(".queue-item")?.classList.add("is-dragging");
+      handle.setPointerCapture?.(event.pointerId);
+    });
+    els.queueList.addEventListener("pointermove", (event) => {
+      if (!dragFrom) return;
+      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const over = el?.closest?.(".queue-item");
+      els.queueList.querySelectorAll(".queue-item.is-drop").forEach((node) => {
+        node.classList.remove("is-drop");
+      });
+      if (over && over.dataset.id !== dragFrom) over.classList.add("is-drop");
+    });
+    const endDrag = (event) => {
+      if (!dragFrom) return;
+      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const over = el?.closest?.(".queue-item");
+      if (over?.dataset.id) reorderQueueById(dragFrom, over.dataset.id);
+      else renderTaskQueue();
+      dragFrom = null;
+      state.dragQueueId = null;
+    };
+    els.queueList.addEventListener("pointerup", endDrag);
+    els.queueList.addEventListener("pointercancel", () => {
+      dragFrom = null;
+      state.dragQueueId = null;
+      renderTaskQueue();
+    });
+  }
+
+  if (els.sprintRow) {
+    els.sprintRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-sprint]");
+      if (!btn) return;
+      startSprint(Number(btn.dataset.sprint));
+    });
+  }
+  if (els.sprintStopBtn) {
+    els.sprintStopBtn.addEventListener("click", () => stopSprint());
   }
 
   if (els.streakFreezeBtn) {
