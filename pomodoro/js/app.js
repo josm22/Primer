@@ -2516,6 +2516,7 @@ function importBackupText(text) {
     saveSettings();
   }
 
+  applyAtmosphere(state.settings.atmosphere);
   render();
   showToast(`Importados ${normalized.length} enfoques`);
   return true;
