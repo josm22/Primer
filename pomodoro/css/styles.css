@@ -732,6 +732,53 @@ body.is-deep-focus .primary {
   line-height: 1.4;
 }
 
+.week-goal-row {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.week-goal-value {
+  margin-top: 4px;
+  font-size: 1.55rem;
+}
+
+.week-goal-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(16, 20, 17, 0.08);
+  overflow: hidden;
+}
+
+.week-goal-track .goal-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--phase);
+  transition: width 0.45s ease;
+}
+
+.ring-ticks line.is-elapsed {
+  stroke: color-mix(in srgb, var(--phase) 70%, transparent);
+  stroke-width: 1.6;
+}
+
+.note-card .ritual-field {
+  margin-top: 4px;
+}
+
+.history-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
 .heatmap {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
