@@ -54,6 +54,7 @@ const state = {
   nameHelloSent: false,
   waitRetry: false,
   stateEchoTimer: null,
+  moveGate: false,
 };
 
 let audioCtx = null;
@@ -189,43 +190,47 @@ async function runDealIfNeeded() {
   const screen = $('#screenGame');
   screen?.classList.add('dealing');
   if (handsOnly) screen?.classList.add('dealing-hands');
-  render();
-  await sleep(40);
-  if (cancelled()) {
-    screen?.classList.remove('dealing', 'dealing-hands');
-    state.dealing = false;
-    return;
-  }
-  const g = state.game;
-  const me = state.me;
-  const opp = 1 - me;
+  let finishedOk = false;
   try {
-    await playDealAnim({
-      tableCards: handsOnly ? [] : g.table.slice(),
-      myCards: g.hands[me].slice(),
-      oppCount: g.hands[opp].length,
-      me,
-      handsOnly,
-      onSfx: playSfx,
-      isCancelled: cancelled,
-    });
-  } catch (_) {}
-  if (cancelled()) {
+    render();
+    await sleep(40);
+    if (cancelled() || !state.game) return;
+    const g = state.game;
+    const me = state.me;
+    const opp = 1 - me;
+    try {
+      await playDealAnim({
+        tableCards: handsOnly ? [] : g.table.slice(),
+        myCards: g.hands[me].slice(),
+        oppCount: g.hands[opp].length,
+        me,
+        handsOnly,
+        onSfx: playSfx,
+        isCancelled: cancelled,
+      });
+    } catch (_) {}
+    if (cancelled() || !state.game) return;
+    state.prevScores = [...g.scores];
+    state.dealing = false;
+    state.busy = false;
+    screen?.classList.remove('dealing', 'dealing-hands');
+    finishedOk = true;
+    render();
+    // Deja asentar la mesa antes de que la CPU “piense”
+    if (state.mode === 'cpu' && g.currentPlayer !== state.me) {
+      await sleep(520);
+    }
+    if (cancelled()) return;
+    maybeAiOrWait();
+  } finally {
     screen?.classList.remove('dealing', 'dealing-hands');
     state.dealing = false;
-    return;
+    state.holdHandReveal = false;
+    // Solo desbloquea si el reparto abortó; no toques el busy de la CPU
+    if (!finishedOk && state.playGen === gen && state.game && !state.pendingSnap) {
+      state.busy = false;
+    }
   }
-  screen?.classList.remove('dealing', 'dealing-hands');
-  state.dealing = false;
-  state.busy = false;
-  state.prevScores = [...g.scores];
-  render();
-  // Deja asentar la mesa antes de que la CPU “piense”
-  if (state.mode === 'cpu' && g.currentPlayer !== state.me) {
-    await sleep(520);
-  }
-  if (cancelled()) return;
-  maybeAiOrWait();
 }
 
 async function sweepRoundLeftovers(g) {
@@ -366,9 +371,13 @@ function patchSelection() {
 
 async function finishAfterMove() {
   const g = state.game;
-  if (!g) return;
+  if (!g) {
+    state.busy = false;
+    state.holdHandReveal = false;
+    return;
+  }
   const gen = state.playGen;
-  const cancelled = () => state.playGen !== gen || state.game !== g;
+  const cancelled = () => state.playGen !== gen;
 
   const last = normalizeLogMove(lastMoveFrom(g));
   if (last?.type === 'escoba') {
@@ -380,9 +389,20 @@ async function finishAfterMove() {
     state.holdHandReveal = true;
     render();
     await sleep(320);
-    if (cancelled()) return;
+    if (cancelled()) {
+      state.holdHandReveal = false;
+      return;
+    }
     requestDeal({ handsOnly: true });
     await runDealIfNeeded();
+    // Si el reparto no corrió (p.ej. ya dealing), no dejes la mano vacía/bloqueada
+    if (state.playGen === gen && state.game) {
+      state.holdHandReveal = false;
+      if (state.busy && !state.dealing && !state.pendingSnap) {
+        state.busy = false;
+        render();
+      }
+    }
     return;
   }
 
@@ -454,7 +474,7 @@ function armMoveWatch() {
   clearTimeout(state.moveWatch);
   state.moveWatch = setTimeout(() => {
     if (!state.busy || state.role !== 'guest') return;
-    // No restaurar selección: evita reenvío duplicado si el host ya aplicó
+    // Primero sincroniza sin soltar; si el host ya aplicó, ingest desbloquea
     clearGhosts();
     clearSending();
     state.animSeat = null;
@@ -462,12 +482,11 @@ function armMoveWatch() {
     setNetChip('Sincronizando', 'warn');
     setMsg('Sincronizando…');
     requestStateFromHost();
-    // Segundo intento un poco después por si el ping se pierde
     setTimeout(() => {
       if (state.role !== 'guest' || !state.busy) return;
       requestStateFromHost();
-    }, 2500);
-    // Si tras ~6s más sigue sin estado, libera para reintentar a mano
+    }, 1800);
+    // Si sigue colgado, libera la mesa para poder elegir otra vez
     clearTimeout(state.moveWatch);
     state.moveWatch = setTimeout(() => {
       if (!state.busy || state.role !== 'guest') return;
@@ -475,7 +494,9 @@ function armMoveWatch() {
       clearGhosts();
       clearSending();
       state.busy = false;
+      state.moveGate = false;
       state.animSeat = null;
+      state.holdHandReveal = false;
       if (snap?.move) {
         state.selectedHand = snap.move.cardId || null;
         state.selectedTable = new Set(snap.move.captureIds || []);
@@ -486,8 +507,8 @@ function armMoveWatch() {
       setNetChip('Sync…', 'warn');
       requestStateFromHost();
       render();
-    }, 6000);
-  }, 16000);
+    }, 4000);
+  }, 12000);
 }
 
 function clearMoveWatch() {
@@ -1085,6 +1106,11 @@ function sendState(game = state.game) {
 async function applyAndReveal(move, { broadcast = false } = {}) {
   const gen = state.playGen;
   const cancelled = () => state.playGen !== gen;
+  if (!state.game) {
+    state.busy = false;
+    state.moveGate = false;
+    return;
+  }
   state.busy = true;
   const beforeLen = (state.game.moveLog || []).length;
 
@@ -1096,6 +1122,7 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
     state.game = applyMove(state.game, move);
   } catch (err) {
     state.busy = false;
+    state.moveGate = false;
     clearGhosts();
     throw err;
   }
@@ -1131,7 +1158,10 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
           render();
         },
       });
-      if (cancelled()) return;
+      if (cancelled()) {
+        state.holdHandReveal = false;
+        return;
+      }
     }
     state.lastSeenLog = (state.game.moveLog || []).length;
     state.animSeat = null;
@@ -1139,7 +1169,11 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
     clearSending();
     await finishAfterMove();
   } catch (err) {
-    if (!cancelled()) state.busy = false;
+    if (!cancelled()) {
+      state.busy = false;
+      state.holdHandReveal = false;
+      state.moveGate = false;
+    }
     throw err;
   } finally {
     // No limpiar busy aquí: finishAfterMove / deal / maybeAiOrWait lo gestionan
@@ -1147,6 +1181,7 @@ async function applyAndReveal(move, { broadcast = false } = {}) {
       state.animSeat = null;
       clearGhosts();
       clearSending();
+      state.moveGate = false;
     }
   }
 }
@@ -1159,6 +1194,8 @@ async function commitLocalMove(move) {
     return true;
   } catch (err) {
     state.busy = false;
+    state.moveGate = false;
+    state.holdHandReveal = false;
     const reason = err?.message || 'Jugada inválida';
     // Mensajes cortos de regla, sin calcular por ti
     if (/capturar/i.test(reason)) flashBad('Con esa carta hay que capturar');
@@ -1170,13 +1207,14 @@ async function commitLocalMove(move) {
 }
 
 function submitMove(move) {
-  if (state.busy) return;
-  // Latch inmediato: evita doble toque antes del microtask de applyAndReveal
-  state.busy = true;
+  if (state.busy || state.moveGate || state.dealing) return;
+  // Candado síncrono anti doble-toque (sin bloquear la mano antes de animar)
+  state.moveGate = true;
   $('#btnCapture').disabled = true;
   $('#btnDiscard').disabled = true;
 
   if (state.mode === 'online' && state.role === 'guest') {
+    state.busy = true;
     state.animSeat = state.me;
     state.waitRetry = false;
     // Snapshot ahora; no ocultar cartas hasta que arranque el vuelo
@@ -1185,6 +1223,7 @@ function submitMove(move) {
     const ok = state.net.send({ type: 'move', move });
     if (!ok) {
       state.busy = false;
+      state.moveGate = false;
       state.animSeat = null;
       state.pendingSnap = null;
       clearSending();
@@ -1460,6 +1499,7 @@ function leaveToHome() {
   state.feed = [];
   state.feltClearedUntil = 0;
   state.waitRetry = false;
+  state.moveGate = false;
   clearTimeout(state.feltClearTimer);
   clearTimeout(state.stateEchoTimer);
   state.stateEchoTimer = null;
@@ -1764,6 +1804,8 @@ async function ingestRemoteState(game, meta = {}) {
   } finally {
     if (state.playGen === gen) {
       state.busy = false;
+      state.moveGate = false;
+      state.holdHandReveal = false;
       state.animSeat = null;
       clearGhosts();
       clearSending();
@@ -1861,6 +1903,7 @@ function wireNet(net) {
             armMoveWatch();
           } else {
             state.busy = false;
+            state.moveGate = false;
             state.animSeat = null;
             state.pendingSnap = null;
             state.waitRetry = false;
@@ -1875,9 +1918,11 @@ function wireNet(net) {
       }
 
       state.busy = false;
+      state.moveGate = false;
       state.animSeat = null;
       state.pendingSnap = null;
       state.waitRetry = false;
+      state.holdHandReveal = false;
       clearGhosts();
       clearSending();
       // Restaura la selección para reintentar con un toque
@@ -2122,7 +2167,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=25').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=26').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
