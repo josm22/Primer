@@ -63,6 +63,7 @@ const DEFAULTS = {
   notify: true,
   autoAdvance: true,
   deepFocus: false,
+  nightSoft: true,
 };
 
 const LIMITS = {
@@ -120,6 +121,8 @@ const els = {
   updateTip: document.getElementById("updateTip"),
   updateTipBtn: document.getElementById("updateTipBtn"),
   deepToggle: document.getElementById("deepToggle"),
+  nightToggle: document.getElementById("nightToggle"),
+  resetDataBtn: document.getElementById("resetDataBtn"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
   importInput: document.getElementById("importInput"),
@@ -127,6 +130,7 @@ const els = {
   recentTasks: document.getElementById("recentTasks"),
   categoryRow: document.getElementById("categoryRow"),
   insightText: document.getElementById("insightText"),
+  heatmap: document.getElementById("heatmap"),
   roundDots: document.getElementById("roundDots"),
   todayTimeline: document.getElementById("todayTimeline"),
   todayEmpty: document.getElementById("todayEmpty"),
@@ -535,12 +539,19 @@ function buildRingTicks() {
   }
 }
 
+function applyNightMode() {
+  const hour = new Date().getHours();
+  const nightHours = hour >= 21 || hour < 6;
+  const on = Boolean(state.settings.nightSoft && nightHours);
+  els.body.classList.toggle("is-night", on);
+  return on;
+}
+
 function updateThemeColor() {
-  const colors = {
-    focus: "#e7f0eb",
-    short: "#e4f1ed",
-    long: "#e6eef4",
-  };
+  const night = applyNightMode();
+  const colors = night
+    ? { focus: "#dfe8e3", short: "#d8e8e2", long: "#dce4ea" }
+    : { focus: "#e7f0eb", short: "#e4f1ed", long: "#e6eef4" };
   els.metaTheme.content = colors[state.phase] || colors.focus;
   const grads = {
     focus: "url(#ringGradFocus)",
@@ -630,16 +641,81 @@ function renderHistoryList() {
         ? `${session.minutes} min · ${formatHistoryWhen(session)}`
         : formatHistoryWhen(session);
       return `
-      <li class="history-item">
-        <div>
+      <li class="history-item" data-id="${escapeHtml(session.id)}">
+        <div class="history-main">
           <strong>${title}</strong>
           ${categoryTag(session.category || "extra")}
         </div>
-        <span>${detail}</span>
+        <span class="history-detail">${detail}</span>
+        <button type="button" class="history-delete" data-del="${escapeHtml(session.id)}" aria-label="Borrar sesión">×</button>
       </li>
     `;
     })
     .join("");
+}
+
+function renderHeatmap() {
+  if (!els.heatmap) return;
+  const counts = new Map();
+  for (const session of state.history) {
+    if (!session?.date) continue;
+    counts.set(session.date, (counts.get(session.date) || 0) + 1);
+  }
+
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const days = [];
+  for (let i = 27; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = todayKey(d);
+    days.push({ key, count: counts.get(key) || 0, date: d });
+  }
+
+  const max = Math.max(1, ...days.map((d) => d.count));
+  const todayStr = todayKey(today);
+  els.heatmap.innerHTML = days
+    .map((d) => {
+      const level = d.count === 0 ? 0 : Math.min(4, Math.ceil((d.count / max) * 4));
+      const label = d.date.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+      const classes = ["heat-cell"];
+      if (level) classes.push(`lvl-${level}`);
+      if (d.key === todayStr) classes.push("is-today");
+      return `<div class="${classes.join(" ")}" title="${escapeHtml(label)}: ${d.count}"></div>`;
+    })
+    .join("");
+}
+
+function deleteHistoryItem(id) {
+  const before = state.history.length;
+  state.history = state.history.filter((s) => s.id !== id);
+  if (state.history.length === before) return;
+  if (state.lastSessionId === id) state.lastSessionId = null;
+  saveHistory();
+  render();
+  renderStatsPanel();
+  showToast("Sesión borrada");
+}
+
+function resetStatsData() {
+  askConfirm({
+    title: "¿Borrar historial?",
+    text: "Se borran enfoques, rachas y logros. Los ajustes de minutos se mantienen.",
+    okLabel: "Borrar",
+    onConfirm: () => {
+      state.history = [];
+      state.lastSessionId = null;
+      state.celebratedMilestones = [];
+      state.goalCelebratedDate = "";
+      saveHistory();
+      saveCelebratedMilestones();
+      localStorage.removeItem("foco-goal-celebrated");
+      clearSession();
+      render();
+      renderStatsPanel();
+      showToast("Historial y rachas borrados");
+    },
+  });
 }
 
 function renderTodayTimeline() {
@@ -736,6 +812,7 @@ function escapeHtml(value) {
 function renderStatsPanel() {
   renderWeekChart();
   renderTodayTimeline();
+  renderHeatmap();
   renderHistoryList();
   renderBestDay();
   renderInsight();
@@ -811,8 +888,12 @@ function render() {
   els.hapticToggle.setAttribute("aria-checked", String(state.settings.haptic));
   els.autoToggle.setAttribute("aria-checked", String(state.settings.autoAdvance));
   els.deepToggle.setAttribute("aria-checked", String(state.settings.deepFocus));
+  if (els.nightToggle) {
+    els.nightToggle.setAttribute("aria-checked", String(state.settings.nightSoft));
+  }
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
+  updateThemeColor();
   els.shell.setAttribute("aria-label", state.running ? "Pausar temporizador" : "Empezar o continuar temporizador");
   if (document.activeElement !== els.taskInput) {
     els.taskInput.value = state.task;
@@ -1551,6 +1632,25 @@ function bindEvents() {
     showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
   });
 
+  if (els.nightToggle) {
+    els.nightToggle.addEventListener("click", () => {
+      state.settings.nightSoft = !state.settings.nightSoft;
+      saveSettings();
+      render();
+      showToast(state.settings.nightSoft ? "Noche suave activada" : "Noche suave desactivada");
+    });
+  }
+
+  if (els.resetDataBtn) {
+    els.resetDataBtn.addEventListener("click", resetStatsData);
+  }
+
+  els.historyList.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-del]");
+    if (!btn) return;
+    deleteHistoryItem(btn.getAttribute("data-del"));
+  });
+
   els.shareWeekBtn.addEventListener("click", () => {
     shareWeek();
   });
@@ -1687,6 +1787,8 @@ function init() {
   } else {
     render();
   }
+  updateThemeColor();
+  setInterval(updateThemeColor, 60_000);
   registerSW();
   setupInstallTip();
 }

@@ -163,6 +163,10 @@
       <p class="section-label">Últimos 7 días</p>
       <div class="week-chart" id="weekChart" aria-hidden="true"></div>
 
+      <p class="section-label">Mapa de foco</p>
+      <div class="heatmap" id="heatmap" aria-label="Mapa de calor de las últimas 4 semanas"></div>
+      <p class="hint heatmap-legend">Más intenso = más enfoques ese día</p>
+
       <p class="section-label">Recientes</p>
       <ul class="history-list" id="historyList"></ul>
       <p class="hint" id="historyEmpty">Aún no hay enfoques completados. Termina un bloque para verlo aquí.</p>
@@ -285,6 +289,20 @@
           <p class="hint">Durante el enfoque oculta saltar, reiniciar y contadores.</p>
         </div>
         <button class="toggle" id="deepToggle" type="button" role="switch" aria-checked="false" aria-label="Modo profundo"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Noche suave</div>
+          <p class="hint">Baja un poco la luz del fondo entre las 21:00 y las 6:00.</p>
+        </div>
+        <button class="toggle" id="nightToggle" type="button" role="switch" aria-checked="true" aria-label="Noche suave"></button>
+      </div>
+
+      <div class="danger-zone">
+        <p class="section-label">Datos</p>
+        <button class="secondary danger-btn" id="resetDataBtn" type="button">Borrar historial y rachas</button>
+        <p class="hint">No borra tus ajustes de minutos ni preferencias.</p>
       </div>
     </div>
   </div>

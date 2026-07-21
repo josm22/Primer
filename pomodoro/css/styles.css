@@ -547,6 +547,66 @@ body.is-deep-focus .category-row {
   line-height: 1.4;
 }
 
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: rgba(20, 32, 28, 0.08);
+  border: 1px solid transparent;
+}
+
+.heat-cell.lvl-1 { background: rgba(217, 74, 42, 0.18); }
+.heat-cell.lvl-2 { background: rgba(217, 74, 42, 0.34); }
+.heat-cell.lvl-3 { background: rgba(217, 74, 42, 0.55); }
+.heat-cell.lvl-4 { background: rgba(217, 74, 42, 0.82); }
+
+.heat-cell.is-today {
+  border-color: rgba(20, 32, 28, 0.35);
+}
+
+.heatmap-legend {
+  margin-top: 8px;
+}
+
+.danger-zone {
+  margin-top: 18px;
+  padding-top: 4px;
+}
+
+.danger-btn {
+  width: 100%;
+  color: #a3402f;
+  border-color: rgba(163, 64, 47, 0.25);
+}
+
+body.is-night {
+  --bg-a: #dfe8e3;
+  --bg-b: #c5d6ce;
+  --bg-c: #e8f0eb;
+  --ink: #101a16;
+  --ink-soft: #3f5249;
+  --line: rgba(16, 26, 22, 0.14);
+  --surface: rgba(232, 240, 235, 0.55);
+}
+
+body.is-night .orb {
+  opacity: 0.55;
+  filter: saturate(0.85) brightness(0.92);
+}
+
+body.is-night .sheet-panel,
+body.is-night .goal-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(232, 240, 235, 0.92)),
+    #e8f0eb;
+}
+
 .recent-tasks[hidden] {
   display: none;
 }
@@ -1110,14 +1170,35 @@ body.is-deep-focus .task-field {
   border: 1px solid var(--line);
 }
 
+.history-main {
+  min-width: 0;
+  flex: 1;
+}
+
 .history-item strong {
   font-weight: 600;
 }
 
-.history-item span {
+.history-item .history-detail {
   color: var(--ink-soft);
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
+}
+
+.history-delete {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ink-soft);
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  background: rgba(20, 32, 28, 0.05);
+}
+
+.history-delete:active {
+  transform: scale(0.94);
 }
 
 #historyEmpty[hidden] {
