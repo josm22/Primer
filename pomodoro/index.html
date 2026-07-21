@@ -82,6 +82,7 @@
           <div class="phase-label" id="phaseLabel">Enfoque</div>
           <div class="round-dots" id="roundDots" aria-hidden="true"></div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
+          <p class="eta" id="etaText" hidden></p>
           <p class="support" id="supportText">Un bloque. Nada más importa.</p>
           <div class="break-activities" id="breakActivities" hidden role="group" aria-label="Descanso activo">
             <button type="button" class="break-act" data-act="stretch">Estirar</button>
@@ -151,6 +152,25 @@
         </div>
       </div>
 
+      <div class="stat-grid lifetime-grid">
+        <div class="stat-block">
+          <div class="stat-value" id="monthFocusCount">0</div>
+          <div class="stat-label">Este mes</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="monthFocusMins">0</div>
+          <div class="stat-label">Minutos del mes</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="allFocusCount">0</div>
+          <div class="stat-label">Total sellos</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="allFocusMins">0</div>
+          <div class="stat-label">Minutos totales</div>
+        </div>
+      </div>
+
       <div class="stat-grid">
         <div class="stat-block">
           <div class="stat-value" id="streakStat">0</div>
@@ -216,6 +236,13 @@
       <p class="hint heatmap-legend">Más intenso = más enfoques ese día</p>
 
       <p class="section-label">Recientes</p>
+      <div class="history-filter" id="historyFilter" role="group" aria-label="Filtrar por categoría">
+        <button type="button" class="history-filter-btn is-active" data-filter="all" aria-pressed="true">Todos</button>
+        <button type="button" class="history-filter-btn" data-filter="trabajo" aria-pressed="false">Trabajo</button>
+        <button type="button" class="history-filter-btn" data-filter="estudio" aria-pressed="false">Estudio</button>
+        <button type="button" class="history-filter-btn" data-filter="personal" aria-pressed="false">Personal</button>
+        <button type="button" class="history-filter-btn" data-filter="extra" aria-pressed="false">Extra</button>
+      </div>
       <ul class="history-list" id="historyList"></ul>
       <p class="hint empty-state" id="historyEmpty">Aún no hay sellos.<br><span>Termina tu primer enfoque para verlo aquí.</span></p>
 
@@ -335,6 +362,12 @@
           <p class="hint">Ajusta minutos al cambiar Trabajo, Estudio, Personal o Extra.</p>
         </div>
         <button class="toggle" id="categoryPresetsToggle" type="button" role="switch" aria-checked="true" aria-label="Plantillas por categoría"></button>
+      </div>
+
+      <div class="preset-actions">
+        <button class="secondary" id="savePresetBtn" type="button">Guardar plantilla actual</button>
+        <button class="secondary" id="resetPresetBtn" type="button">Restaurar plantilla</button>
+        <p class="hint">Guarda los minutos de ahora para la categoría activa, o vuelve al valor por defecto.</p>
       </div>
 
       <div class="toggle-row">
@@ -494,6 +527,7 @@
         <li><kbd>+</kbd> <span>Sumar 1 minuto</span></li>
         <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <span>Presets 15 / 25 / 50 min</span></li>
         <li><kbd>L</kbd> <span>Repetir último bloque</span></li>
+        <li><kbd>D</kbd> <span>Modo profundo</span></li>
         <li><kbd>?</kbd> <span>Esta ayuda</span></li>
         <li><kbd>Esc</kbd> <span>Cerrar paneles</span></li>
       </ul>
