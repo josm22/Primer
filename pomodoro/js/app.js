@@ -108,6 +108,58 @@ const MILESTONE_KEY = "foco-streak-milestones-v1";
 const FREEZE_KEY = "foco-streak-freeze-v1";
 const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
 const INTENTION_KEY = "foco-intention-v1";
+const QUEUE_KEY = "foco-queue-v1";
+
+const ATMOSPHERES = {
+  slate: {
+    label: "Pizarra",
+    vars: {
+      "--bg-a": "#e2e4df",
+      "--bg-b": "#c5c9c0",
+      "--bg-c": "#eceee9",
+      "--ink": "#101411",
+      "--ink-soft": "#4a524c",
+      "--paper": "#f3f4f0",
+      "--surface": "rgba(243, 244, 240, 0.55)",
+    },
+  },
+  olive: {
+    label: "Olivo",
+    vars: {
+      "--bg-a": "#dde3d4",
+      "--bg-b": "#b9c4a8",
+      "--bg-c": "#e8eee0",
+      "--ink": "#1a2216",
+      "--ink-soft": "#4f5a45",
+      "--paper": "#f1f4ea",
+      "--surface": "rgba(241, 244, 234, 0.58)",
+    },
+  },
+  dusk: {
+    label: "Crepúsculo",
+    vars: {
+      "--bg-a": "#ddd6d0",
+      "--bg-b": "#b8ada4",
+      "--bg-c": "#ebe4de",
+      "--ink": "#1c1612",
+      "--ink-soft": "#5a5048",
+      "--paper": "#f5efe9",
+      "--surface": "rgba(245, 239, 233, 0.58)",
+    },
+  },
+  mist: {
+    label: "Bruma",
+    vars: {
+      "--bg-a": "#d7e0e4",
+      "--bg-b": "#aebcc4",
+      "--bg-c": "#e5eef1",
+      "--ink": "#12181c",
+      "--ink-soft": "#4a555c",
+      "--paper": "#eef4f6",
+      "--surface": "rgba(238, 244, 246, 0.58)",
+    },
+  },
+};
 
 const DEFAULTS = {
   focusMins: 25,
@@ -126,6 +178,7 @@ const DEFAULTS = {
   category: "trabajo",
   categoryPresets: true,
   soundTheme: "soft",
+  atmosphere: "slate",
 };
 
 const LIMITS = {
@@ -260,6 +313,12 @@ const els = {
   cycleEta: document.getElementById("cycleEta"),
   printDayBtn: document.getElementById("printDayBtn"),
   printReport: document.getElementById("printReport"),
+  wallClock: document.getElementById("wallClock"),
+  taskQueue: document.getElementById("taskQueue"),
+  queueInput: document.getElementById("queueInput"),
+  queueAddBtn: document.getElementById("queueAddBtn"),
+  queueList: document.getElementById("queueList"),
+  atmosphereRow: document.getElementById("atmosphereRow"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -311,6 +370,7 @@ const state = {
   historyFilter: "all",
   breakActsDone: [],
   intention: loadIntention(),
+  queue: loadQueue(),
 };
 
 function loadIntention() {
@@ -340,6 +400,156 @@ function clearIntentionIfStale() {
   }
 }
 
+function loadQueue() {
+  try {
+    const raw = localStorage.getItem(QUEUE_KEY);
+    if (!raw) return { date: todayKey(), items: [] };
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== todayKey()) return { date: todayKey(), items: [] };
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .filter((item) => item && typeof item.text === "string" && item.text.trim())
+          .map((item, index) => ({
+            id: item.id || `q-${Date.now()}-${index}`,
+            text: item.text.trim().slice(0, 48),
+            done: Boolean(item.done),
+          }))
+          .slice(0, 12)
+      : [];
+    return { date: parsed.date, items };
+  } catch {
+    return { date: todayKey(), items: [] };
+  }
+}
+
+function saveQueue() {
+  state.queue.date = todayKey();
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(state.queue));
+}
+
+function ensureQueueFresh() {
+  if (state.queue.date !== todayKey()) {
+    state.queue = { date: todayKey(), items: [] };
+  }
+}
+
+function addQueueItem(text) {
+  ensureQueueFresh();
+  const clean = text.trim().slice(0, 48);
+  if (!clean) return;
+  if (state.queue.items.some((item) => item.text.toLocaleLowerCase("es") === clean.toLocaleLowerCase("es") && !item.done)) {
+    showToast("Ya está en la cola");
+    return;
+  }
+  state.queue.items.push({
+    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    text: clean,
+    done: false,
+  });
+  saveQueue();
+  renderTaskQueue();
+  showToast("Añadido a la cola");
+}
+
+function toggleQueueItem(id) {
+  ensureQueueFresh();
+  const item = state.queue.items.find((q) => q.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  saveQueue();
+  renderTaskQueue();
+}
+
+function removeQueueItem(id) {
+  ensureQueueFresh();
+  state.queue.items = state.queue.items.filter((q) => q.id !== id);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function pullQueueItem(id) {
+  ensureQueueFresh();
+  const item = state.queue.items.find((q) => q.id === id);
+  if (!item || state.running) return;
+  state.task = item.text;
+  els.taskInput.value = item.text;
+  saveSession({ force: true });
+  render();
+  showToast("Tarea lista");
+}
+
+function markQueueDoneByTask(task) {
+  ensureQueueFresh();
+  const clean = (task || "").trim().toLocaleLowerCase("es");
+  if (!clean) return;
+  const item = state.queue.items.find(
+    (q) => !q.done && q.text.toLocaleLowerCase("es") === clean
+  );
+  if (!item) return;
+  item.done = true;
+  saveQueue();
+}
+
+function nextQueueItem() {
+  ensureQueueFresh();
+  return state.queue.items.find((q) => !q.done) || null;
+}
+
+function applyAtmosphere(name = state.settings.atmosphere) {
+  const theme = ATMOSPHERES[name] || ATMOSPHERES.slate;
+  state.settings.atmosphere = ATMOSPHERES[name] ? name : "slate";
+  els.body.dataset.atmosphere = state.settings.atmosphere;
+  for (const [key, value] of Object.entries(theme.vars)) {
+    document.documentElement.style.setProperty(key, value);
+  }
+}
+
+function renderAtmosphere() {
+  if (!els.atmosphereRow) return;
+  const current = ATMOSPHERES[state.settings.atmosphere] ? state.settings.atmosphere : "slate";
+  els.atmosphereRow.querySelectorAll("[data-atmosphere]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.atmosphere === current);
+    btn.setAttribute("aria-pressed", String(btn.dataset.atmosphere === current));
+  });
+}
+
+function renderWallClock() {
+  if (!els.wallClock) return;
+  const now = new Date();
+  els.wallClock.textContent = now.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderTaskQueue() {
+  if (!els.taskQueue || !els.queueList) return;
+  ensureQueueFresh();
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  const show = state.phase === "focus" && !deepActive;
+  els.taskQueue.hidden = !show;
+  if (!show) return;
+
+  const items = state.queue.items;
+  if (!items.length) {
+    els.queueList.innerHTML = `<li class="queue-empty">Cola vacía. Añade lo que quieres sellar hoy.</li>`;
+    return;
+  }
+
+  els.queueList.innerHTML = items
+    .map((item) => {
+      const doneClass = item.done ? " is-done" : "";
+      return `
+        <li class="queue-item${doneClass}" data-id="${escapeHtml(item.id)}">
+          <button type="button" class="queue-check" data-toggle="${escapeHtml(item.id)}" aria-label="${item.done ? "Marcar pendiente" : "Marcar hecho"}">${item.done ? "✓" : ""}</button>
+          <button type="button" class="queue-text" data-pull="${escapeHtml(item.id)}">${escapeHtml(item.text)}</button>
+          <button type="button" class="queue-del" data-remove="${escapeHtml(item.id)}" aria-label="Quitar">×</button>
+        </li>
+      `;
+    })
+    .join("");
+}
+
 function todayKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -355,6 +565,7 @@ function loadSettings() {
     if (!raw) return { ...DEFAULTS };
     const settings = { ...DEFAULTS, ...JSON.parse(raw) };
     if (!SOUND_THEMES[settings.soundTheme]) settings.soundTheme = "soft";
+    if (!ATMOSPHERES[settings.atmosphere]) settings.atmosphere = "slate";
     return settings;
   } catch {
     return { ...DEFAULTS };
@@ -2001,6 +2212,9 @@ function render() {
     els.categoryPresetsToggle.setAttribute("aria-checked", String(state.settings.categoryPresets));
   }
   renderSoundThemes();
+  renderAtmosphere();
+  renderWallClock();
+  renderTaskQueue();
   renderTaskSuggestions();
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
@@ -2302,6 +2516,7 @@ function importBackupText(text) {
     saveSettings();
   }
 
+  applyAtmosphere(state.settings.atmosphere);
   render();
   showToast(`Importados ${normalized.length} enfoques`);
   return true;
@@ -2727,6 +2942,16 @@ function onPhaseComplete() {
   let recorded = null;
   if (finished === "focus") {
     recorded = recordFocusSession(minutes);
+    markQueueDoneByTask(finishedTask);
+    const upcoming = nextQueueItem();
+    if (
+      upcoming &&
+      (!finishedTask ||
+        finishedTask.trim().toLocaleLowerCase("es") !== upcoming.text.toLocaleLowerCase("es"))
+    ) {
+      state.task = upcoming.text;
+      if (els.taskInput) els.taskInput.value = upcoming.text;
+    }
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
     if (today >= goal) {
@@ -3243,6 +3468,49 @@ function bindEvents() {
     });
   }
 
+  if (els.atmosphereRow) {
+    els.atmosphereRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-atmosphere]");
+      if (!btn || !ATMOSPHERES[btn.dataset.atmosphere]) return;
+      applyAtmosphere(btn.dataset.atmosphere);
+      saveSettings();
+      render();
+      showToast(`Atmósfera ${ATMOSPHERES[btn.dataset.atmosphere].label.toLowerCase()}`);
+    });
+  }
+
+  if (els.queueAddBtn) {
+    els.queueAddBtn.addEventListener("click", () => {
+      addQueueItem(els.queueInput?.value || "");
+      if (els.queueInput) els.queueInput.value = "";
+    });
+  }
+  els.queueInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addQueueItem(els.queueInput.value || "");
+      els.queueInput.value = "";
+    }
+  });
+  if (els.queueList) {
+    els.queueList.addEventListener("click", (event) => {
+      const toggle = event.target.closest("[data-toggle]");
+      if (toggle) {
+        toggleQueueItem(toggle.dataset.toggle);
+        return;
+      }
+      const pull = event.target.closest("[data-pull]");
+      if (pull) {
+        pullQueueItem(pull.dataset.pull);
+        return;
+      }
+      const remove = event.target.closest("[data-remove]");
+      if (remove) {
+        removeQueueItem(remove.dataset.remove);
+      }
+    });
+  }
+
   if (els.streakFreezeBtn) {
     els.streakFreezeBtn.addEventListener("click", () => {
       askConfirm({
@@ -3621,6 +3889,7 @@ function init() {
   if (CATEGORIES[state.settings.category]) {
     state.category = state.settings.category;
   }
+  applyAtmosphere(state.settings.atmosphere);
   bindEvents();
   buildRingTicks();
   if (!restoreSession()) {
@@ -3631,6 +3900,8 @@ function init() {
   }
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
+  renderWallClock();
+  setInterval(renderWallClock, 15_000);
   registerSW();
   setupOfflineBadge();
   setupRitual();
