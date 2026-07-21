@@ -27,6 +27,12 @@ python3 -m http.server 8080
 
 Luego visita http://localhost:8080
 
+## Otras apps en este repo
+
+- **[Foco (PWA)](./pomodoro/)** — Pomodoro en el navegador: [josm22.github.io/Primer/pomodoro/](https://josm22.github.io/Primer/pomodoro/)
+- **[Foco (SwiftUI)](./Foco/)** — misma app nativa para abrir en Xcode
+- **[Escoba](./escoba/)** — Escoba del 15 online
+
 ## Despliegue
 
 GitHub Pages despliegue automáticamente al hacer push a `main` (workflow `.github/workflows/pages.yml`).

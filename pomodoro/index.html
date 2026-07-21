@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#e7f0eb" id="metaTheme">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Foco">
+  <meta name="description" content="Foco — temporizador Pomodoro para iPhone: enfoque, descanso corto y descanso largo.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <title>Foco — Pomodoro</title>
+</head>
+<body data-phase="focus">
+  <div class="app">
+    <header class="topbar">
+      <h1 class="brand">Foco</h1>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="statsBtn" type="button" aria-label="Progreso" aria-controls="statsSheet" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19V5"></path>
+            <path d="M4 19h16"></path>
+            <path d="M8 16V10"></path>
+            <path d="M13 16V7"></path>
+            <path d="M18 16v-5"></path>
+          </svg>
+        </button>
+        <button class="icon-btn" id="settingsBtn" type="button" aria-label="Ajustes" aria-controls="settingsSheet" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 3v2M12 19v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M3 12h2M19 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div class="timer-shell" id="timerShell">
+        <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="ring-track" cx="50" cy="50" r="46"></circle>
+          <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="46" pathLength="1"></circle>
+        </svg>
+        <div class="timer-copy">
+          <div class="phase-label" id="phaseLabel">Enfoque</div>
+          <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
+          <p class="support" id="supportText">Un bloque para concentrarte sin distracciones.</p>
+          <label class="task-field">
+            <span class="visually-hidden">Tarea actual</span>
+            <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" autocomplete="off" enterkeyhint="done">
+          </label>
+        </div>
+      </div>
+    </main>
+
+    <footer class="controls">
+      <button class="primary" id="primaryBtn" type="button">Empezar</button>
+      <div class="secondary-row">
+        <button class="secondary" id="skipBtn" type="button">Saltar</button>
+        <button class="secondary" id="resetBtn" type="button">Reiniciar</button>
+      </div>
+      <div class="meta" aria-live="polite">
+        <span>Ronda <strong id="roundDisplay">1/4</strong></span>
+        <span>Hoy <strong id="todayDisplay">0</strong></span>
+      </div>
+    </footer>
+  </div>
+
+  <div class="sheet" id="statsSheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-sheet="stats"></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="statsTitle">Progreso</h2>
+        <button class="icon-btn" id="closeStatsBtn" type="button" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-block">
+          <div class="stat-value" id="weekFocusCount">0</div>
+          <div class="stat-label">Enfoques esta semana</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="weekFocusMins">0</div>
+          <div class="stat-label">Minutos de foco</div>
+        </div>
+      </div>
+
+      <p class="section-label">Últimos 7 días</p>
+      <div class="week-chart" id="weekChart" aria-hidden="true"></div>
+
+      <p class="section-label">Recientes</p>
+      <ul class="history-list" id="historyList"></ul>
+      <p class="hint" id="historyEmpty">Aún no hay enfoques completados. Termina un bloque para verlo aquí.</p>
+    </div>
+  </div>
+
+  <div class="sheet" id="settingsSheet" aria-hidden="true">
+    <div class="sheet-backdrop" data-close-sheet="settings"></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="settingsTitle">Ajustes</h2>
+        <button class="icon-btn" id="closeSettingsBtn" type="button" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="focusMins">Enfoque</label>
+          <div class="stepper">
+            <button type="button" data-setting="focusMins" data-delta="-1" aria-label="Menos minutos de enfoque">−</button>
+            <output id="focusMins">25</output>
+            <button type="button" data-setting="focusMins" data-delta="1" aria-label="Más minutos de enfoque">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="shortMins">Descanso corto</label>
+          <div class="stepper">
+            <button type="button" data-setting="shortMins" data-delta="-1" aria-label="Menos minutos de descanso corto">−</button>
+            <output id="shortMins">5</output>
+            <button type="button" data-setting="shortMins" data-delta="1" aria-label="Más minutos de descanso corto">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="longMins">Descanso largo</label>
+          <div class="stepper">
+            <button type="button" data-setting="longMins" data-delta="-1" aria-label="Menos minutos de descanso largo">−</button>
+            <output id="longMins">15</output>
+            <button type="button" data-setting="longMins" data-delta="1" aria-label="Más minutos de descanso largo">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="roundsUntilLong">Pomodoros hasta descanso largo</label>
+          <div class="stepper">
+            <button type="button" data-setting="roundsUntilLong" data-delta="-1" aria-label="Menos rondas">−</button>
+            <output id="roundsUntilLong">4</output>
+            <button type="button" data-setting="roundsUntilLong" data-delta="1" aria-label="Más rondas">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Sonido al terminar</div>
+          <p class="hint">Una campanilla corta al acabar cada bloque.</p>
+        </div>
+        <button class="toggle" id="soundToggle" type="button" role="switch" aria-checked="true" aria-label="Sonido al terminar"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Avisos al terminar</div>
+          <p class="hint">Pide permiso de notificaciones en iPhone (Safari → Añadir a inicio).</p>
+        </div>
+        <button class="toggle" id="notifyToggle" type="button" role="switch" aria-checked="true" aria-label="Avisos al terminar"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Autoavanzar</div>
+          <p class="hint">Pasa solo al siguiente bloque al acabar el tiempo.</p>
+        </div>
+        <button class="toggle" id="autoToggle" type="button" role="switch" aria-checked="true" aria-label="Autoavanzar"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
