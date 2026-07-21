@@ -60,8 +60,53 @@ const CATEGORIES = {
   extra: { key: "extra", label: "Extra" },
 };
 
+const BREAK_ACTIVITIES = {
+  stretch: { label: "Estirar", tip: "Cuello y hombros. 30 segundos." },
+  water: { label: "Agua", tip: "Un vaso ahora vale más que dos después." },
+  walk: { label: "Caminar", tip: "Da diez pasos lejos de la pantalla." },
+};
+
+const CATEGORY_PRESETS = {
+  trabajo: { focusMins: 25, shortMins: 5, longMins: 15, roundsUntilLong: 4 },
+  estudio: { focusMins: 50, shortMins: 10, longMins: 20, roundsUntilLong: 4 },
+  personal: { focusMins: 25, shortMins: 5, longMins: 15, roundsUntilLong: 3 },
+  extra: { focusMins: 15, shortMins: 3, longMins: 10, roundsUntilLong: 3 },
+};
+
+const SOUND_THEMES = {
+  soft: {
+    label: "Suave",
+    focusEnd: [659.25, 523.25, 392],
+    breakEnd: [523.25, 659.25, 784],
+    start: 880,
+    warn: 698.46,
+    soft: [784, 1046.5],
+    osc: "sine",
+  },
+  bell: {
+    label: "Campana",
+    focusEnd: [880, 659.25, 523.25],
+    breakEnd: [659.25, 880, 1046.5],
+    start: 988,
+    warn: 740,
+    soft: [880, 1174.66],
+    osc: "triangle",
+  },
+  wood: {
+    label: "Madera",
+    focusEnd: [329.63, 261.63, 196],
+    breakEnd: [261.63, 329.63, 392],
+    start: 440,
+    warn: 349.23,
+    soft: [392, 523.25],
+    osc: "sine",
+  },
+};
+
 const STREAK_MILESTONES = [3, 7, 14, 30];
 const MILESTONE_KEY = "foco-streak-milestones-v1";
+const FREEZE_KEY = "foco-streak-freeze-v1";
+const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
 
 const DEFAULTS = {
   focusMins: 25,
@@ -78,6 +123,8 @@ const DEFAULTS = {
   nightSoft: true,
   quietHours: false,
   category: "trabajo",
+  categoryPresets: true,
+  soundTheme: "soft",
 };
 
 const LIMITS = {
@@ -96,6 +143,7 @@ const els = {
   phaseLabel: document.getElementById("phaseLabel"),
   timeDisplay: document.getElementById("timeDisplay"),
   supportText: document.getElementById("supportText"),
+  breakActivities: document.getElementById("breakActivities"),
   primaryBtn: document.getElementById("primaryBtn"),
   skipBtn: document.getElementById("skipBtn"),
   extendBtn: document.getElementById("extendBtn"),
@@ -118,6 +166,7 @@ const els = {
   toastAction: document.getElementById("toastAction"),
   greeting: document.getElementById("greeting"),
   todayStrip: document.getElementById("todayStrip"),
+  offlineBadge: document.getElementById("offlineBadge"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -130,6 +179,9 @@ const els = {
   goalFill: document.getElementById("goalFill"),
   weekGoalStat: document.getElementById("weekGoalStat"),
   weekGoalFill: document.getElementById("weekGoalFill"),
+  focusScoreValue: document.getElementById("focusScoreValue"),
+  focusScoreCopy: document.getElementById("focusScoreCopy"),
+  focusScoreRing: document.getElementById("focusScoreRing"),
   bestDay: document.getElementById("bestDay"),
   presets: document.getElementById("presets"),
   goalOverlay: document.getElementById("goalOverlay"),
@@ -145,6 +197,11 @@ const els = {
   deepToggle: document.getElementById("deepToggle"),
   nightToggle: document.getElementById("nightToggle"),
   quietToggle: document.getElementById("quietToggle"),
+  categoryPresetsToggle: document.getElementById("categoryPresetsToggle"),
+  soundThemeRow: document.getElementById("soundThemeRow"),
+  streakFreezeRow: document.getElementById("streakFreezeRow"),
+  streakFreezeCopy: document.getElementById("streakFreezeCopy"),
+  streakFreezeBtn: document.getElementById("streakFreezeBtn"),
   resetDataBtn: document.getElementById("resetDataBtn"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
@@ -168,6 +225,23 @@ const els = {
   ritualTask: document.getElementById("ritualTask"),
   ritualStart: document.getElementById("ritualStart"),
   ritualSkip: document.getElementById("ritualSkip"),
+  dayOverlay: document.getElementById("dayOverlay"),
+  dayKicker: document.getElementById("dayKicker"),
+  dayTitle: document.getElementById("dayTitle"),
+  dayText: document.getElementById("dayText"),
+  dayClose: document.getElementById("dayClose"),
+  recapTip: document.getElementById("recapTip"),
+  recapTipText: document.getElementById("recapTipText"),
+  recapShareBtn: document.getElementById("recapShareBtn"),
+  recapCloseBtn: document.getElementById("recapCloseBtn"),
+  repeatLastBtn: document.getElementById("repeatLastBtn"),
+  categoryBreakdown: document.getElementById("categoryBreakdown"),
+  streakMilestoneRow: document.getElementById("streakMilestoneRow"),
+  streakMilestoneText: document.getElementById("streakMilestoneText"),
+  streakMilestoneFill: document.getElementById("streakMilestoneFill"),
+  exportWeekPngBtn: document.getElementById("exportWeekPngBtn"),
+  shortcutsOverlay: document.getElementById("shortcutsOverlay"),
+  shortcutsClose: document.getElementById("shortcutsClose"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -216,6 +290,7 @@ const state = {
   roundDotsKey: "",
   pendingNoteSessionId: null,
   deferReload: false,
+  breakActsDone: [],
 };
 
 function todayKey(date = new Date()) {
@@ -231,7 +306,9 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULTS };
-    return { ...DEFAULTS, ...JSON.parse(raw) };
+    const settings = { ...DEFAULTS, ...JSON.parse(raw) };
+    if (!SOUND_THEMES[settings.soundTheme]) settings.soundTheme = "soft";
+    return settings;
   } catch {
     return { ...DEFAULTS };
   }
@@ -319,6 +396,61 @@ function categoryTag(key) {
   return `<span class="tag tag-${safe}">${categoryLabel(safe)}</span>`;
 }
 
+function loadPresetOverrides() {
+  try {
+    const raw = localStorage.getItem(PRESET_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePresetOverrides(overrides) {
+  localStorage.setItem(PRESET_OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function getCategoryPreset(category) {
+  const base = CATEGORY_PRESETS[category];
+  if (!base) return null;
+  const overrides = loadPresetOverrides();
+  return { ...base, ...(overrides[category] || {}) };
+}
+
+function persistCategoryOverride() {
+  if (!state.settings.categoryPresets || !CATEGORIES[state.category]) return;
+  const overrides = loadPresetOverrides();
+  overrides[state.category] = {
+    focusMins: state.settings.focusMins,
+    shortMins: state.settings.shortMins,
+    longMins: state.settings.longMins,
+    roundsUntilLong: state.settings.roundsUntilLong,
+  };
+  savePresetOverrides(overrides);
+}
+
+function applyCategoryPreset(category) {
+  if (!state.settings.categoryPresets || state.running) return false;
+  const preset = getCategoryPreset(category);
+  if (!preset) return false;
+  Object.assign(state.settings, preset);
+  saveSettings();
+  setPhase(state.phase, { resetTime: true });
+  return true;
+}
+
+function setCategory(category, { toast = true } = {}) {
+  if (!CATEGORIES[category]) return;
+  state.category = category;
+  state.settings.category = category;
+  saveSettings();
+  const applied = applyCategoryPreset(category);
+  saveSession({ force: true });
+  renderCategories();
+  if (toast && applied) {
+    showToast(`Plantilla ${categoryLabel(category).toLowerCase()}`);
+  }
+}
+
 function recordFocusSession(minutes) {
   const now = new Date();
   const task = state.task.trim();
@@ -359,10 +491,10 @@ function ensureAudio() {
   return state.audioCtx;
 }
 
-function playTone(ctx, frequency, startAt, duration, gainValue) {
+function playTone(ctx, frequency, startAt, duration, gainValue, type = "sine") {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = "sine";
+  osc.type = type;
   osc.frequency.value = frequency;
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.02);
@@ -383,30 +515,35 @@ function playChime(kind = "soft") {
   if (!state.settings.sound || isQuietHours()) return;
   const ctx = ensureAudio();
   if (!ctx) return;
+  const theme = SOUND_THEMES[state.settings.soundTheme] || SOUND_THEMES.soft;
   const t = ctx.currentTime;
+  const osc = theme.osc;
   if (kind === "focus-end") {
-    playTone(ctx, 659.25, t, 0.16, 0.09);
-    playTone(ctx, 523.25, t + 0.13, 0.2, 0.08);
-    playTone(ctx, 392, t + 0.3, 0.42, 0.07);
+    const [a, b, c] = theme.focusEnd;
+    playTone(ctx, a, t, 0.16, 0.09, osc);
+    playTone(ctx, b, t + 0.13, 0.2, 0.08, osc);
+    playTone(ctx, c, t + 0.3, 0.42, 0.07, osc);
     return;
   }
   if (kind === "break-end") {
-    playTone(ctx, 523.25, t, 0.14, 0.07);
-    playTone(ctx, 659.25, t + 0.12, 0.18, 0.08);
-    playTone(ctx, 784, t + 0.28, 0.34, 0.07);
+    const [a, b, c] = theme.breakEnd;
+    playTone(ctx, a, t, 0.14, 0.07, osc);
+    playTone(ctx, b, t + 0.12, 0.18, 0.08, osc);
+    playTone(ctx, c, t + 0.28, 0.34, 0.07, osc);
     return;
   }
   if (kind === "start") {
-    playTone(ctx, 880, t, 0.1, 0.05);
+    playTone(ctx, theme.start, t, 0.1, 0.05, osc);
     return;
   }
   if (kind === "warn") {
-    playTone(ctx, 698.46, t, 0.12, 0.05);
-    playTone(ctx, 698.46, t + 0.18, 0.18, 0.045);
+    playTone(ctx, theme.warn, t, 0.12, 0.05, osc);
+    playTone(ctx, theme.warn, t + 0.18, 0.18, 0.045, osc);
     return;
   }
-  playTone(ctx, 784, t, 0.22, 0.08);
-  playTone(ctx, 1046.5, t + 0.16, 0.34, 0.07);
+  const [a, b] = theme.soft;
+  playTone(ctx, a, t, 0.22, 0.08, osc);
+  playTone(ctx, b, t + 0.16, 0.34, 0.07, osc);
 }
 
 function hapticPulse(kind = "end") {
@@ -456,8 +593,40 @@ function shiftDayKey(key, deltaDays) {
   return todayKey(date);
 }
 
+function weekKey(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return todayKey(d);
+}
+
+function loadStreakFreeze() {
+  try {
+    const raw = localStorage.getItem(FREEZE_KEY);
+    if (!raw) return { week: weekKey(), usedDate: null };
+    const parsed = JSON.parse(raw);
+    if (parsed.week !== weekKey()) return { week: weekKey(), usedDate: null };
+    return { week: parsed.week, usedDate: parsed.usedDate || null };
+  } catch {
+    return { week: weekKey(), usedDate: null };
+  }
+}
+
+function saveStreakFreeze(data) {
+  localStorage.setItem(FREEZE_KEY, JSON.stringify(data));
+}
+
+function focusDaysSet() {
+  const days = new Set(state.history.map((s) => s.date));
+  const freeze = loadStreakFreeze();
+  if (freeze.usedDate) days.add(freeze.usedDate);
+  return days;
+}
+
 function currentStreak() {
-  const daysWithFocus = new Set(state.history.map((s) => s.date));
+  const daysWithFocus = focusDaysSet();
   let cursor = todayKey();
   if (!daysWithFocus.has(cursor)) {
     cursor = shiftDayKey(cursor, -1);
@@ -469,6 +638,87 @@ function currentStreak() {
     cursor = shiftDayKey(cursor, -1);
   }
   return streak;
+}
+
+function canUseStreakFreeze() {
+  const today = todayKey();
+  if (countTodayFocus() > 0) return false;
+  const freeze = loadStreakFreeze();
+  if (freeze.usedDate) return false;
+  const yesterday = shiftDayKey(today, -1);
+  const daysWithFocus = new Set(state.history.map((s) => s.date));
+  if (!daysWithFocus.has(yesterday)) return false;
+  return currentStreak() >= 1;
+}
+
+function useStreakFreeze() {
+  if (!canUseStreakFreeze()) return;
+  saveStreakFreeze({ week: weekKey(), usedDate: todayKey() });
+  render();
+  renderStatsPanel();
+  showToast("Racha protegida por hoy");
+}
+
+function nextStreakMilestone() {
+  const streak = currentStreak();
+  const next = STREAK_MILESTONES.find((m) => m > streak);
+  if (!next) return null;
+  return { next, remaining: next - streak, streak };
+}
+
+function lastFocusSession() {
+  return state.history.find((s) => Number(s.minutes) > 0) || null;
+}
+
+function repeatLastBlock() {
+  if (state.running || state.phase !== "focus") return;
+  const last = lastFocusSession();
+  if (!last) return;
+  if (last.task) {
+    state.task = last.task;
+    els.taskInput.value = last.task;
+  }
+  if (CATEGORIES[last.category]) {
+    setCategory(last.category, { toast: false });
+  }
+  if (last.minutes && last.minutes !== state.settings.focusMins) {
+    state.settings.focusMins = clamp(last.minutes, LIMITS.focusMins);
+    saveSettings();
+    persistCategoryOverride();
+    setPhase("focus", { resetTime: true });
+  }
+  saveSession({ force: true });
+  render();
+  const label = last.task ? `«${last.task}»` : "Último bloque";
+  showToast(`${label} listo`);
+}
+
+function showShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  els.shortcutsOverlay.hidden = false;
+  const card = els.shortcutsOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+}
+
+function hideShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  clearFocusTrap();
+  els.shortcutsOverlay.hidden = true;
+}
+
+function weekCategoryBreakdown() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const counts = {};
+  for (const session of state.history) {
+    if (!keys.has(session.date)) continue;
+    const cat = session.category || "extra";
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
 function saveSession({ force = false } = {}) {
@@ -617,7 +867,12 @@ function setPhase(phase, { resetTime = true } = {}) {
   els.body.dataset.phase = phase;
   const info = PHASES[phase];
   swapText(els.phaseLabel, info.label);
-  swapText(els.supportText, phase === "focus" ? info.support : pickBreakTip(phase));
+  if (phase === "focus") {
+    swapText(els.supportText, info.support);
+  } else {
+    state.breakActsDone = [];
+    swapText(els.supportText, pickBreakTip(phase));
+  }
   if (resetTime) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
@@ -627,6 +882,202 @@ function setPhase(phase, { resetTime = true } = {}) {
   updateThemeColor();
   syncIdleLines();
   render();
+}
+
+function renderBreakActivities() {
+  if (!els.breakActivities) return;
+  const onBreak = state.phase !== "focus";
+  els.breakActivities.hidden = !onBreak;
+  if (!onBreak) return;
+  els.breakActivities.querySelectorAll(".break-act").forEach((btn) => {
+    const key = btn.dataset.act;
+    btn.classList.toggle("is-done", state.breakActsDone.includes(key));
+  });
+}
+
+function toggleBreakActivity(key) {
+  if (!BREAK_ACTIVITIES[key] || state.phase === "focus") return;
+  if (state.breakActsDone.includes(key)) {
+    state.breakActsDone = state.breakActsDone.filter((k) => k !== key);
+    swapText(els.supportText, pickBreakTip(state.phase));
+  } else {
+    state.breakActsDone.push(key);
+    swapText(els.supportText, BREAK_ACTIVITIES[key].tip);
+  }
+  renderBreakActivities();
+  if (state.breakActsDone.length === Object.keys(BREAK_ACTIVITIES).length) {
+    showToast("Descanso activo completo");
+  }
+}
+
+function computeFocusScore() {
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const { count: weekCount } = weekSummary();
+  const weekGoal = state.settings.weeklyGoal || 40;
+  const streak = currentStreak();
+
+  if (!today && !weekCount) return { score: 0, label: "Empieza un bloque para calcularla." };
+
+  const dailyPart = Math.min(40, Math.round((today / Math.max(1, goal)) * 40));
+  const weeklyPart = Math.min(30, Math.round((weekCount / Math.max(1, weekGoal)) * 30));
+  const streakPart = Math.min(20, Math.round((streak / 14) * 20));
+  const activePart = today > 0 ? 10 : 0;
+  const score = Math.min(100, dailyPart + weeklyPart + streakPart + activePart);
+
+  let label = "Ritmo en construcción.";
+  if (score >= 85) label = "Ritmo excelente. Sigue sellando.";
+  else if (score >= 65) label = "Buen impulso. La constancia suma.";
+  else if (score >= 40) label = "Vas encaminado. Un bloque más.";
+  else if (today > 0) label = "Has empezado. Eso ya cuenta.";
+
+  return { score, label };
+}
+
+function renderFocusScore() {
+  if (!els.focusScoreValue) return;
+  const { score, label } = computeFocusScore();
+  els.focusScoreValue.textContent = score > 0 ? String(score) : "—";
+  if (els.focusScoreCopy) els.focusScoreCopy.textContent = label;
+  if (els.focusScoreRing) {
+    els.focusScoreRing.dataset.score = String(score);
+    const alpha = 0.15 + (score / 100) * 0.65;
+    els.focusScoreRing.style.borderColor = score > 0
+      ? `rgba(214, 40, 24, ${alpha})`
+      : "";
+  }
+}
+
+function daySummaryFor(dateKey) {
+  const sessions = state.history.filter((s) => s.date === dateKey);
+  const count = sessions.length;
+  const minutes = sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  const cats = sessions.reduce((acc, s) => {
+    const k = s.category || "extra";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  const lastNote = sessions.find((s) => s.note)?.note || null;
+  return { count, minutes, topCat, lastNote };
+}
+
+function showDaySummary(forKey, { kicker = "Resumen del día" } = {}) {
+  if (!els.dayOverlay) return;
+  const summary = daySummaryFor(forKey);
+  if (!summary.count) return;
+
+  const goal = state.settings.dailyGoal;
+  const isToday = forKey === todayKey();
+  const yesterdayKey = shiftDayKey(forKey, -1);
+  const yesterday = daySummaryFor(yesterdayKey).count;
+  const catLabel = summary.topCat ? categoryLabel(summary.topCat[0]).toLowerCase() : "foco";
+
+  let compare = "";
+  if (yesterday > 0 && summary.count !== yesterday) {
+    compare =
+      summary.count > yesterday
+        ? ` Más que ayer (+${summary.count - yesterday}).`
+        : ` Menos que ayer (${summary.count - yesterday}).`;
+  }
+
+  if (els.dayKicker) els.dayKicker.textContent = kicker;
+  if (els.dayTitle) {
+    els.dayTitle.textContent = isToday ? "Tu día en foco" : "Ayer en foco";
+  }
+  if (els.dayText) {
+    els.dayText.textContent = [
+      `${summary.count} enfoques · ${summary.minutes} min`,
+      isToday ? `Meta: ${summary.count}/${goal}.${compare}` : compare.trim(),
+      `Más en ${catLabel}.`,
+      summary.lastNote ? `Nota: «${summary.lastNote}»` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  els.dayOverlay.hidden = false;
+  localStorage.setItem(`foco-day-summary-${forKey}`, "1");
+}
+
+function hideDaySummary() {
+  if (!els.dayOverlay) return;
+  els.dayOverlay.hidden = true;
+}
+
+function maybeShowDaySummary() {
+  const hour = new Date().getHours();
+  const key = todayKey();
+  const shownToday = localStorage.getItem(`foco-day-summary-${key}`) === "1";
+
+  if (hour >= 20 && !shownToday) {
+    const today = daySummaryFor(key);
+    if (today.count > 0) {
+      showDaySummary(key);
+      return;
+    }
+  }
+
+  if (hour < 12) {
+    const yesterday = shiftDayKey(key, -1);
+    if (localStorage.getItem(`foco-day-summary-${yesterday}`) === "1") return;
+    const y = daySummaryFor(yesterday);
+    if (y.count > 0) {
+      showDaySummary(yesterday, { kicker: "Ayer en Foco" });
+    }
+  }
+}
+
+function weekRecapKey() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? 0 : day;
+  d.setDate(d.getDate() - diff);
+  return todayKey(d);
+}
+
+function setupWeeklyRecap() {
+  if (!els.recapTip) return;
+  const key = weekRecapKey();
+  if (localStorage.getItem(`foco-week-recap-${key}`) === "1") return;
+  if (new Date().getDay() !== 0) return;
+
+  const { count, minutes } = weekSummary();
+  if (count < 2) return;
+
+  const streak = currentStreak();
+  if (els.recapTipText) {
+    els.recapTipText.textContent = `${count} enfoques · ${minutes} min · racha ${streak}`;
+  }
+  els.recapTip.hidden = false;
+
+  els.recapCloseBtn?.addEventListener("click", () => {
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+
+  els.recapShareBtn?.addEventListener("click", () => {
+    shareWeek();
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+}
+
+function setupOfflineBadge() {
+  if (!els.offlineBadge) return;
+  const sync = () => {
+    els.offlineBadge.hidden = navigator.onLine;
+  };
+  window.addEventListener("online", sync);
+  window.addEventListener("offline", sync);
+  sync();
+}
+
+function streakMilestoneCopy(hit) {
+  if (hit >= 30) return "Constancia de nivel alto. Esto ya es un hábito.";
+  if (hit >= 14) return "Dos semanas de racha. Imparable.";
+  if (hit >= 7) return "Una semana entera de foco. Sigue así.";
+  return "Tres días seguidos. El hábito empieza aquí.";
 }
 
 function stopIdleLines() {
@@ -759,6 +1210,10 @@ function renderTodayStrip() {
   const { count } = weekSummary();
   const weekGoal = state.settings.weeklyGoal || 40;
   parts.push(`<span class="today-pill">Sem <strong>${count}/${weekGoal}</strong></span>`);
+  const { score } = computeFocusScore();
+  if (score > 0) {
+    parts.push(`<span class="today-pill today-score">Foco <strong>${score}</strong></span>`);
+  }
   for (const task of chips) {
     parts.push(
       `<button type="button" class="today-chip" data-task="${escapeHtml(task)}">${escapeHtml(task)}</button>`
@@ -910,6 +1365,8 @@ function resetStatsData() {
       saveHistory();
       saveCelebratedMilestones();
       localStorage.removeItem("foco-goal-celebrated");
+      localStorage.removeItem(FREEZE_KEY);
+      localStorage.removeItem(PRESET_OVERRIDES_KEY);
       clearSession();
       render();
       renderStatsPanel();
@@ -929,12 +1386,16 @@ function renderTodayTimeline() {
         ? "--:--"
         : date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
       const title = session.task ? escapeHtml(session.task) : "Enfoque";
+      const note = session.note
+        ? `<span class="history-note">${escapeHtml(session.note)}</span>`
+        : "";
       return `
         <li class="timeline-item">
           <div class="timeline-time">${time}</div>
           <div class="timeline-body">
             <strong>${title}</strong>
             <span>${session.minutes} min</span>
+            ${note}
             ${categoryTag(session.category || "extra")}
           </div>
         </li>
@@ -1025,13 +1486,112 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function renderSoundThemes() {
+  if (!els.soundThemeRow) return;
+  const theme = SOUND_THEMES[state.settings.soundTheme] ? state.settings.soundTheme : "soft";
+  els.soundThemeRow.querySelectorAll("[data-theme]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.theme === theme);
+    btn.setAttribute("aria-pressed", String(btn.dataset.theme === theme));
+  });
+}
+
+function renderStreakFreeze() {
+  if (!els.streakFreezeRow) return;
+  const freeze = loadStreakFreeze();
+  const canUse = canUseStreakFreeze();
+  const usedToday = freeze.usedDate === todayKey();
+  els.streakFreezeRow.hidden = !canUse && !usedToday;
+  if (els.streakFreezeCopy) {
+    if (usedToday) {
+      els.streakFreezeCopy.textContent = "Racha protegida hoy. Una vez por semana.";
+    } else if (canUse) {
+      els.streakFreezeCopy.textContent = `Sin enfoque hoy. Protege tu racha de ${currentStreak()} días.`;
+    }
+  }
+  if (els.streakFreezeBtn) {
+    els.streakFreezeBtn.hidden = !canUse;
+    els.streakFreezeBtn.disabled = !canUse;
+  }
+}
+
+function renderStreakMilestone() {
+  if (!els.streakMilestoneRow) return;
+  const info = nextStreakMilestone();
+  if (!info || info.streak < 1) {
+    els.streakMilestoneRow.hidden = true;
+    return;
+  }
+  els.streakMilestoneRow.hidden = false;
+  if (els.streakMilestoneText) {
+    els.streakMilestoneText.textContent =
+      info.remaining === 1
+        ? `Mañana puedes llegar a ${info.next} días de racha.`
+        : `Siguiente hito: ${info.next} días · faltan ${info.remaining}.`;
+  }
+  if (els.streakMilestoneFill) {
+    const prev = STREAK_MILESTONES.filter((m) => m <= info.streak).pop() || 0;
+    const span = info.next - prev;
+    const progress = span > 0 ? (info.streak - prev) / span : 1;
+    els.streakMilestoneFill.style.width = `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`;
+  }
+}
+
+function renderCategoryBreakdown() {
+  if (!els.categoryBreakdown) return;
+  const rows = weekCategoryBreakdown();
+  if (!rows.length) {
+    els.categoryBreakdown.hidden = true;
+    els.categoryBreakdown.innerHTML = "";
+    return;
+  }
+  const total = rows.reduce((sum, [, count]) => sum + count, 0);
+  els.categoryBreakdown.hidden = false;
+  els.categoryBreakdown.innerHTML = rows
+    .map(([cat, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="cat-breakdown-item">
+          <div class="cat-breakdown-head">
+            ${categoryTag(cat)}
+            <span>${count} · ${pct}%</span>
+          </div>
+          <div class="cat-breakdown-track" aria-hidden="true">
+            <div class="cat-breakdown-fill tag-${cat}" style="width:${pct}%"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderRepeatLast() {
+  if (!els.repeatLastBtn) return;
+  const last = lastFocusSession();
+  const show =
+    last &&
+    state.phase === "focus" &&
+    !state.running &&
+    state.remainingMs === state.totalMs &&
+    !(state.settings.deepFocus && state.running);
+  els.repeatLastBtn.hidden = !show;
+  if (show && last.task) {
+    els.repeatLastBtn.textContent = `Repetir «${last.task.slice(0, 18)}${last.task.length > 18 ? "…" : ""}»`;
+  } else if (show) {
+    els.repeatLastBtn.textContent = "Repetir último";
+  }
+}
+
 function renderStatsPanel() {
   renderWeekChart();
   renderTodayTimeline();
   renderHeatmap();
   renderHistoryList();
   renderBestDay();
+  renderFocusScore();
   renderInsight();
+  renderStreakFreeze();
+  renderStreakMilestone();
+  renderCategoryBreakdown();
 }
 
 function recentTaskNames() {
@@ -1117,6 +1677,8 @@ function render() {
   renderGoalProgress();
   renderGreeting();
   renderTodayStrip();
+  renderBreakActivities();
+  renderRepeatLast();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1137,6 +1699,10 @@ function render() {
   if (els.quietToggle) {
     els.quietToggle.setAttribute("aria-checked", String(state.settings.quietHours));
   }
+  if (els.categoryPresetsToggle) {
+    els.categoryPresetsToggle.setAttribute("aria-checked", String(state.settings.categoryPresets));
+  }
+  renderSoundThemes();
   renderTaskSuggestions();
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
@@ -1195,6 +1761,21 @@ async function shareWeek() {
     showToast("Resumen copiado");
   } catch {
     showToast("No se pudo compartir");
+  }
+}
+
+async function downloadWeekCard() {
+  try {
+    const file = await buildWeekCardFile();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Tarjeta semanal descargada");
+  } catch {
+    showToast("No se pudo generar la tarjeta");
   }
 }
 
@@ -1485,6 +2066,7 @@ function applyFocusPreset(minutes) {
   if (state.running || state.phase !== "focus") return;
   state.settings.focusMins = clamp(minutes, LIMITS.focusMins);
   saveSettings();
+  persistCategoryOverride();
   setPhase("focus", { resetTime: true });
   saveSession();
   showToast(`Enfoque a ${minutes} min`);
@@ -1588,16 +2170,21 @@ async function requestNotifyPermission() {
   return result === "granted";
 }
 
-function notifyEnd(kind = "soft") {
+function notifyEnd(kind = "soft", { phase = state.phase, task = state.task } = {}) {
   playChime(kind);
   hapticPulse(kind === "soft" ? "end" : kind);
   if (isQuietHours()) return;
   if (!state.settings.notify || !("Notification" in window) || Notification.permission !== "granted") return;
-  const title = state.phase === "focus" ? "Enfoque terminado" : "Descanso terminado";
-  const body =
-    state.phase === "focus"
-      ? "Toca para empezar el descanso."
-      : "Cuando quieras, vuelve al enfoque.";
+  const taskLabel = (task || "").trim();
+  let title;
+  let body;
+  if (phase === "focus") {
+    title = taskLabel ? `«${taskLabel}» sellado` : "Enfoque terminado";
+    body = taskLabel ? "Bloque completado. Toca para el descanso." : "Toca para empezar el descanso.";
+  } else {
+    title = "Descanso terminado";
+    body = "Cuando quieras, vuelve al enfoque.";
+  }
   try {
     new Notification(title, { body, icon: "./icon.svg", tag: "foco-phase-end" });
   } catch {
@@ -1763,12 +2350,7 @@ function maybeCelebrateStreak() {
   state.celebratedMilestones.push(hit);
   saveCelebratedMilestones();
   els.goalOverlayTitle.textContent = `Racha de ${hit} días`;
-  els.goalOverlayText.textContent =
-    hit >= 30
-      ? "Constancia de nivel alto. Esto ya es un hábito."
-      : hit >= 7
-        ? "Una semana entera de foco. Sigue así."
-        : "Tres días seguidos. El hábito empieza aquí.";
+  els.goalOverlayText.textContent = streakMilestoneCopy(hit);
   els.goalOverlay.hidden = false;
   burstGoalSparks();
   return true;
@@ -1838,7 +2420,8 @@ function onPhaseComplete() {
   state.remainingMs = 0;
   render();
   playPhaseStamp();
-  notifyEnd(chimeKind);
+  const finishedTask = state.task;
+  notifyEnd(chimeKind, { phase: finished, task: finishedTask });
 
   let celebratedSomething = false;
   let recorded = null;
@@ -1884,9 +2467,9 @@ function onPhaseComplete() {
 function doSkipPhase() {
   const finished = state.phase;
   pause();
-  // Saltar no cuenta el enfoque hacia el descanso largo.
   if (finished === "focus") {
-    setPhase("short", { resetTime: true });
+    const next = nextPhaseAfter("focus");
+    setPhase(next, { resetTime: true });
   } else {
     setPhase("focus", { resetTime: true });
   }
@@ -2065,6 +2648,9 @@ function adjustSetting(key, delta) {
   const [min, max] = LIMITS[key];
   state.settings[key] = clamp(state.settings[key] + delta, [min, max]);
   saveSettings();
+  if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
+    persistCategoryOverride();
+  }
   if (key === "dailyGoal" || key === "weeklyGoal") {
     render();
     return;
@@ -2150,6 +2736,21 @@ function bindEvents() {
   els.goalOverlay.addEventListener("click", (event) => {
     if (event.target === els.goalOverlay) hideGoalCelebration();
   });
+
+  if (els.dayClose) {
+    els.dayClose.addEventListener("click", hideDaySummary);
+  }
+  els.dayOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.dayOverlay) hideDaySummary();
+  });
+
+  if (els.breakActivities) {
+    els.breakActivities.addEventListener("click", (event) => {
+      const btn = event.target.closest(".break-act");
+      if (!btn) return;
+      toggleBreakActivity(btn.dataset.act);
+    });
+  }
 
   els.presets.querySelectorAll("[data-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyFocusPreset(Number(btn.dataset.preset)));
@@ -2255,9 +2856,7 @@ function bindEvents() {
         (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
       );
       if (match && CATEGORIES[match.category]) {
-        state.category = match.category;
-        state.settings.category = match.category;
-        saveSettings();
+        setCategory(match.category, { toast: false });
       }
       saveSession({ force: true });
       render();
@@ -2287,6 +2886,12 @@ function bindEvents() {
   els.shareWeekBtn.addEventListener("click", () => {
     shareWeek();
   });
+
+  if (els.exportWeekPngBtn) {
+    els.exportWeekPngBtn.addEventListener("click", () => {
+      downloadWeekCard();
+    });
+  }
 
   els.exportBtn.addEventListener("click", () => {
     exportBackup();
@@ -2320,6 +2925,49 @@ function bindEvents() {
     });
   }
 
+  if (els.categoryPresetsToggle) {
+    els.categoryPresetsToggle.addEventListener("click", () => {
+      state.settings.categoryPresets = !state.settings.categoryPresets;
+      saveSettings();
+      render();
+      showToast(state.settings.categoryPresets ? "Plantillas por categoría on" : "Plantillas por categoría off");
+    });
+  }
+
+  if (els.soundThemeRow) {
+    els.soundThemeRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-theme]");
+      if (!btn || !SOUND_THEMES[btn.dataset.theme]) return;
+      state.settings.soundTheme = btn.dataset.theme;
+      saveSettings();
+      render();
+      ensureAudio();
+      playChime("soft");
+    });
+  }
+
+  if (els.streakFreezeBtn) {
+    els.streakFreezeBtn.addEventListener("click", () => {
+      askConfirm({
+        title: "¿Proteger la racha?",
+        text: "Cuenta hoy como día de racha sin enfoque. Solo una vez por semana.",
+        okLabel: "Proteger",
+        onConfirm: useStreakFreeze,
+      });
+    });
+  }
+
+  if (els.repeatLastBtn) {
+    els.repeatLastBtn.addEventListener("click", repeatLastBlock);
+  }
+
+  if (els.shortcutsClose) {
+    els.shortcutsClose.addEventListener("click", hideShortcuts);
+  }
+  els.shortcutsOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.shortcutsOverlay) hideShortcuts();
+  });
+
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
     await handleImportFile(file);
@@ -2342,11 +2990,7 @@ function bindEvents() {
   els.categoryRow.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-category]");
     if (!btn) return;
-    state.category = btn.dataset.category;
-    state.settings.category = state.category;
-    saveSettings();
-    saveSession({ force: true });
-    renderCategories();
+    setCategory(btn.dataset.category);
   });
 
   els.recentTasks.addEventListener("click", (event) => {
@@ -2359,9 +3003,7 @@ function bindEvents() {
       (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
     );
     if (match && CATEGORIES[match.category]) {
-      state.category = match.category;
-      state.settings.category = match.category;
-      saveSettings();
+      setCategory(match.category, { toast: false });
     }
     saveSession({ force: true });
     renderCategories();
@@ -2401,6 +3043,14 @@ function bindEvents() {
         skipSessionNote();
         return;
       }
+      if (els.dayOverlay && !els.dayOverlay.hidden) {
+        hideDaySummary();
+        return;
+      }
+      if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) {
+        hideShortcuts();
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -2412,6 +3062,8 @@ function bindEvents() {
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
     if (els.noteOverlay && !els.noteOverlay.hidden) return;
+    if (els.dayOverlay && !els.dayOverlay.hidden) return;
+    if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -2443,7 +3095,12 @@ function bindEvents() {
     }
     if (key === "?") {
       event.preventDefault();
-      showToast("Espacio pausa · R reinicia · S salta · +1 · 1/2/3 presets", { duration: 4200 });
+      showShortcuts();
+      return;
+    }
+    if (key === "l") {
+      event.preventDefault();
+      repeatLastBlock();
     }
   });
 }
@@ -2570,6 +3227,13 @@ function setupRitual() {
   setTimeout(() => els.ritualTask?.focus(), 350);
 }
 
+function scheduleDaySummary() {
+  setTimeout(() => {
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    maybeShowDaySummary();
+  }, 1400);
+}
+
 function init() {
   if (CATEGORIES[state.settings.category]) {
     state.category = state.settings.category;
@@ -2585,8 +3249,11 @@ function init() {
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
   registerSW();
+  setupOfflineBadge();
   setupRitual();
   setupInstallTip();
+  setupWeeklyRecap();
+  scheduleDaySummary();
 }
 
 init();
