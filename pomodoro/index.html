@@ -41,7 +41,7 @@
     </header>
 
     <main class="stage">
-      <div class="timer-shell" id="timerShell">
+      <div class="timer-shell" id="timerShell" role="button" tabindex="0" aria-label="Empezar o pausar temporizador">
         <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
           <circle class="ring-track" cx="50" cy="50" r="46"></circle>
           <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="46" pathLength="1"></circle>
@@ -68,6 +68,7 @@
       <button class="primary" id="primaryBtn" type="button">Empezar</button>
       <div class="secondary-row">
         <button class="secondary" id="skipBtn" type="button">Saltar</button>
+        <button class="secondary" id="extendBtn" type="button">+1 min</button>
         <button class="secondary" id="resetBtn" type="button">Reiniciar</button>
       </div>
       <div class="meta" aria-live="polite">
@@ -114,6 +115,8 @@
           <div class="stat-label">Meta de hoy</div>
         </div>
       </div>
+
+      <p class="best-day" id="bestDay">Tu mejor día aparecerá aquí.</p>
 
       <div class="goal-track" aria-hidden="true">
         <div class="goal-fill" id="goalFill"></div>
@@ -215,6 +218,14 @@
 
       <div class="toggle-row">
         <div>
+          <div>Vibración</div>
+          <p class="hint">Un toque háptico al terminar cada bloque.</p>
+        </div>
+        <button class="toggle" id="hapticToggle" type="button" role="switch" aria-checked="true" aria-label="Vibración"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
           <div>Avisos al terminar</div>
           <p class="hint">Pide permiso de notificaciones en iPhone (Safari → Añadir a inicio).</p>
         </div>
@@ -239,7 +250,10 @@
     </div>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMessage"></span>
+    <button class="toast-action" id="toastAction" type="button" hidden>Deshacer</button>
+  </div>
 
   <div class="goal-overlay" id="goalOverlay" hidden>
     <div class="goal-card" role="status" aria-live="polite">
