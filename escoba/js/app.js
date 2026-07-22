@@ -726,27 +726,22 @@ function renderPiles() {
     const wrap = document.createElement('div');
     wrap.className = 'pile-stack interleaved';
 
-    // Condensa: si hay muchas capas, muestra todas las escobas + últimas cartas
-    // manteniendo el orden (la distancia entre escobas = cartas entre medias)
+    // Condensa: pocas capas visibles, casi verticales; siempre las escobas
     let show = layers;
-    const MAX = 14;
+    const MAX = 8;
     if (layers.length > MAX) {
-      const keep = [];
       const escIdx = layers
         .map((l, i) => (l.kind === 'escoba' ? i : -1))
         .filter((i) => i >= 0);
       const must = new Set(escIdx);
-      // Siempre la última capa
       must.add(layers.length - 1);
-      // Cartas entre escobas: muestreo uniforme si hay demasiadas
-      for (let i = 0; i < layers.length; i++) {
-        if (layers[i].kind === 'escoba') continue;
-        // Guarda las cercanas a cada escoba y el final
-        const nearEsc = escIdx.some((e) => Math.abs(e - i) <= 2);
-        if (nearEsc) must.add(i);
+      // 1 carta justo encima de cada escoba (distancia visible)
+      for (const e of escIdx) {
+        if (e + 1 < layers.length && layers[e + 1].kind === 'card') must.add(e + 1);
       }
-      // Rellena hasta MAX con las más recientes
-      for (let i = layers.length - 1; i >= 0 && must.size < MAX; i--) must.add(i);
+      for (let i = layers.length - 1; i >= 0 && must.size < MAX; i--) {
+        if (layers[i].kind === 'card') must.add(i);
+      }
       show = layers.filter((_, i) => must.has(i));
     }
 
@@ -2273,7 +2268,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=29').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=30').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
