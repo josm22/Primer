@@ -906,20 +906,20 @@ button.card {
 }
 
 .pile {
-  width: 96px;
+  width: 78px;
   flex-shrink: 0;
-  min-height: 86px;
+  min-height: 78px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 2px;
   position: relative;
   overflow: visible;
   cursor: pointer;
   border-radius: 12px;
   transition: background 0.15s ease;
-  padding: 6px 4px;
+  padding: 4px 2px;
 }
 
 .pile:active { background: rgba(255,255,255,0.06); }
@@ -933,40 +933,45 @@ button.card {
 
 .pile-stage {
   position: relative;
-  width: 72px;
-  height: 86px;
+  width: 56px;
+  height: 78px;
   overflow: visible;
 }
 
 .pile-stack {
   position: absolute;
   left: 50%;
-  bottom: 4px;
-  width: 48px;
-  height: 72px;
-  margin-left: -24px;
+  bottom: 2px;
+  width: 40px;
+  height: 60px;
+  margin-left: -20px;
 }
 
 .pile-stack .card.tiny {
   position: absolute;
-  width: 48px;
-  height: 72px;
+  width: 40px;
+  height: 60px;
   left: 0;
   top: 0;
-  transform: translate(calc(var(--i) * 3px), calc(var(--i) * -3px)) rotate(calc(var(--i) * 1.2deg));
-  box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+  /* Casi vertical: casi no crece hacia los lados */
+  transform: translate(calc(var(--i) * 0.55px), calc(var(--i) * -1.85px)) rotate(calc(var(--i) * 0.35deg));
+  box-shadow: 0 3px 8px rgba(0,0,0,0.38);
   z-index: calc(1 + var(--i));
 }
 
-/* Escobas intercaladas en el mismo montón: boca abajo y perpendiculares */
+/* Escobas: perpendiculares pero centradas y un poco más cortas */
 .pile-stack .card.tiny.escoba-mark {
+  width: 34px;
+  height: 52px;
+  left: 3px;
+  top: 4px;
   transform:
     translate(
-      calc(var(--i) * 3px - 8px),
-      calc(var(--i) * -3px + 2px)
+      calc(var(--i) * 0.55px),
+      calc(var(--i) * -1.85px)
     )
     rotate(90deg);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(224, 179, 77, 0.4);
   z-index: calc(2 + var(--i));
 }
@@ -978,14 +983,14 @@ button.card {
 @keyframes escobaMarkIn {
   0% {
     opacity: 0;
-    transform: translate(calc(var(--i) * 3px - 8px), calc(var(--i) * -3px + 8px)) rotate(40deg) scale(1.12);
+    transform: translate(calc(var(--i) * 0.55px), calc(var(--i) * -1.85px + 6px)) rotate(40deg) scale(1.1);
   }
   100% {
     opacity: 1;
     transform:
       translate(
-        calc(var(--i) * 3px - 8px),
-        calc(var(--i) * -3px + 2px)
+        calc(var(--i) * 0.55px),
+        calc(var(--i) * -1.85px)
       )
       rotate(90deg)
       scale(1);
@@ -996,10 +1001,11 @@ button.card {
 .pile-escobas { display: none; }
 
 .pile-meta {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: rgba(244,235,224,0.6);
   font-weight: 600;
   text-align: center;
+  max-width: 100%;
 }
 
 @keyframes pilePulse {
@@ -1018,17 +1024,22 @@ button.card {
 }
 
 @media (max-height: 780px) {
-  .pile { width: 84px; min-height: 74px; }
-  .pile-stage { width: 64px; height: 74px; }
+  .pile { width: 70px; min-height: 70px; }
+  .pile-stage { width: 50px; height: 70px; }
   .pile-stack {
-    width: 40px;
-    height: 60px;
-    margin-left: -20px;
+    width: 36px;
+    height: 54px;
+    margin-left: -18px;
   }
-  .pile-stack .card.tiny,
+  .pile-stack .card.tiny {
+    width: 36px;
+    height: 54px;
+  }
   .pile-stack .card.tiny.escoba-mark {
-    width: 40px;
-    height: 60px;
+    width: 30px;
+    height: 46px;
+    left: 3px;
+    top: 4px;
   }
   .live-stats { padding: 7px 9px; }
 }

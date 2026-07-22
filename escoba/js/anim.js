@@ -453,7 +453,7 @@ function cssPileSize() {
     }
   } catch (_) {}
   const short = typeof window !== 'undefined' && window.innerHeight <= 780;
-  return short ? { width: 40, height: 60 } : { width: 48, height: 72 };
+  return short ? { width: 36, height: 54 } : { width: 40, height: 60 };
 }
 
 function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
@@ -465,7 +465,7 @@ function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
   if (stage && stage.width > 10) {
     // Centro del montón (coincide con .pile-stage / escobas cruzadas)
     return {
-      left: stage.left + Math.max(0, (stage.width - w) / 2) + (crossed ? -6 : 0),
+      left: stage.left + Math.max(0, (stage.width - w) / 2) + (crossed ? -2 : 0),
       top:
         stage.top +
         (crossed
