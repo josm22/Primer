@@ -362,7 +362,7 @@ export async function playDealAnim({
         if (animAborted(isCancelled)) return;
         await animateTo(node, land, {
           ms: 480,
-          rotate: 180 + (i - 1) * 4,
+          rotate: (i - 1) * 4,
           easing: 'cubic-bezier(0.22, 0.8, 0.28, 1)',
         });
       })()
@@ -509,7 +509,9 @@ function measurePileDest(meSide, { crossed = false } = {}) {
       }
     }
   }
-  const cards = document.querySelectorAll(`${root} .pile-stack .card.tiny`);
+  const cards = document.querySelectorAll(
+    `${root} .pile-stack .card.tiny:not(.escoba-mark)`
+  );
   const el = cards[cards.length - 1];
   if (el) {
     const r = el.getBoundingClientRect();
