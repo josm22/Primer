@@ -1545,7 +1545,9 @@ function leaveToHome() {
   clearFlyLayer();
   setNetChip('');
   $('#scoreOpp')?.classList.remove('thinking');
-  $('#screenGame')?.classList.remove('dealing', 'dealing-hands');
+  $('#screenGame')?.classList.remove('dealing', 'dealing-hands', 'my-turn');
+  $('.play-bar')?.classList.remove('armed');
+  $('#felt')?.classList.remove('selecting');
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
