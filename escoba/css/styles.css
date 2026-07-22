@@ -92,6 +92,52 @@ body::before {
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
 }
 
+@keyframes feltBreath {
+  0%, 100% { box-shadow:
+    0 0 0 3px var(--wood-lite),
+    0 0 0 8px var(--wood),
+    0 0 0 11px var(--wood-dark),
+    inset 0 0 50px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(224, 179, 77, 0.12),
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 28px rgba(224, 179, 77, 0.08); }
+  50% { box-shadow:
+    0 0 0 3px var(--wood-lite),
+    0 0 0 8px var(--wood),
+    0 0 0 11px var(--wood-dark),
+    inset 0 0 58px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(224, 179, 77, 0.22),
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 42px rgba(224, 179, 77, 0.16); }
+}
+
+@keyframes handBreath {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes landRipple {
+  0% { opacity: 0.45; transform: translate(-50%, -50%) scale(0.35); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+}
+
+@keyframes captureKiss {
+  0% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.4); }
+  55% { opacity: 0.28; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
+}
+
+@keyframes barShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes deckTick {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); color: var(--gold); }
+  100% { transform: scale(1); }
+}
+
 @keyframes ptsBump {
   0% { transform: scale(1); }
   40% { transform: scale(1.28); color: var(--gold); }
@@ -513,13 +559,17 @@ body::before {
   justify-content: center;
   gap: 12px;
   background:
-    radial-gradient(ellipse at 50% 40%, #1a7a52 0%, #0e4a33 70%, #0a3526 100%);
+    radial-gradient(ellipse at 50% 38%, rgba(36, 140, 92, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 40%, #1a7a52 0%, #0e4a33 68%, #0a3526 100%);
   box-shadow:
+    0 0 0 2px rgba(224, 179, 77, 0.18),
     0 0 0 3px var(--wood-lite),
     0 0 0 8px var(--wood),
     0 0 0 11px var(--wood-dark),
     inset 0 0 50px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 16px 40px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.35s ease;
 }
 
 .felt::before {
@@ -527,20 +577,59 @@ body::before {
   position: absolute;
   inset: 10px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.felt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0, 0, 0, 0.22) 100%);
+  opacity: 0.7;
 }
 
 .felt.sweep { animation: sweep 0.55s ease; }
 
 .felt.deck-low {
   box-shadow:
+    0 0 0 2px rgba(224, 179, 77, 0.22),
     0 0 0 3px var(--wood-lite),
     0 0 0 8px var(--wood),
     0 0 0 11px var(--wood-dark),
     inset 0 0 50px rgba(0, 0, 0, 0.35),
     0 16px 40px rgba(0, 0, 0, 0.35),
     inset 0 0 80px rgba(224, 179, 77, 0.08);
+}
+
+#screenGame.my-turn .felt:not(.felt-cleared) {
+  animation: feltBreath 2.8s ease-in-out infinite;
+}
+
+#screenGame.my-turn .my-hand {
+  animation: handBreath 2.8s ease-in-out infinite;
+}
+
+.felt.selecting {
+  box-shadow:
+    0 0 0 2px rgba(224, 179, 77, 0.35),
+    0 0 0 3px var(--wood-lite),
+    0 0 0 8px var(--wood),
+    0 0 0 11px var(--wood-dark),
+    inset 0 0 60px rgba(0, 0, 0, 0.28),
+    inset 0 0 90px rgba(224, 179, 77, 0.1),
+    0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.felt.selecting > .card:not(.capture-target) {
+  filter: brightness(1.06) saturate(1.05);
+  transition: filter 0.2s ease, transform 0.2s ease;
 }
 
 .deck-stack {
@@ -577,6 +666,10 @@ body::before {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
+.deck-count.tick {
+  animation: deckTick 0.45s cubic-bezier(.22,.8,.3,1);
+}
+
 .deck-stack.empty .deck-count {
   opacity: 0.45;
 }
@@ -602,6 +695,7 @@ body::before {
 
 .felt.felt-cleared {
   box-shadow:
+    0 0 0 2px rgba(224, 179, 77, 0.4),
     0 0 0 3px var(--wood-lite),
     0 0 0 8px var(--wood),
     0 0 0 11px var(--wood-dark),
@@ -700,6 +794,14 @@ button.card {
 }
 
 .play-bar .btn { flex: 1; }
+
+.play-bar.armed #btnCapture:not([disabled]) {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow:
+    0 8px 22px rgba(184, 135, 42, 0.45),
+    0 0 0 1px rgba(255, 246, 214, 0.25);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
 
 
 
@@ -1152,7 +1254,20 @@ button.card {
   width: 0%;
   border-radius: inherit;
   background: linear-gradient(90deg, #efc56a, #7dffb0);
+  background-size: 100% 100%;
   transition: width 0.45s cubic-bezier(.22,.8,.3,1);
+}
+
+.score-fill.shimmer {
+  background-image: linear-gradient(
+    100deg,
+    #efc56a 0%,
+    #fff6d6 35%,
+    #7dffb0 55%,
+    #efc56a 100%
+  );
+  background-size: 200% 100%;
+  animation: barShimmer 0.7s ease both;
 }
 
 .score-fill.near {
@@ -1335,6 +1450,30 @@ button.card {
   margin-top: -3px;
 }
 
+.felt-ripple,
+.capture-kiss {
+  position: fixed;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 88;
+  margin: 0;
+  border: 2px solid rgba(244, 235, 224, 0.45);
+  box-shadow: 0 0 18px rgba(224, 179, 77, 0.25);
+  transform: translate(-50%, -50%);
+}
+
+.felt-ripple {
+  animation: landRipple 0.32s cubic-bezier(.2,.75,.25,1) forwards;
+}
+
+.capture-kiss {
+  border-color: rgba(125, 255, 176, 0.4);
+  background: radial-gradient(circle, rgba(125, 255, 176, 0.22), transparent 70%);
+  animation: captureKiss 0.42s cubic-bezier(.2,.75,.25,1) forwards;
+}
+
 .panel.reveal-score .score-table tbody tr {
   animation: fadeIn 0.4s ease both;
 }
@@ -1357,6 +1496,13 @@ button.card {
   .hero-art .mini-card { animation: none; }
   .wait-dots span { animation: none; opacity: 0.6; }
   .status-line.waiting-pulse { animation: none; opacity: 1; }
+  #screenGame.my-turn .felt:not(.felt-cleared),
+  #screenGame.my-turn .my-hand {
+    animation: none !important;
+  }
+  .play-bar.armed #btnCapture:not([disabled]) {
+    transform: none;
+  }
 }
 
 .name-field input {
