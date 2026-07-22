@@ -334,6 +334,14 @@ function updatePlayButtons() {
 }
 
 /** Actualiza selección sin reconstruir toda la mesa (más fluido en iPhone). */
+function releasePlayUi(opts = {}) {
+  state.busy = false;
+  state.moveGate = false;
+  state.holdHandReveal = false;
+  state.animSeat = null;
+  if (!opts.skipRender) render(opts.renderOpts || {});
+}
+
 function patchSelection() {
   const g = state.game;
   if (!g) return;
@@ -427,12 +435,10 @@ async function finishAfterMove() {
 
   if (state.skipNextPilePaint) {
     state.skipNextPilePaint = false;
-    // Conserva el montón (y la animación de escoba cruzada) ya pintado bajo el flyer
-    render({ skipPiles: true });
+    releasePlayUi({ renderOpts: { skipPiles: true } });
   } else {
-    render();
+    releasePlayUi();
   }
-  state.busy = false;
   maybeAiOrWait();
 }
 
@@ -1289,13 +1295,18 @@ async function maybeAiOrWait() {
     await sleep(firstBeat + 700 + Math.floor(Math.random() * 420));
     if (!stillCpu()) {
       $('#scoreOpp')?.classList.remove('thinking');
-      if (state.playGen === gen) state.busy = false;
+      if (state.playGen === gen && state.game?.currentPlayer === state.me) {
+        releasePlayUi();
+      } else if (state.playGen === gen) {
+        state.busy = false;
+      }
       return;
     }
     const move = chooseAiMove(state.game, 1 - state.me);
     if (!move) {
       $('#scoreOpp')?.classList.remove('thinking');
       state.busy = false;
+      if (state.game?.currentPlayer === state.me) releasePlayUi();
       return;
     }
     const clearing =
@@ -1305,7 +1316,11 @@ async function maybeAiOrWait() {
     await sleep(pause);
     if (!stillCpu()) {
       $('#scoreOpp')?.classList.remove('thinking');
-      if (state.playGen === gen) state.busy = false;
+      if (state.playGen === gen && state.game?.currentPlayer === state.me) {
+        releasePlayUi();
+      } else if (state.playGen === gen) {
+        state.busy = false;
+      }
       return;
     }
     // Mantener “thinking” hasta que arranque el vuelo
@@ -1765,7 +1780,7 @@ async function ingestRemoteState(game, meta = {}) {
 
     // Guest se une a mitad de partida: pinta el estado sin falso reparto
     if (!wasPlaying && game.phase === 'play' && log.length > 0 && !mv) {
-      render();
+      releasePlayUi();
       return;
     }
 
@@ -1789,6 +1804,8 @@ async function ingestRemoteState(game, meta = {}) {
       setMsg(game.phase === 'matchEnd' ? 'Fin de partida' : 'Fin de ronda');
       await sweepRoundLeftovers(game);
       if (!stillHere()) return;
+      state.busy = false;
+      state.moveGate = false;
       render();
       await sleep(550);
       if (stillHere() && state.game === game) showRoundPanel(game);
@@ -1797,18 +1814,24 @@ async function ingestRemoteState(game, meta = {}) {
 
     if (state.skipNextPilePaint) {
       state.skipNextPilePaint = false;
-      render({ skipPiles: true });
+      releasePlayUi({ renderOpts: { skipPiles: true } });
     } else {
-      render();
+      releasePlayUi();
     }
   } finally {
     if (state.playGen === gen) {
-      state.busy = false;
-      state.moveGate = false;
-      state.holdHandReveal = false;
-      state.animSeat = null;
       clearGhosts();
       clearSending();
+      // Salvavidas si algún return saltó releasePlayUi
+      if (
+        state.busy &&
+        !state.dealing &&
+        !state.pendingSnap &&
+        state.game?.phase === 'play' &&
+        state.game.currentPlayer === state.me
+      ) {
+        releasePlayUi();
+      }
     }
   }
 }
@@ -2167,7 +2190,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=26').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=27').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
