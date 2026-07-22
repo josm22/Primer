@@ -329,8 +329,12 @@ function updatePlayButtons() {
   if (!g) return;
   const myTurn = g.phase === 'play' && g.currentPlayer === state.me && !state.busy;
   const canPlay = myTurn && !!state.selectedHand;
-  $('#btnCapture').disabled = !(canPlay && state.selectedTable.size > 0);
+  const canTryCapture = canPlay && state.selectedTable.size > 0;
+  $('#btnCapture').disabled = !canTryCapture;
   $('#btnDiscard').disabled = !canPlay;
+  $('#screenGame')?.classList.toggle('my-turn', myTurn);
+  $('#felt')?.classList.toggle('selecting', canPlay);
+  $('.play-bar')?.classList.toggle('armed', canTryCapture);
 }
 
 /** Actualiza selección sin reconstruir toda la mesa (más fluido en iPhone). */
@@ -634,20 +638,27 @@ function renderStats() {
 function renderScoreBars() {
   const g = state.game;
   if (!g) return;
-  const set = (fillSel, trackSel, score) => {
+  const set = (fillSel, trackSel, score, prev) => {
     const el = $(fillSel);
     const track = $(trackSel);
     if (!el) return;
     const pct = Math.min(100, Math.round((score / WIN_SCORE) * 100));
+    const grew = typeof prev === 'number' && score > prev;
     el.style.width = `${pct}%`;
     el.classList.toggle('near', score >= 15 && score < 18);
     el.classList.toggle('clutch', score >= 18);
+    if (grew) {
+      el.classList.remove('shimmer');
+      void el.offsetWidth;
+      el.classList.add('shimmer');
+      setTimeout(() => el.classList.remove('shimmer'), 750);
+    }
     track?.setAttribute('aria-valuenow', String(score));
     track?.classList.toggle('near', score >= 15 && score < 18);
     track?.classList.toggle('clutch', score >= 18);
   };
-  set('#barMe', '#scoreMe .score-track', g.scores[state.me]);
-  set('#barOpp', '#scoreOpp .score-track', g.scores[1 - state.me]);
+  set('#barMe', '#scoreMe .score-track', g.scores[state.me], state.prevScores[state.me]);
+  set('#barOpp', '#scoreOpp .score-track', g.scores[1 - state.me], state.prevScores[1 - state.me]);
 }
 
 function renderFeed() {
@@ -896,7 +907,6 @@ function render(opts = {}) {
     }
     ptsOpp.textContent = g.scores[opp];
   }
-  state.prevScores = [...g.scores];
   const seat = flyingOrCurrentPlayer();
   $('#scoreMe').classList.toggle('active', seat === state.me);
   $('#scoreOpp').classList.toggle('active', seat === opp);
@@ -912,8 +922,11 @@ function render(opts = {}) {
     );
   }
 
+  $('#screenGame')?.classList.toggle('my-turn', myTurn);
+
   renderStats();
   renderScoreBars();
+  state.prevScores = [...g.scores];
   if (!skipPiles) renderPiles();
   renderFeed();
 
@@ -933,9 +946,12 @@ function render(opts = {}) {
   }
 
   const felt = $('#felt');
+  const prevDeck = Number(felt.dataset.deckCount || -1);
   felt.innerHTML = '';
   felt.classList.toggle('deck-low', g.deck.length > 0 && g.deck.length <= 6);
   felt.classList.toggle('deck-empty', g.deck.length === 0);
+  felt.classList.toggle('selecting', myTurn && !!state.selectedHand && !state.holdLeftoverIds?.size);
+  felt.dataset.deckCount = String(g.deck.length);
 
   const deckStack = document.createElement('div');
   deckStack.className = 'deck-stack';
@@ -951,6 +967,9 @@ function render(opts = {}) {
   const deckCount = document.createElement('span');
   deckCount.className = 'deck-count';
   deckCount.textContent = String(g.deck.length);
+  if (prevDeck >= 0 && g.deck.length !== prevDeck) {
+    deckCount.classList.add('tick');
+  }
   deckStack.appendChild(deckCount);
   felt.appendChild(deckStack);
 
@@ -1023,6 +1042,7 @@ function render(opts = {}) {
   // Sin adelantar si la jugada es válida: el motor decide al confirmar
   $('#btnCapture').disabled = !canTryCapture;
   $('#btnDiscard').disabled = !canPlay;
+  $('.play-bar')?.classList.toggle('armed', canTryCapture);
 }
 
 function selectHand(id) {
@@ -1525,7 +1545,9 @@ function leaveToHome() {
   clearFlyLayer();
   setNetChip('');
   $('#scoreOpp')?.classList.remove('thinking');
-  $('#screenGame')?.classList.remove('dealing', 'dealing-hands');
+  $('#screenGame')?.classList.remove('dealing', 'dealing-hands', 'my-turn');
+  $('.play-bar')?.classList.remove('armed');
+  $('#felt')?.classList.remove('selecting');
   $('#roundOverlay').classList.remove('open');
   $('#inviteOverlay').classList.remove('open');
   $('#peekOverlay')?.classList.remove('open');
@@ -2190,7 +2212,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=27').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=28').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

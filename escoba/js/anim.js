@@ -232,6 +232,47 @@ function burstSparks(cx, cy) {
   }
 }
 
+function softSparks(cx, cy) {
+  const layer = ensureLayer();
+  const colors = ['#7dffb0', '#f4ebe0', '#efc56a', '#c8f5d8'];
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.2;
+    const dist = 28 + Math.random() * 42;
+    const size = 4 + Math.random() * 4;
+    p.style.left = `${cx}px`;
+    p.style.top = `${cy}px`;
+    p.style.width = `${size}px`;
+    p.style.height = `${size}px`;
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
+    p.style.setProperty('--dy', `${Math.sin(ang) * dist}px`);
+    layer.appendChild(p);
+  }
+}
+
+function landRipple(cx, cy) {
+  const layer = ensureLayer();
+  const ring = document.createElement('div');
+  ring.className = 'felt-ripple';
+  ring.style.left = `${cx}px`;
+  ring.style.top = `${cy}px`;
+  layer.appendChild(ring);
+  setTimeout(() => ring.remove(), 360);
+}
+
+function captureKiss(cx, cy) {
+  const layer = ensureLayer();
+  const kiss = document.createElement('div');
+  kiss.className = 'capture-kiss';
+  kiss.style.left = `${cx}px`;
+  kiss.style.top = `${cy}px`;
+  layer.appendChild(kiss);
+  softSparks(cx, cy);
+  setTimeout(() => kiss.remove(), 450);
+}
+
 /**
  * Reparto: cartas salen del mazo hacia mesa y manos.
  */
@@ -604,7 +645,30 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear, isCancel
       return;
     }
 
-    if (isRival && playedCard) setFace(flyer, playedCard);
+    if (isRival && playedCard) {
+      // Flip corto boca arriba antes del arco
+      await animateTo(flyer, {
+        left: fromPlayed.left,
+        top: fromPlayed.top - 36,
+        width: fromPlayed.width * 0.12,
+        height: fromPlayed.height * 1.04,
+      }, { ms: 110, rotate: 12, scale: 1.02 });
+      if (animAborted(isCancelled)) {
+        clearLayer();
+        return;
+      }
+      setFace(flyer, playedCard);
+      await animateTo(flyer, {
+        left: fromPlayed.left,
+        top: fromPlayed.top - 32,
+        width: fromPlayed.width * 1.08,
+        height: fromPlayed.height * 1.08,
+      }, { ms: 130, rotate: -6, scale: 1.05 });
+      if (animAborted(isCancelled)) {
+        clearLayer();
+        return;
+      }
+    }
 
     // Arc toward predicted mesa slot
     const approx = feltLanding(felt, discardIndex);
@@ -652,6 +716,7 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear, isCancel
     }
     await animateTo(flyer, { ...land, top: land.top + 4 }, { ms: 120, scale: 0.98, rotate: rot });
     await animateTo(flyer, land, { ms: 100, scale: 1, rotate: rot });
+    landRipple(land.left + land.width / 2, land.top + land.height / 2);
 
     toast('A la mesa', { ms: 650 });
     await sleep(160);
@@ -755,6 +820,7 @@ export async function playTableAnim(snap, type, { onSfx, onBeforeClear, isCancel
     burstSparks(cx, cy);
     toast('¡ESCOBA!', { escoba: true, ms: 1100 });
   } else {
+    captureKiss(cx, cy);
     toast(loot || 'Captura', { ms: 850 });
   }
 
