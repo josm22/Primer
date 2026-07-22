@@ -726,16 +726,15 @@ function renderPiles() {
     const wrap = document.createElement('div');
     wrap.className = 'pile-stack interleaved';
 
-    // Condensa: pocas capas visibles, casi verticales; siempre las escobas
+    // Solo unas pocas cartas arriba + escobas (montón fino y contenido)
     let show = layers;
-    const MAX = 8;
+    const MAX = 5;
     if (layers.length > MAX) {
       const escIdx = layers
         .map((l, i) => (l.kind === 'escoba' ? i : -1))
         .filter((i) => i >= 0);
       const must = new Set(escIdx);
       must.add(layers.length - 1);
-      // 1 carta justo encima de cada escoba (distancia visible)
       for (const e of escIdx) {
         if (e + 1 < layers.length && layers[e + 1].kind === 'card') must.add(e + 1);
       }
@@ -746,17 +745,19 @@ function renderPiles() {
     }
 
     show.forEach((layer, i) => {
+      // Índice visual comprimido: el montón no se alarga aunque haya muchas
+      const vis = Math.min(i, 4);
       if (layer.kind === 'escoba') {
         const mark = cardEl(null, { face: false, tiny: true });
         mark.classList.add('escoba-mark');
-        mark.style.setProperty('--i', String(i));
+        mark.style.setProperty('--i', String(vis));
         if (i === show.length - 1 && escCount > prevEsc) {
           mark.classList.add('escoba-mark-new');
         }
         wrap.appendChild(mark);
       } else {
         const card = cardEl(layer.card, { face: true, tiny: true });
-        card.style.setProperty('--i', String(i));
+        card.style.setProperty('--i', String(vis));
         wrap.appendChild(card);
       }
     });
@@ -2268,7 +2269,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=30').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=31').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
