@@ -638,19 +638,99 @@ function renderStats() {
   fill($('#statsMe'), tMe, state.names[me]);
 }
 
-/** Montón grande: últimas capturas cara arriba + escobas cruzadas encima (como al principio). */
+/**
+ * Orden real del montón (abajo → arriba):
+ * capturas cara arriba → escoba cruzada → más capturas encima → otra escoba…
+ */
+function buildPileLayers(game, playerIdx, cards) {
+  const hide = state.holdLeftoverIds;
+  const layers = [];
+  let cursor = 0;
+
+  for (const raw of game.moveLog || []) {
+    const mv = normalizeLogMove(raw);
+    if (!mv || Number(mv.player) !== Number(playerIdx)) continue;
+    if (mv.type !== 'capture' && mv.type !== 'escoba') continue;
+    const n = 1 + (mv.captureIds?.length || 0);
+    const slice = cards.slice(cursor, cursor + n);
+    cursor += n;
+    for (const c of slice) {
+      if (hide?.has(c.id)) continue;
+      layers.push({ kind: 'card', card: c });
+    }
+    if (mv.type === 'escoba') layers.push({ kind: 'escoba' });
+  }
+
+  while (cursor < cards.length) {
+    const c = cards[cursor++];
+    if (hide?.has(c.id)) continue;
+    layers.push({ kind: 'card', card: c });
+  }
+
+  if (!layers.length) {
+    for (const c of cards) {
+      if (hide?.has(c.id)) continue;
+      layers.push({ kind: 'card', card: c });
+    }
+  }
+
+  const marked = layers.filter((l) => l.kind === 'escoba').length;
+  const need = game.escobas[playerIdx] || 0;
+  for (let i = marked; i < need; i++) layers.push({ kind: 'escoba' });
+
+  return layers;
+}
+
+/** Pocas cartas por tramo + todas las escobas (máx. 3): se ve el orden sin hinchar. */
+function compactPileShow(layers) {
+  const out = [];
+  let buf = [];
+  const flush = (n) => {
+    for (const card of buf.slice(-n)) out.push({ kind: 'card', card });
+    buf = [];
+  };
+  for (const layer of layers) {
+    if (layer.kind === 'escoba') {
+      flush(1);
+      out.push(layer);
+    } else if (layer.card) {
+      buf.push(layer.card);
+    }
+  }
+  flush(2);
+
+  const escTotal = out.filter((l) => l.kind === 'escoba').length;
+  if (escTotal <= 3 && out.length <= 7) return out;
+
+  // Quédate con las últimas 3 escobas y las cartas de esos tramos
+  const kept = [];
+  let escKept = 0;
+  for (let i = out.length - 1; i >= 0; i--) {
+    const l = out[i];
+    if (l.kind === 'escoba') {
+      if (escKept >= 3) continue;
+      escKept += 1;
+      kept.push(l);
+    } else {
+      // cartas solo si ya hay escoba “más arriba” o es la cima
+      if (escKept === 0 || kept.length < 8) kept.push(l);
+    }
+  }
+  return kept.reverse();
+}
+
 function renderPiles() {
   const g = state.game;
   const me = state.me;
   const opp = 1 - me;
-  const hide = state.holdLeftoverIds;
 
   const paint = (el, cards, playerIdx) => {
     if (!el) return;
-    const visible = hide?.size ? cards.filter((c) => !hide.has(c.id)) : cards;
     const prev = state.lastPileCount[playerIdx] || 0;
     const prevEsc = state.lastEscCount?.[playerIdx] || 0;
     const escCount = g.escobas[playerIdx] || 0;
+    const layers = buildPileLayers(g, playerIdx, cards);
+    const faceUp = layers.filter((l) => l.kind === 'card').length;
 
     el.innerHTML = '';
     el.setAttribute('role', 'button');
@@ -667,7 +747,7 @@ function renderPiles() {
       }
     };
 
-    if (!visible.length && !escCount) {
+    if (!layers.length) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       state.lastPileCount[playerIdx] = 0;
       if (!state.lastEscCount) state.lastEscCount = [0, 0];
@@ -677,38 +757,31 @@ function renderPiles() {
 
     const stage = document.createElement('div');
     stage.className = 'pile-stage';
-    if (visible.length > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
+    if (faceUp > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
 
-    if (visible.length) {
-      const wrap = document.createElement('div');
-      wrap.className = 'pile-stack';
-      const show = visible.slice(-3);
-      show.forEach((c, i) => {
-        const card = cardEl(c, { face: true, tiny: true });
-        card.style.setProperty('--i', String(i));
-        wrap.appendChild(card);
-      });
-      stage.appendChild(wrap);
-    }
+    const wrap = document.createElement('div');
+    wrap.className = 'pile-stack interleaved';
 
-    if (escCount > 0) {
-      const escWrap = document.createElement('div');
-      escWrap.className = 'pile-escobas';
-      escWrap.setAttribute('aria-hidden', 'true');
-      const showEsc = Math.min(escCount, 3);
-      for (let i = 0; i < showEsc; i++) {
+    const show = compactPileShow(layers);
+    show.forEach((layer, i) => {
+      if (layer.kind === 'escoba') {
         const mark = cardEl(null, { face: false, tiny: true });
         mark.classList.add('escoba-mark');
-        mark.style.setProperty('--e', String(i));
-        if (i === showEsc - 1 && escCount > prevEsc) {
+        mark.style.setProperty('--i', String(i));
+        if (i === show.length - 1 && escCount > prevEsc) {
           mark.classList.add('escoba-mark-new');
         }
-        escWrap.appendChild(mark);
+        wrap.appendChild(mark);
+      } else {
+        const card = cardEl(layer.card, { face: true, tiny: true });
+        card.style.setProperty('--i', String(i));
+        wrap.appendChild(card);
       }
-      stage.appendChild(escWrap);
-    }
+    });
 
+    stage.appendChild(wrap);
     el.appendChild(stage);
+
     const meta = document.createElement('div');
     meta.className = 'pile-meta';
     const bits = [];
@@ -718,7 +791,7 @@ function renderPiles() {
     meta.textContent = bits.join(' · ');
     el.appendChild(meta);
 
-    state.lastPileCount[playerIdx] = visible.length;
+    state.lastPileCount[playerIdx] = faceUp;
     if (!state.lastEscCount) state.lastEscCount = [0, 0];
     state.lastEscCount[playerIdx] = escCount;
   };
@@ -2220,7 +2293,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=33').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=34').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
