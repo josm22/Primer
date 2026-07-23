@@ -1056,12 +1056,14 @@ function render(opts = {}) {
       : null;
   const tableCards = g.table.length ? g.table : stagedLeft || [];
 
-  // Mesa fija: si hay muchas cartas, se hacen más pequeñas (no crece el paño)
+  // Mesa fija: pocas cartas → grandes; al llenarse se reducen
   const nTable = tableCards.length;
-  let tableScale = 0.9;
-  if (nTable >= 8) tableScale = 0.66;
-  else if (nTable >= 6) tableScale = 0.74;
-  else if (nTable >= 5) tableScale = 0.82;
+  let tableScale = 1.15;
+  if (nTable >= 8) tableScale = 0.7;
+  else if (nTable >= 6) tableScale = 0.82;
+  else if (nTable >= 5) tableScale = 0.92;
+  else if (nTable >= 4) tableScale = 1.02;
+  else if (nTable >= 3) tableScale = 1.1;
   felt.style.setProperty('--table-card-w', `calc(var(--card-w) * ${tableScale})`);
   felt.style.setProperty('--table-card-h', `calc(var(--card-h) * ${tableScale})`);
 
@@ -2297,7 +2299,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=43').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=44').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
