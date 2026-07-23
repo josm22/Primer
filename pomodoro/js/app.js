@@ -172,6 +172,7 @@ const DEFAULTS = {
   weeklyGoal: 40,
   morningGoal: 3,
   afternoonGoal: 3,
+  eveningGoal: 2,
   sprintShortMins: 3,
   sound: true,
   haptic: true,
@@ -198,6 +199,7 @@ const LIMITS = {
   weeklyGoal: [5, 100],
   morningGoal: [0, 12],
   afternoonGoal: [0, 12],
+  eveningGoal: [0, 12],
   sprintShortMins: [1, 15],
 };
 
@@ -339,6 +341,7 @@ const els = {
   sprintStopBtn: document.getElementById("sprintStopBtn"),
   sprintHistory: document.getElementById("sprintHistory"),
   sprintHistoryEmpty: document.getElementById("sprintHistoryEmpty"),
+  sprintWeekStat: document.getElementById("sprintWeekStat"),
   bandGoalRow: document.getElementById("bandGoalRow"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
@@ -349,6 +352,7 @@ const els = {
     weeklyGoal: document.getElementById("weeklyGoal"),
     morningGoal: document.getElementById("morningGoal"),
     afternoonGoal: document.getElementById("afternoonGoal"),
+    eveningGoal: document.getElementById("eveningGoal"),
     sprintShortMins: document.getElementById("sprintShortMins"),
   },
 };
@@ -590,7 +594,15 @@ function saveBandCelebrated() {
 function bandGoalFor(key) {
   if (key === "morning") return Number(state.settings.morningGoal) || 0;
   if (key === "afternoon") return Number(state.settings.afternoonGoal) || 0;
+  if (key === "evening") return Number(state.settings.eveningGoal) || 0;
   return 0;
+}
+
+function bandLabel(key) {
+  if (key === "morning") return "mañana";
+  if (key === "afternoon") return "tarde";
+  if (key === "evening") return "noche";
+  return "madrugada";
 }
 
 function maybeCelebrateBandGoal(bandKey, todayCount) {
@@ -601,8 +613,7 @@ function maybeCelebrateBandGoal(bandKey, todayCount) {
   if (state.bandCelebrated[stamp]) return false;
   state.bandCelebrated[stamp] = 1;
   saveBandCelebrated();
-  const label = bandKey === "morning" ? "mañana" : "tarde";
-  showToast(`Meta de ${label} sellada · ${todayCount}/${goal}`, { duration: 4200 });
+  showToast(`Meta de ${bandLabel(bandKey)} sellada · ${todayCount}/${goal}`, { duration: 4200 });
   return true;
 }
 
@@ -817,6 +828,21 @@ function renderHourChart() {
     })
     .join("");
 
+  if (els.bandGoalRow) {
+    const morning = buckets.find((b) => b.key === "morning");
+    const afternoon = buckets.find((b) => b.key === "afternoon");
+    const evening = buckets.find((b) => b.key === "evening");
+    const mGoal = bandGoalFor("morning");
+    const aGoal = bandGoalFor("afternoon");
+    const eGoal = bandGoalFor("evening");
+    const bits = [];
+    if (mGoal) bits.push(`Mañana ${morning?.today || 0}/${mGoal}`);
+    if (aGoal) bits.push(`Tarde ${afternoon?.today || 0}/${aGoal}`);
+    if (eGoal) bits.push(`Noche ${evening?.today || 0}/${eGoal}`);
+    els.bandGoalRow.hidden = !bits.length;
+    els.bandGoalRow.textContent = bits.join(" · ");
+  }
+
   if (els.hourInsight) {
     if (!total) {
       els.hourInsight.textContent = "Cuando completes sellos verás tu franja fuerte.";
@@ -838,22 +864,30 @@ function renderHourChart() {
     }
     els.hourInsight.textContent = `${parts.join(" · ")}.`;
   }
+}
 
-  if (els.bandGoalRow) {
-    const morning = buckets.find((b) => b.key === "morning");
-    const afternoon = buckets.find((b) => b.key === "afternoon");
-    const mGoal = bandGoalFor("morning");
-    const aGoal = bandGoalFor("afternoon");
-    const bits = [];
-    if (mGoal) bits.push(`Mañana ${morning?.today || 0}/${mGoal}`);
-    if (aGoal) bits.push(`Tarde ${afternoon?.today || 0}/${aGoal}`);
-    els.bandGoalRow.hidden = !bits.length;
-    els.bandGoalRow.textContent = bits.join(" · ");
-  }
+function weekSprintSummary() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const weekSprints = state.sprints.filter((s) => keys.has(s.date));
+  return {
+    count: weekSprints.length,
+    blocks: weekSprints.reduce((sum, s) => sum + (Number(s.total) || 0), 0),
+    minutes: weekSprints.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
 }
 
 function renderSprintHistory() {
   if (!els.sprintHistory) return;
+  const week = weekSprintSummary();
+  if (els.sprintWeekStat) {
+    if (week.count > 0) {
+      els.sprintWeekStat.hidden = false;
+      els.sprintWeekStat.textContent = `Esta semana: ${week.count} sprint${week.count === 1 ? "" : "s"} · ${week.blocks} bloques · ${week.minutes} min`;
+    } else {
+      els.sprintWeekStat.hidden = true;
+    }
+  }
   const recent = state.sprints.slice(0, 6);
   if (els.sprintHistoryEmpty) els.sprintHistoryEmpty.hidden = recent.length > 0;
   els.sprintHistory.innerHTML = recent
@@ -875,6 +909,43 @@ function renderSprintHistory() {
       `;
     })
     .join("");
+}
+
+function strongestBandKey() {
+  const buckets = hourBucketsForWeek();
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  if (total < 3) return null;
+  return buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null)?.key || null;
+}
+
+function maybeNudgePeakBand() {
+  if (state.running || state.sprint) return;
+  if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+  if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
+  const peak = strongestBandKey();
+  const now = currentHourBand();
+  if (!peak || peak !== now || peak === "night") return;
+  const buckets = hourBucketsForWeek();
+  const band = buckets.find((b) => b.key === now);
+  const goal = bandGoalFor(now);
+  if (!band) return;
+  if (goal && band.today >= goal) return;
+  if (!goal && band.today >= 2) return;
+  const key = `foco-peak-nudge-${todayKey()}-${now}`;
+  if (localStorage.getItem(key) === "1") return;
+  localStorage.setItem(key, "1");
+  const remaining = goal ? Math.max(0, goal - band.today) : 0;
+  const copy = goal
+    ? `Tu franja fuerte: ${bandLabel(now)}. Te faltan ${remaining}.`
+    : `Estás en tu franja fuerte (${bandLabel(now)}). Un bloque ahora suma.`;
+  showToast(copy, {
+    actionLabel: "Empezar",
+    onAction: () => {
+      if (state.phase !== "focus") setPhase("focus", { resetTime: true });
+      start();
+    },
+    duration: 7000,
+  });
 }
 
 function todayKey(date = new Date()) {
@@ -2537,6 +2608,7 @@ function render() {
   if (els.outputs.weeklyGoal) els.outputs.weeklyGoal.value = state.settings.weeklyGoal;
   if (els.outputs.morningGoal) els.outputs.morningGoal.value = state.settings.morningGoal;
   if (els.outputs.afternoonGoal) els.outputs.afternoonGoal.value = state.settings.afternoonGoal;
+  if (els.outputs.eveningGoal) els.outputs.eveningGoal.value = state.settings.eveningGoal;
   if (els.outputs.sprintShortMins) els.outputs.sprintShortMins.value = state.settings.sprintShortMins;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
@@ -3546,7 +3618,7 @@ function adjustSetting(key, delta) {
   if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
     persistCategoryOverride();
   }
-  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal") {
+  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal" || key === "eveningGoal") {
     render();
     return;
   }
@@ -4361,6 +4433,7 @@ function init() {
   setupWeeklyRecap();
   scheduleDaySummary();
   setTimeout(maybeNudgeStreak, 2200);
+  setTimeout(maybeNudgePeakBand, 2800);
   setTimeout(() => {
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     maybeShowIntention();

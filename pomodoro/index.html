@@ -261,6 +261,7 @@
       <p class="hint" id="hourInsight">Cuando completes sellos verás tu franja fuerte.</p>
 
       <p class="section-label">Sprints recientes</p>
+      <p class="sprint-week-stat" id="sprintWeekStat" hidden></p>
       <ul class="sprint-history" id="sprintHistory"></ul>
       <p class="hint empty-state" id="sprintHistoryEmpty">Aún no hay sprints completados.</p>
 
@@ -392,6 +393,17 @@
             <button type="button" data-setting="afternoonGoal" data-delta="-1" aria-label="Bajar meta de tarde">−</button>
             <output id="afternoonGoal">3</output>
             <button type="button" data-setting="afternoonGoal" data-delta="1" aria-label="Subir meta de tarde">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="eveningGoal">Meta de noche (18–24)</label>
+          <div class="stepper">
+            <button type="button" data-setting="eveningGoal" data-delta="-1" aria-label="Bajar meta de noche">−</button>
+            <output id="eveningGoal">2</output>
+            <button type="button" data-setting="eveningGoal" data-delta="1" aria-label="Subir meta de noche">+</button>
           </div>
         </div>
       </div>

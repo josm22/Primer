@@ -1,4 +1,4 @@
-const CACHE = "foco-v29";
+const CACHE = "foco-v30";
 const ASSETS = [
   "./",
   "./index.html",
