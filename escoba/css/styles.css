@@ -557,9 +557,15 @@ body::before {
   padding-bottom: 2px;
 }
 
+.my-hand {
+  min-height: calc(var(--card-h) * 1.2 + 12px);
+  padding: 4px 4px 8px;
+  align-items: flex-end;
+}
+
 .opp-hand .card,
 .my-hand .card {
-  margin-left: -14px;
+  margin-left: -12px;
   flex-shrink: 0;
 }
 
@@ -573,9 +579,13 @@ body::before {
   height: calc(var(--card-h) * 0.78);
 }
 
+/* Mano del jugador: más grande que la mesa, abanico anclado abajo */
 .my-hand .card {
+  width: calc(var(--card-w) * 1.18);
+  height: calc(var(--card-h) * 1.18);
   transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-rot, 0deg));
   transform-origin: 50% 100%;
+  z-index: calc(2 + var(--fan-i, 0));
 }
 
 /* Rival: dorsos en abanico normal (sin giro 180 que las mandaba arriba) */
@@ -841,10 +851,6 @@ button.card {
   z-index: 3;
 }
 
-.my-hand .card.hand-last.selected {
-  transform: translateY(calc(var(--fan-y, 0px) - 22px)) rotate(var(--fan-rot, 0deg)) scale(1.1);
-}
-
 .card.face-down { cursor: default; }
 
 .card-img {
@@ -857,10 +863,11 @@ button.card {
   border-radius: 9px;
 }
 
-.card.selected {
-  transform: translateY(calc(var(--fan-y, 0px) - 18px)) rotate(var(--fan-rot, 0deg)) scale(1.06);
-  box-shadow: 0 14px 28px rgba(224, 179, 77, 0.45);
-  z-index: 5;
+/* Selección en mano: sube un poco sin romper el abanico */
+.my-hand .card.selected {
+  transform: translateY(calc(var(--fan-y, 0px) - 12px)) rotate(var(--fan-rot, 0deg)) scale(1.05);
+  box-shadow: 0 10px 22px rgba(224, 179, 77, 0.4);
+  z-index: 8;
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
@@ -1373,7 +1380,11 @@ button.card {
 
 @media (max-width: 380px) {
   .opp-hand .card,
-  .my-hand .card { margin-left: -10px; }
+  .my-hand .card { margin-left: -8px; }
+  .my-hand .card {
+    width: calc(var(--card-w) * 1.12);
+    height: calc(var(--card-h) * 1.12);
+  }
 }
 
 
