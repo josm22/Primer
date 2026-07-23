@@ -537,21 +537,22 @@ body::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 6px;
+  /* Centra el bloque rival+mesa+mano: baja la mesa y sube tus cartas */
+  justify-content: center;
+  gap: 12px;
   min-height: 0;
   overflow: visible;
 }
 
-/* Mano + log juntos abajo: el hueco libre queda entre mesa y cartas */
+/* Mano + log juntos, cerca de la mesa (sin empujar al fondo) */
 .player-dock {
-  margin-top: auto;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex-shrink: 0;
   width: 100%;
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 .opp-hand, .my-hand {
