@@ -681,7 +681,7 @@ function buildPileLayers(game, playerIdx, cards) {
   return layers;
 }
 
-/** Pocas cartas por tramo + todas las escobas (máx. 3): se ve el orden sin hinchar. */
+/** Pocas cartas por tramo + escobas (máx. 3): orden claro, montón contenido. */
 function compactPileShow(layers) {
   const out = [];
   let buf = [];
@@ -697,23 +697,21 @@ function compactPileShow(layers) {
       buf.push(layer.card);
     }
   }
-  flush(2);
+  flush(1);
 
   const escTotal = out.filter((l) => l.kind === 'escoba').length;
-  if (escTotal <= 3 && out.length <= 7) return out;
+  if (escTotal <= 3 && out.length <= 6) return out;
 
-  // Quédate con las últimas 3 escobas y las cartas de esos tramos
   const kept = [];
   let escKept = 0;
-  for (let i = out.length - 1; i >= 0; i--) {
+  for (let i = out.length - 1; i >= 0 && kept.length < 6; i--) {
     const l = out[i];
     if (l.kind === 'escoba') {
       if (escKept >= 3) continue;
       escKept += 1;
       kept.push(l);
     } else {
-      // cartas solo si ya hay escoba “más arriba” o es la cima
-      if (escKept === 0 || kept.length < 8) kept.push(l);
+      kept.push(l);
     }
   }
   return kept.reverse();
@@ -765,8 +763,12 @@ function renderPiles() {
     const show = compactPileShow(layers);
     show.forEach((layer, i) => {
       if (layer.kind === 'escoba') {
-        const mark = cardEl(null, { face: false, tiny: true });
-        mark.classList.add('escoba-mark');
+        // Franja boca abajo (no carta entera girada 90°: eso ensancha el montón)
+        const mark = document.createElement('div');
+        mark.className = 'escoba-mark escoba-band';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.title = 'Escoba';
+        mark.innerHTML = buildCardBackHtml();
         mark.style.setProperty('--i', String(i));
         if (i === show.length - 1 && escCount > prevEsc) {
           mark.classList.add('escoba-mark-new');
@@ -2293,7 +2295,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=34').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=35').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
