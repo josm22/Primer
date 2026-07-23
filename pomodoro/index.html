@@ -35,9 +35,11 @@
           FOCO
         </h1>
         <p class="greeting" id="greeting">Listo cuando tú lo estés.</p>
+        <button type="button" class="intention-chip" id="intentionChip" hidden></button>
         <div class="today-strip" id="todayStrip" aria-label="Resumen de hoy" hidden></div>
       </div>
       <div class="topbar-actions">
+        <span class="offline-badge" id="offlineBadge" hidden>Sin conexión</span>
         <button class="icon-btn" id="statsBtn" type="button" aria-label="Progreso" aria-controls="statsSheet" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 19V5"></path>
@@ -81,7 +83,15 @@
           <div class="phase-label" id="phaseLabel">Enfoque</div>
           <div class="round-dots" id="roundDots" aria-hidden="true"></div>
           <p class="time" id="timeDisplay" aria-live="polite">25:00</p>
+          <p class="wall-clock" id="wallClock" aria-hidden="true">--:--</p>
+          <p class="eta" id="etaText" hidden></p>
+          <p class="cycle-eta" id="cycleEta" hidden></p>
           <p class="support" id="supportText">Un bloque. Nada más importa.</p>
+          <div class="break-activities" id="breakActivities" hidden role="group" aria-label="Descanso activo">
+            <button type="button" class="break-act" data-act="stretch">Estirar</button>
+            <button type="button" class="break-act" data-act="water">Agua</button>
+            <button type="button" class="break-act" data-act="walk">Caminar</button>
+          </div>
           <label class="task-field">
             <span class="visually-hidden">Tarea actual</span>
             <input id="taskInput" type="text" maxlength="48" placeholder="¿En qué estás?" list="taskSuggestions" autocomplete="off" enterkeyhint="done">
@@ -92,6 +102,18 @@
             <button type="button" class="category" data-category="estudio">Estudio</button>
             <button type="button" class="category" data-category="personal">Personal</button>
             <button type="button" class="category" data-category="extra">Extra</button>
+          </div>
+          <div class="task-queue" id="taskQueue" hidden>
+            <div class="queue-head">
+              <span class="section-label">Cola de hoy</span>
+              <button type="button" class="queue-clear" id="queueClearDoneBtn" hidden>Limpiar hechos</button>
+            </div>
+            <div class="queue-add">
+              <label class="visually-hidden" for="queueInput">Nueva tarea en cola</label>
+              <input id="queueInput" type="text" maxlength="48" placeholder="Añadir a la cola" autocomplete="off" enterkeyhint="done">
+              <button type="button" class="secondary queue-add-btn" id="queueAddBtn">Añadir</button>
+            </div>
+            <ul class="queue-list" id="queueList"></ul>
           </div>
           <div class="recent-tasks" id="recentTasks" hidden></div>
         </div>
@@ -104,6 +126,20 @@
         <button type="button" class="preset" data-preset="25">25</button>
         <button type="button" class="preset" data-preset="50">50</button>
       </div>
+      <div class="sprint-row" id="sprintRow" role="group" aria-label="Sprint" hidden>
+        <button type="button" class="sprint-btn" data-sprint="2">Sprint ×2</button>
+        <button type="button" class="sprint-btn" data-sprint="3">Sprint ×3</button>
+        <button type="button" class="sprint-btn" data-sprint="4">Sprint ×4</button>
+      </div>
+      <div class="suggest-sprint" id="suggestSprint" hidden>
+        <p class="suggest-sprint-text" id="suggestSprintText">—</p>
+        <button type="button" class="secondary" id="suggestSprintBtn">Lanzar</button>
+      </div>
+      <div class="sprint-status">
+        <span class="sprint-chip" id="sprintChip" hidden>Sprint 0/0</span>
+        <button type="button" class="secondary sprint-stop" id="sprintStopBtn" hidden>Parar sprint</button>
+      </div>
+      <button class="secondary repeat-last" id="repeatLastBtn" type="button" hidden>Repetir último</button>
       <button class="primary" id="primaryBtn" type="button">Empezar</button>
       <div class="secondary-row">
         <button class="secondary" id="skipBtn" type="button">Saltar</button>
@@ -144,6 +180,25 @@
         </div>
       </div>
 
+      <div class="stat-grid lifetime-grid">
+        <div class="stat-block">
+          <div class="stat-value" id="monthFocusCount">0</div>
+          <div class="stat-label">Este mes</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="monthFocusMins">0</div>
+          <div class="stat-label">Minutos del mes</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="allFocusCount">0</div>
+          <div class="stat-label">Total sellos</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value" id="allFocusMins">0</div>
+          <div class="stat-label">Minutos totales</div>
+        </div>
+      </div>
+
       <div class="stat-grid">
         <div class="stat-block">
           <div class="stat-value" id="streakStat">0</div>
@@ -165,12 +220,37 @@
         </div>
       </div>
 
+      <div class="focus-score-row" aria-label="Puntuación de foco">
+        <div class="focus-score-ring" id="focusScoreRing" data-score="0">
+          <span class="focus-score-value" id="focusScoreValue">—</span>
+        </div>
+        <div>
+          <div class="stat-label">Puntuación de foco</div>
+          <p class="focus-score-copy" id="focusScoreCopy">Empieza un bloque para calcularla.</p>
+        </div>
+      </div>
+
+      <div class="streak-freeze-row" id="streakFreezeRow" hidden>
+        <p class="streak-freeze-copy" id="streakFreezeCopy">—</p>
+        <button class="secondary streak-freeze-btn" id="streakFreezeBtn" type="button">Proteger racha</button>
+      </div>
+
+      <div class="streak-milestone-row" id="streakMilestoneRow" hidden>
+        <p class="streak-milestone-text" id="streakMilestoneText">—</p>
+        <div class="streak-milestone-track" aria-hidden="true">
+          <div class="streak-milestone-fill" id="streakMilestoneFill"></div>
+        </div>
+      </div>
+
       <p class="best-day" id="bestDay">Tu mejor día aparecerá aquí.</p>
       <p class="insight" id="insightText">Empieza un enfoque para ver tu ritmo.</p>
 
       <div class="goal-track" aria-hidden="true">
         <div class="goal-fill" id="goalFill"></div>
       </div>
+
+      <p class="section-label">Esta semana por categoría</p>
+      <div class="category-breakdown" id="categoryBreakdown" hidden></div>
 
       <p class="section-label">Hoy</p>
       <ul class="timeline" id="todayTimeline"></ul>
@@ -179,16 +259,35 @@
       <p class="section-label">Últimos 7 días</p>
       <div class="week-chart" id="weekChart" aria-hidden="true"></div>
 
+      <p class="section-label">Por franja horaria</p>
+      <p class="band-goal-row" id="bandGoalRow" hidden></p>
+      <div class="hour-chart" id="hourChart" aria-hidden="true"></div>
+      <p class="hint" id="hourInsight">Cuando completes sellos verás tu franja fuerte.</p>
+
+      <p class="section-label">Sprints recientes</p>
+      <p class="sprint-week-stat" id="sprintWeekStat" hidden></p>
+      <ul class="sprint-history" id="sprintHistory"></ul>
+      <p class="hint empty-state" id="sprintHistoryEmpty">Aún no hay sprints completados.</p>
+
       <p class="section-label">Mapa de foco</p>
       <div class="heatmap" id="heatmap" aria-label="Mapa de calor de las últimas 4 semanas"></div>
       <p class="hint heatmap-legend">Más intenso = más enfoques ese día</p>
 
       <p class="section-label">Recientes</p>
+      <div class="history-filter" id="historyFilter" role="group" aria-label="Filtrar por categoría">
+        <button type="button" class="history-filter-btn is-active" data-filter="all" aria-pressed="true">Todos</button>
+        <button type="button" class="history-filter-btn" data-filter="trabajo" aria-pressed="false">Trabajo</button>
+        <button type="button" class="history-filter-btn" data-filter="estudio" aria-pressed="false">Estudio</button>
+        <button type="button" class="history-filter-btn" data-filter="personal" aria-pressed="false">Personal</button>
+        <button type="button" class="history-filter-btn" data-filter="extra" aria-pressed="false">Extra</button>
+      </div>
       <ul class="history-list" id="historyList"></ul>
       <p class="hint empty-state" id="historyEmpty">Aún no hay sellos.<br><span>Termina tu primer enfoque para verlo aquí.</span></p>
 
       <div class="share-actions">
         <button class="secondary" id="shareWeekBtn" type="button">Compartir semana</button>
+        <button class="secondary" id="exportWeekPngBtn" type="button">Descargar tarjeta</button>
+        <button class="secondary" id="printDayBtn" type="button">Imprimir / PDF</button>
         <button class="secondary" id="exportBtn" type="button">Exportar backup</button>
         <button class="secondary" id="exportIcsBtn" type="button">Exportar calendario</button>
         <label class="secondary import-label">
@@ -279,12 +378,119 @@
         </div>
       </div>
 
+      <div class="field">
+        <div class="field-row">
+          <label for="morningGoal">Meta de mañana (6–12)</label>
+          <div class="stepper">
+            <button type="button" data-setting="morningGoal" data-delta="-1" aria-label="Bajar meta de mañana">−</button>
+            <output id="morningGoal">3</output>
+            <button type="button" data-setting="morningGoal" data-delta="1" aria-label="Subir meta de mañana">+</button>
+          </div>
+        </div>
+        <p class="hint">0 desactiva la meta de franja.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="afternoonGoal">Meta de tarde (12–18)</label>
+          <div class="stepper">
+            <button type="button" data-setting="afternoonGoal" data-delta="-1" aria-label="Bajar meta de tarde">−</button>
+            <output id="afternoonGoal">3</output>
+            <button type="button" data-setting="afternoonGoal" data-delta="1" aria-label="Subir meta de tarde">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="eveningGoal">Meta de noche (18–24)</label>
+          <div class="stepper">
+            <button type="button" data-setting="eveningGoal" data-delta="-1" aria-label="Bajar meta de noche">−</button>
+            <output id="eveningGoal">2</output>
+            <button type="button" data-setting="eveningGoal" data-delta="1" aria-label="Subir meta de noche">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="nightGoal">Meta de madrugada (0–6)</label>
+          <div class="stepper">
+            <button type="button" data-setting="nightGoal" data-delta="-1" aria-label="Bajar meta de madrugada">−</button>
+            <output id="nightGoal">0</output>
+            <button type="button" data-setting="nightGoal" data-delta="1" aria-label="Subir meta de madrugada">+</button>
+          </div>
+        </div>
+        <p class="hint">Por defecto off (0). Útil si trabajas de madrugada.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="sprintShortMins">Pausa corta en sprint</label>
+          <div class="stepper">
+            <button type="button" data-setting="sprintShortMins" data-delta="-1" aria-label="Menos minutos de pausa en sprint">−</button>
+            <output id="sprintShortMins">3</output>
+            <button type="button" data-setting="sprintShortMins" data-delta="1" aria-label="Más minutos de pausa en sprint">+</button>
+          </div>
+        </div>
+        <p class="hint">Solo aplica mientras corre un sprint ×2/×3/×4.</p>
+      </div>
+
       <div class="toggle-row">
         <div>
           <div>Sonido al terminar</div>
           <p class="hint">Una campanilla corta al acabar cada bloque.</p>
         </div>
         <button class="toggle" id="soundToggle" type="button" role="switch" aria-checked="true" aria-label="Sonido al terminar"></button>
+      </div>
+
+      <div class="field sound-theme-field">
+        <p class="section-label">Tono de campanilla</p>
+        <div class="sound-theme-row" id="soundThemeRow" role="group" aria-label="Tono de campanilla">
+          <button type="button" class="sound-theme" data-theme="soft" aria-pressed="true">Suave</button>
+          <button type="button" class="sound-theme" data-theme="bell" aria-pressed="false">Campana</button>
+          <button type="button" class="sound-theme" data-theme="wood" aria-pressed="false">Madera</button>
+        </div>
+      </div>
+
+      <div class="field sound-theme-field">
+        <p class="section-label">Atmósfera</p>
+        <div class="sound-theme-row" id="atmosphereRow" role="group" aria-label="Atmósfera">
+          <button type="button" class="sound-theme" data-atmosphere="slate" aria-pressed="true">Pizarra</button>
+          <button type="button" class="sound-theme" data-atmosphere="olive" aria-pressed="false">Olivo</button>
+          <button type="button" class="sound-theme" data-atmosphere="dusk" aria-pressed="false">Crepúsculo</button>
+          <button type="button" class="sound-theme" data-atmosphere="mist" aria-pressed="false">Bruma</button>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Plantillas por categoría</div>
+          <p class="hint">Ajusta minutos al cambiar Trabajo, Estudio, Personal o Extra.</p>
+        </div>
+        <button class="toggle" id="categoryPresetsToggle" type="button" role="switch" aria-checked="true" aria-label="Plantillas por categoría"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Solo cola</div>
+          <p class="hint">Oculta el campo libre y arranca solo desde la cola de hoy.</p>
+        </div>
+        <button class="toggle" id="queueOnlyToggle" type="button" role="switch" aria-checked="false" aria-label="Solo cola"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Aviso de franja fuerte</div>
+          <p class="hint">Si abres Foco en tu franja habitual, sugiere empezar un bloque.</p>
+        </div>
+        <button class="toggle" id="peakNudgeToggle" type="button" role="switch" aria-checked="true" aria-label="Aviso de franja fuerte"></button>
+      </div>
+
+      <div class="preset-actions">
+        <button class="secondary" id="savePresetBtn" type="button">Guardar plantilla actual</button>
+        <button class="secondary" id="resetPresetBtn" type="button">Restaurar plantilla</button>
+        <p class="hint">Guarda los minutos de ahora para la categoría activa, o vuelve al valor por defecto.</p>
       </div>
 
       <div class="toggle-row">
@@ -399,6 +605,24 @@
     </div>
   </div>
 
+  <div class="goal-overlay" id="dayOverlay" hidden>
+    <div class="goal-card day-card" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+      <p class="goal-kicker" id="dayKicker">Resumen del día</p>
+      <h2 id="dayTitle">Tu día en foco</h2>
+      <p id="dayText">—</p>
+      <button class="primary" id="dayClose" type="button">Seguir</button>
+    </div>
+  </div>
+
+  <div class="recap-tip" id="recapTip" hidden>
+    <div class="install-tip-copy">
+      <strong>Tu semana en Foco</strong>
+      <p id="recapTipText">—</p>
+    </div>
+    <button class="update-tip-btn" id="recapShareBtn" type="button">Compartir</button>
+    <button class="install-tip-close" id="recapCloseBtn" type="button" aria-label="Cerrar">×</button>
+  </div>
+
   <div class="update-tip" id="updateTip" hidden>
     <div class="install-tip-copy">
       <strong>Nueva versión de Foco</strong>
@@ -414,6 +638,48 @@
     </div>
     <button class="install-tip-close" id="installTipClose" type="button" aria-label="Cerrar">×</button>
   </div>
+
+  <div class="goal-overlay" id="intentionOverlay" hidden>
+    <div class="goal-card note-card" role="dialog" aria-modal="true" aria-labelledby="intentionTitle">
+      <p class="goal-kicker">Intención del día</p>
+      <h2 id="intentionTitle">¿Qué importa hoy?</h2>
+      <p class="ritual-copy">Una frase. Un número de sellos. Luego a enfocar.</p>
+      <label class="ritual-field">
+        <span class="visually-hidden">Intención</span>
+        <input id="intentionInput" type="text" maxlength="48" placeholder="Ej. cerrar el informe" autocomplete="off" enterkeyhint="next">
+      </label>
+      <label class="ritual-field intention-blocks-field">
+        <span class="intention-blocks-label">Sellos planeados</span>
+        <input id="intentionBlocks" type="number" min="0" max="20" step="1" value="4" inputmode="numeric">
+      </label>
+      <button class="primary" id="intentionSave" type="button">Sellar intención</button>
+      <button class="secondary ritual-skip" id="intentionSkip" type="button">Más tarde</button>
+    </div>
+  </div>
+
+  <div class="goal-overlay" id="shortcutsOverlay" hidden>
+    <div class="goal-card shortcuts-card" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+      <p class="goal-kicker">Atajos</p>
+      <h2 id="shortcutsTitle">Teclado y gestos</h2>
+      <ul class="shortcuts-list">
+        <li><kbd>Espacio</kbd> o <kbd>K</kbd> <span>Empezar / pausar</span></li>
+        <li><kbd>R</kbd> <span>Reiniciar bloque</span></li>
+        <li><kbd>S</kbd> <span>Saltar fase</span></li>
+        <li><kbd>+</kbd> <span>Sumar 1 minuto</span></li>
+        <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <span>Presets 15 / 25 / 50 min</span></li>
+        <li><kbd>L</kbd> <span>Repetir último bloque</span></li>
+        <li><kbd>D</kbd> <span>Modo profundo</span></li>
+        <li><kbd>I</kbd> <span>Intención del día</span></li>
+        <li><kbd>P</kbd> <span>Imprimir / PDF del día</span></li>
+        <li><span>Sprint ×2/3/4</span> <span>Bloques seguidos con autoavance</span></li>
+        <li><kbd>?</kbd> <span>Esta ayuda</span></li>
+        <li><kbd>Esc</kbd> <span>Cerrar paneles</span></li>
+      </ul>
+      <button class="primary" id="shortcutsClose" type="button">Listo</button>
+    </div>
+  </div>
+
+  <div class="print-report" id="printReport" hidden></div>
 
   <script type="module" src="js/app.js"></script>
 </body>
