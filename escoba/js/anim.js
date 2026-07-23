@@ -453,7 +453,7 @@ function cssPileSize() {
     }
   } catch (_) {}
   const short = typeof window !== 'undefined' && window.innerHeight <= 780;
-  return short ? { width: 42, height: 64 } : { width: 48, height: 72 };
+  return short ? { width: 30, height: 46 } : { width: 34, height: 52 };
 }
 
 function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
@@ -492,16 +492,13 @@ function measurePileDest(meSide, { crossed = false } = {}) {
     const marks = document.querySelectorAll(`${root} .escoba-mark`);
     const el = marks[marks.length - 1];
     if (el) {
-      // offset* = caja sin rotar; AABB de getBoundingClientRect está girada
-      const w = el.offsetWidth || cssPileSize().width;
-      const h = el.offsetHeight || cssPileSize().height;
       const r = el.getBoundingClientRect();
-      if (r.width > 4) {
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
+      if (r.width > 2) {
+        const w = cssPileSize().width;
+        const h = cssPileSize().height;
         return {
-          left: cx - w / 2,
-          top: cy - h / 2,
+          left: r.left + r.width / 2 - w / 2,
+          top: r.top + r.height / 2 - h / 2,
           width: w,
           height: h,
           rotate: 90,
