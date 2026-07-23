@@ -745,6 +745,15 @@ function renderPiles() {
     wrap.className = 'pile-stack interleaved';
 
     const show = compactPileShow(layers);
+    const short = typeof window !== 'undefined' && window.innerHeight <= 780;
+    const cardH = short ? 50 : 56;
+    const step = short ? 2.2 : 2.4;
+    const pileH = Math.min(
+      short ? 128 : 156,
+      Math.ceil(cardH + Math.max(0, show.length - 1) * step + 16)
+    );
+    stage.style.setProperty('--pile-h', `${pileH}px`);
+
     show.forEach((layer, i) => {
       if (layer.kind === 'escoba') {
         const mark = cardEl(null, { face: false, tiny: true });
@@ -2275,7 +2284,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=38').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=39').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

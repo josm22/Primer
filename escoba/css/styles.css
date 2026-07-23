@@ -550,7 +550,7 @@ body::before {
 .opp-hand .card.face-down {
   transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-rot, 0deg));
   transform-origin: 50% 0%;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
 }
 
 .felt > .card {
@@ -685,10 +685,10 @@ body::before {
   height: 72px;
   border-radius: 7px;
   overflow: hidden;
-  background: #1a100c;
-  border: 1px solid rgba(224, 179, 77, 0.45);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  transform: translate(calc(var(--i) * -1.2px), calc(var(--i) * -1.8px));
+  background: transparent;
+  border: 1px solid rgba(224, 179, 77, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transform: translate(calc(var(--i) * -1px), calc(var(--i) * -1.4px));
   z-index: calc(1 + var(--i));
 }
 
@@ -698,6 +698,7 @@ body::before {
   object-fit: cover;
   display: block;
   pointer-events: none;
+  border-radius: 6px;
 }
 
 .deck-count {
@@ -883,9 +884,9 @@ button.card {
   font-weight: 600;
   padding: 5px 9px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  color: rgba(244,235,224,0.92);
-  border: 1px solid rgba(244,235,224,0.14);
+  background: rgba(0, 0, 0, 0.42);
+  color: #f4ebe0;
+  border: 1px solid rgba(244, 235, 224, 0.22);
   line-height: 1.15;
 }
 
@@ -894,19 +895,19 @@ button.card {
   font-family: var(--font-display);
   font-size: 1.12rem;
   margin-right: 3px;
-  color: var(--cream);
+  color: #fff8ee;
   font-weight: 700;
 }
 
 .chip-oro { border-color: rgba(224,179,77,0.55); color: #f0d27a; }
 .chip-7 {
   border-color: rgba(230, 110, 100, 0.55);
-  background: rgba(180, 60, 50, 0.18);
+  background: rgba(180, 60, 50, 0.22);
   color: #ffc8c0;
 }
 .chip-7o {
-  border-color: rgba(224,179,77,0.3);
-  color: rgba(244,235,224,0.55);
+  border-color: rgba(224,179,77,0.45);
+  color: rgba(244,235,224,0.8);
   font-family: var(--font-display);
   font-size: 0.92rem;
 }
@@ -937,9 +938,9 @@ button.card {
 }
 
 .pile {
-  width: 74px;
+  width: 72px;
   flex-shrink: 0;
-  min-height: 88px;
+  min-height: 84px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -964,32 +965,32 @@ button.card {
 
 .pile-stage {
   position: relative;
-  width: 64px;
-  height: 120px;
+  width: 60px;
+  height: var(--pile-h, 100px);
   overflow: visible;
 }
 
 .pile-stack {
   position: absolute;
   left: 50%;
-  bottom: 4px;
-  width: 38px;
-  height: 56px;
-  margin-left: -19px;
+  bottom: 2px;
+  width: 36px;
+  height: 54px;
+  margin-left: -18px;
 }
 
+/* Anula el chrome negro del .card base en el montón */
 .pile-stack .card.tiny {
   position: absolute;
-  width: 38px !important;
-  height: 56px !important;
+  width: 36px !important;
+  height: 54px !important;
   left: 0;
   top: 0;
   border-radius: 4px;
-  border: none;
-  background: transparent;
-  /* Capas finas: poco offset, sin sombra negra gruesa */
-  transform: translate(calc(var(--i) * 0.4px), calc(var(--i) * -3.5px));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  border: none !important;
+  background: transparent !important;
+  transform: translate(calc(var(--i) * 0.25px), calc(var(--i) * -2.4px));
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.14) !important;
   z-index: calc(1 + var(--i));
   transition: none;
   overflow: hidden;
@@ -999,35 +1000,34 @@ button.card {
   border-radius: 4px;
 }
 
-/* Escoba cruzada, misma finura */
 .pile-stack .card.tiny.escoba-mark {
-  background: transparent;
-  border: 1px solid rgba(224, 179, 77, 0.35);
+  background: transparent !important;
+  border: 1px solid rgba(224, 179, 77, 0.28) !important;
   transform:
     translate(
-      calc(-9px + var(--i) * 0.3px),
-      calc(6px + var(--i) * -3.5px)
+      calc(-7px + var(--i) * 0.2px),
+      calc(4px + var(--i) * -2.4px)
     )
     rotate(90deg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.16) !important;
   z-index: calc(2 + var(--i));
 }
 
 .pile-stack .card.tiny.escoba-mark-new {
-  animation: escobaMarkIn 0.45s cubic-bezier(.22,.8,.3,1) both;
+  animation: escobaMarkIn 0.4s cubic-bezier(.22,.8,.3,1) both;
 }
 
 @keyframes escobaMarkIn {
   0% {
     opacity: 0;
-    transform: translate(-9px, 10px) rotate(35deg) scale(1.06);
+    transform: translate(-7px, 8px) rotate(35deg) scale(1.05);
   }
   100% {
     opacity: 1;
     transform:
       translate(
-        calc(-9px + var(--i) * 0.3px),
-        calc(6px + var(--i) * -3.5px)
+        calc(-7px + var(--i) * 0.2px),
+        calc(4px + var(--i) * -2.4px)
       )
       rotate(90deg)
       scale(1);
@@ -1044,11 +1044,13 @@ button.card {
   text-align: center;
   max-width: 100%;
   line-height: 1.15;
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes pilePulse {
   0% { transform: scale(1); }
-  40% { transform: scale(1.1); }
+  40% { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
 
@@ -1062,23 +1064,23 @@ button.card {
 }
 
 @media (max-height: 780px) {
-  .pile { width: 66px; min-height: 78px; }
-  .pile-stage { width: 58px; height: 96px; }
+  .pile { width: 64px; min-height: 74px; }
+  .pile-stage { width: 54px; }
   .pile-stack {
-    width: 34px;
-    height: 50px;
-    margin-left: -17px;
+    width: 32px;
+    height: 48px;
+    margin-left: -16px;
   }
   .pile-stack .card.tiny {
-    width: 34px !important;
-    height: 50px !important;
-    transform: translate(calc(var(--i) * 0.3px), calc(var(--i) * -3px));
+    width: 32px !important;
+    height: 48px !important;
+    transform: translate(calc(var(--i) * 0.2px), calc(var(--i) * -2.2px));
   }
   .pile-stack .card.tiny.escoba-mark {
     transform:
       translate(
-        calc(-8px + var(--i) * 0.25px),
-        calc(5px + var(--i) * -3px)
+        calc(-6px + var(--i) * 0.15px),
+        calc(3px + var(--i) * -2.2px)
       )
       rotate(90deg);
   }
