@@ -537,14 +537,27 @@ body::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* Centra el bloque rival+mesa+mano: baja la mesa y sube tus cartas */
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 0;
   min-height: 0;
   overflow: visible;
 }
 
-/* Mano + log juntos, cerca de la mesa (sin empujar al fondo) */
+/* Reparto vertical: más aire arriba de la mesa, respiro corto mano↔mesa, poco bajo la mano */
+.spread {
+  flex: 1 1 0;
+  min-height: 0;
+  pointer-events: none;
+}
+.spread-top { flex-grow: 1.25; }
+.spread-mid {
+  flex-grow: 0.28;
+  min-height: 10px;
+  max-height: 20px;
+}
+.spread-bot { flex-grow: 0.55; }
+
+/* Mano + log como bloque, separados de la mesa por spread-mid */
 .player-dock {
   margin-top: 0;
   display: flex;
@@ -613,8 +626,8 @@ body::before {
 
 .felt > .card {
   transform: rotate(var(--table-rot, 0deg));
-  width: var(--table-card-w, calc(var(--card-w) * 1.32));
-  height: var(--table-card-h, calc(var(--card-h) * 1.32));
+  width: var(--table-card-w, calc(var(--card-w) * 1.4));
+  height: var(--table-card-h, calc(var(--card-h) * 1.4));
 }
 
 #screenGame.dealing .my-hand .card,
@@ -901,7 +914,7 @@ button.card {
 .play-bar {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
   flex-shrink: 0;
 }
 
@@ -919,7 +932,7 @@ button.card {
 
 /* ---- Live stats & piles ---- */
 .live-stats {
-  margin: 1px 0 3px;
+  margin: 0 0 2px;
   padding: 3px 6px;
   border-radius: 10px;
   background: rgba(0,0,0,0.28);
@@ -1192,7 +1205,8 @@ button.card {
   .score-pill .pts { font-size: 0.95rem; }
   .score-track { height: 2px; }
   .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
-  .table-area { gap: 8px; }
+  .table-area { gap: 0; }
+  .spread-mid { min-height: 8px; max-height: 14px; }
   .player-dock { gap: 1px; padding-top: 0; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
