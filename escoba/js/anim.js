@@ -439,7 +439,7 @@ function cssCardSize() {
     const h = parseFloat(cs.getPropertyValue('--card-h')) || w * 1.55;
     if (w > 20 && h > 20) return { width: w, height: h };
   } catch (_) {}
-  return { width: 72, height: 110 };
+  return { width: 60, height: 91 };
 }
 
 function cssPileSize() {
