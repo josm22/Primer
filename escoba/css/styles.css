@@ -62,12 +62,15 @@ body::before {
 #app {
   position: relative;
   z-index: 1;
+  height: 100dvh;
   min-height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(10px + var(--safe-b)) calc(12px + var(--safe-l));
   max-width: 520px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
 .screen { display: none; flex: 1; flex-direction: column; animation: fadeIn 0.5s cubic-bezier(.22,.8,.3,1) both; }
@@ -535,8 +538,20 @@ body::before {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 6px;
   min-height: 0;
+  overflow: visible;
+}
+
+/* Mano + log juntos abajo: el hueco libre queda entre mesa y cartas */
+.player-dock {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 100%;
+  padding-top: 4px;
 }
 
 .opp-hand, .my-hand {
@@ -557,10 +572,10 @@ body::before {
   padding-bottom: 2px;
 }
 
-/* Mano justo debajo de la mesa, cartas en una línea base clara */
+/* Mano en línea base, pegada al log (no a la mesa) */
 .my-hand {
   min-height: calc(var(--card-h) * 1.2);
-  padding: 6px 2px 0;
+  padding: 0 2px;
   align-items: flex-end;
   justify-content: center;
 }
@@ -597,8 +612,8 @@ body::before {
 
 .felt > .card {
   transform: rotate(var(--table-rot, 0deg));
-  width: var(--table-card-w, calc(var(--card-w) * 1.12));
-  height: var(--table-card-h, calc(var(--card-h) * 1.12));
+  width: var(--table-card-w, calc(var(--card-w) * 1.32));
+  height: var(--table-card-h, calc(var(--card-h) * 1.32));
 }
 
 #screenGame.dealing .my-hand .card,
@@ -997,9 +1012,8 @@ button.card {
 
 .my-row {
   align-items: flex-end;
-  /* Empuja la mano hacia abajo: cerca del log, no pegada a la mesa */
-  margin-top: auto;
-  padding-top: 8px;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .pile {
@@ -1164,7 +1178,7 @@ button.card {
   .live-stats .chip em { font-size: 0.82rem; }
   .move-feed {
     max-height: 2.4em;
-    margin: 2px 0;
+    margin: 0;
   }
   .feed-empty { display: none; }
   .msg-bar {
@@ -1435,7 +1449,7 @@ button.card {
   flex-direction: column;
   gap: 2px;
   min-height: 0;
-  margin: 0 0 2px;
+  margin: 0;
   max-height: 2.6em;
   overflow: hidden;
   flex-shrink: 0;
