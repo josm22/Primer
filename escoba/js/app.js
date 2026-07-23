@@ -653,7 +653,6 @@ function buildPileLayers(game, playerIdx, cards) {
     const slice = cards.slice(cursor, cursor + n);
     cursor += n;
     if (mv.type === 'escoba') {
-      // La escoba se marca boca abajo; las cartas de ese barrido quedan bajo la marca
       layers.push({ kind: 'escoba' });
     } else {
       for (const c of slice) {
@@ -663,24 +662,67 @@ function buildPileLayers(game, playerIdx, cards) {
     }
   }
 
-  // Restos de fin de ronda u otras cartas no listadas en el log
   while (cursor < cards.length) {
     const c = cards[cursor++];
     if (hide?.has(c.id)) continue;
     layers.push({ kind: 'card', card: c });
   }
 
-  // Si no hay log útil pero hay cartas (p.ej. sync parcial), muestra el montón simple
   if (!layers.length && visible.length) {
     for (const c of visible) layers.push({ kind: 'card', card: c });
   }
 
-  // Asegura tantas marcas de escoba como diga el contador
   const marked = layers.filter((l) => l.kind === 'escoba').length;
   const need = game.escobas[playerIdx] || 0;
   for (let i = marked; i < need; i++) layers.push({ kind: 'escoba' });
 
   return layers;
+}
+
+/**
+ * Montón compacto: escobas como franjas + 1–2 cartas entre ellas.
+ * Sin girar 90° (eso ensancha el mazo). Máx. 5 capas visibles.
+ */
+function compactPileShow(layers) {
+  const out = [];
+  let buf = [];
+  const flush = (max) => {
+    const take = buf.slice(-max);
+    buf = [];
+    for (const card of take) out.push({ kind: 'card', card });
+  };
+  for (const layer of layers) {
+    if (layer.kind === 'escoba') {
+      flush(1);
+      out.push(layer);
+    } else if (layer.card) {
+      buf.push(layer.card);
+    }
+  }
+  flush(2);
+  if (out.length <= 5) return out;
+
+  const kept = [];
+  let cardsKept = 0;
+  for (let i = out.length - 1; i >= 0 && kept.length < 5; i--) {
+    const l = out[i];
+    if (l.kind === 'escoba') kept.push(l);
+    else if (cardsKept < 2) {
+      kept.push(l);
+      cardsKept += 1;
+    }
+  }
+  return kept.reverse();
+}
+
+/** Desplaza en vertical desde la base: la franja de escoba asoma bajo la carta. */
+function pileLayerOffsets(show) {
+  let y = 0;
+  return show.map((layer) => {
+    const item = { ...layer, y };
+    y += layer.kind === 'escoba' ? 5 : 3;
+    return item;
+  });
 }
 
 function renderPiles() {
@@ -726,38 +768,24 @@ function renderPiles() {
     const wrap = document.createElement('div');
     wrap.className = 'pile-stack interleaved';
 
-    // Solo unas pocas cartas arriba + escobas (montón fino y contenido)
-    let show = layers;
-    const MAX = 5;
-    if (layers.length > MAX) {
-      const escIdx = layers
-        .map((l, i) => (l.kind === 'escoba' ? i : -1))
-        .filter((i) => i >= 0);
-      const must = new Set(escIdx);
-      must.add(layers.length - 1);
-      for (const e of escIdx) {
-        if (e + 1 < layers.length && layers[e + 1].kind === 'card') must.add(e + 1);
-      }
-      for (let i = layers.length - 1; i >= 0 && must.size < MAX; i--) {
-        if (layers[i].kind === 'card') must.add(i);
-      }
-      show = layers.filter((_, i) => must.has(i));
-    }
-
+    const show = pileLayerOffsets(compactPileShow(layers));
     show.forEach((layer, i) => {
-      // Índice visual comprimido: el montón no se alarga aunque haya muchas
-      const vis = Math.min(i, 4);
       if (layer.kind === 'escoba') {
-        const mark = cardEl(null, { face: false, tiny: true });
-        mark.classList.add('escoba-mark');
-        mark.style.setProperty('--i', String(vis));
+        const mark = document.createElement('div');
+        mark.className = 'escoba-mark escoba-slab';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.title = 'Escoba';
+        mark.innerHTML = buildCardBackHtml();
+        mark.style.setProperty('--i', String(i));
+        mark.style.setProperty('--y', String(layer.y));
         if (i === show.length - 1 && escCount > prevEsc) {
           mark.classList.add('escoba-mark-new');
         }
         wrap.appendChild(mark);
       } else {
         const card = cardEl(layer.card, { face: true, tiny: true });
-        card.style.setProperty('--i', String(vis));
+        card.style.setProperty('--i', String(i));
+        card.style.setProperty('--y', String(layer.y));
         wrap.appendChild(card);
       }
     });
@@ -1013,11 +1041,13 @@ function render(opts = {}) {
   const deckStack = document.createElement('div');
   deckStack.className = 'deck-stack';
   deckStack.setAttribute('aria-label', `Mazo: ${g.deck.length} cartas`);
-  const layers = Math.min(4, Math.max(0, Math.ceil(g.deck.length / 8)));
+  // Grosor solo vertical (2–3 capas); no se abre hacia el lado
+  const layers = g.deck.length === 0 ? 0 : Math.min(3, Math.max(1, Math.ceil(g.deck.length / 12)));
   for (let i = 0; i < layers; i++) {
     const layer = document.createElement('div');
     layer.className = 'deck-layer';
     layer.style.setProperty('--i', String(i));
+    layer.innerHTML = buildCardBackHtml();
     deckStack.appendChild(layer);
   }
   if (!layers) deckStack.classList.add('empty');
@@ -2269,7 +2299,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=31').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=32').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
