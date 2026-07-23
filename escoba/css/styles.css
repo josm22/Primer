@@ -20,8 +20,8 @@
   --felt-pad-y: 10px;
   --felt-pad-x: 10px;
   --felt-gap: 8px;
-  /* Mesa fija: cabe cómoda en 2 filas de cartas */
-  --felt-h: calc(var(--card-h) * 2 + var(--felt-gap) + var(--felt-pad-y) * 2 + 6px);
+  /* Mesa fija: cabe cómoda en 2 filas; con pocas cartas se ven grandes */
+  --felt-h: calc(var(--card-h) * 2.15 + var(--felt-gap) + var(--felt-pad-y) * 2 + 6px);
   --font-display: 'Fraunces', Georgia, serif;
   --font-ui: 'Manrope', system-ui, sans-serif;
   --font-card: 'Fraunces', Georgia, serif;
@@ -535,7 +535,7 @@ body::before {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 4px;
   min-height: 0;
 }
 
@@ -560,7 +560,7 @@ body::before {
 /* Mano justo debajo de la mesa, cartas en una línea base clara */
 .my-hand {
   min-height: calc(var(--card-h) * 1.2);
-  padding: 10px 2px 2px; /* hueco arriba solo para la carta seleccionada */
+  padding: 6px 2px 0;
   align-items: flex-end;
   justify-content: center;
 }
@@ -597,8 +597,8 @@ body::before {
 
 .felt > .card {
   transform: rotate(var(--table-rot, 0deg));
-  width: var(--table-card-w, calc(var(--card-w) * 0.9));
-  height: var(--table-card-h, calc(var(--card-h) * 0.9));
+  width: var(--table-card-w, calc(var(--card-w) * 1.12));
+  height: var(--table-card-h, calc(var(--card-h) * 1.12));
 }
 
 #screenGame.dealing .my-hand .card,
@@ -997,7 +997,9 @@ button.card {
 
 .my-row {
   align-items: flex-end;
-  margin-top: 2px;
+  /* Empuja la mano hacia abajo: cerca del log, no pegada a la mesa */
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .pile {
@@ -1433,7 +1435,7 @@ button.card {
   flex-direction: column;
   gap: 2px;
   min-height: 0;
-  margin: 2px 0 2px;
+  margin: 0 0 2px;
   max-height: 2.6em;
   overflow: hidden;
   flex-shrink: 0;
