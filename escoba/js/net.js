@@ -39,6 +39,7 @@ export class EscobaNet {
     this.clientId = null;
     this.topic = null;
     this.ready = false;
+    this.playerName = '';
     this._joinTimer = null;
     this._destroyed = false;
     this.handlers = {
@@ -48,6 +49,7 @@ export class EscobaNet {
       onDisconnect: () => {},
       onError: () => {},
       onPeerJoin: () => {},
+      onReconnect: () => {},
     };
   }
 
@@ -89,7 +91,8 @@ export class EscobaNet {
       clientId: this.clientId,
       ts: Date.now(),
     };
-    this.client.publish(this.topic, JSON.stringify(msg), { qos: 0 });
+    const critical = /^(move|state|reject|ping|requestState)$/.test(payload?.type || '');
+    this.client.publish(this.topic, JSON.stringify(msg), { qos: critical ? 1 : 0 });
     return true;
   }
 
@@ -114,7 +117,7 @@ export class EscobaNet {
   }
 
   _announceJoin() {
-    this.send({ type: 'join' });
+    this.send({ type: 'join', name: this.playerName || '' });
   }
 
   async _connect() {
@@ -163,20 +166,31 @@ export class EscobaNet {
       }, 12000);
 
       client.on('connect', () => {
-        client.subscribe(this.topic, { qos: 0 }, (err) => {
-          if (settled) return;
+        client.subscribe(this.topic, { qos: 1 }, (err) => {
           if (err) {
-            settled = true;
-            clearTimeout(timer);
-            reject(err);
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              reject(err);
+            }
             return;
           }
-          settled = true;
-          clearTimeout(timer);
-          this.handlers.onStatus(
-            this.role === 'host' ? 'Sala lista — comparte el código' : 'En sala — emparejando…'
-          );
-          resolve();
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            this.handlers.onStatus(
+              this.role === 'host' ? 'Sala lista — comparte el código' : 'En sala — emparejando…'
+            );
+            resolve();
+            return;
+          }
+          // Reconnect after the first successful session
+          if (this.ready) {
+            this.handlers.onStatus(
+              this.role === 'host' ? 'Reconectado' : 'Reconectado — sincronizando…'
+            );
+            this.handlers.onReconnect?.();
+          }
         });
       });
 
