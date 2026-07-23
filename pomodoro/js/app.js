@@ -235,6 +235,7 @@ const els = {
   toast: document.getElementById("toast"),
   toastMessage: document.getElementById("toastMessage"),
   toastAction: document.getElementById("toastAction"),
+  toastSecondary: document.getElementById("toastSecondary"),
   greeting: document.getElementById("greeting"),
   todayStrip: document.getElementById("todayStrip"),
   offlineBadge: document.getElementById("offlineBadge"),
@@ -346,6 +347,7 @@ const els = {
   suggestSprint: document.getElementById("suggestSprint"),
   suggestSprintText: document.getElementById("suggestSprintText"),
   suggestSprintBtn: document.getElementById("suggestSprintBtn"),
+  suggestSprintDismiss: document.getElementById("suggestSprintDismiss"),
   sprintHistory: document.getElementById("sprintHistory"),
   sprintHistoryEmpty: document.getElementById("sprintHistoryEmpty"),
   sprintWeekStat: document.getElementById("sprintWeekStat"),
@@ -386,6 +388,7 @@ const state = {
   celebratedMilestones: loadCelebratedMilestones(),
   lastSessionId: null,
   toastActionHandler: null,
+  toastSecondaryHandler: null,
   confirmHandler: null,
   extendPressTimer: null,
   parallaxReady: false,
@@ -411,6 +414,7 @@ const state = {
   dragQueueId: null,
   sprints: loadSprintHistory(),
   bandCelebrated: loadBandCelebrated(),
+  pausedAt: null,
 };
 
 function loadIntention() {
@@ -930,23 +934,51 @@ function strongestBandKey() {
   return buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null)?.key || null;
 }
 
+function peakNudgeStorageKey(band = currentHourBand()) {
+  return `foco-peak-nudge-${todayKey()}-${band}`;
+}
+
+function peakNudgeSnoozeKey(band = currentHourBand()) {
+  return `foco-peak-snooze-${band}`;
+}
+
+function isPeakNudgeSuppressed(band = currentHourBand()) {
+  if (localStorage.getItem(peakNudgeStorageKey(band)) === "1") return true;
+  const until = Number(localStorage.getItem(peakNudgeSnoozeKey(band)) || 0);
+  return until > Date.now();
+}
+
+function suppressPeakNudge(band = currentHourBand()) {
+  localStorage.setItem(peakNudgeStorageKey(band), "1");
+  localStorage.removeItem(peakNudgeSnoozeKey(band));
+}
+
+function snoozePeakNudge(hours = 2, band = currentHourBand()) {
+  const until = Date.now() + hours * 60 * 60 * 1000;
+  localStorage.setItem(peakNudgeSnoozeKey(band), String(until));
+}
+
+function isToastOpen() {
+  return Boolean(els.toast && !els.toast.hidden && els.toast.classList.contains("is-show"));
+}
+
 function maybeNudgePeakBand() {
   if (!state.settings.peakNudge) return;
   if (state.running || state.sprint) return;
+  if (isQuietHours()) return;
+  if (isToastOpen()) return;
   if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
   if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
   const peak = strongestBandKey();
   const now = currentHourBand();
   if (!peak || peak !== now) return;
+  if (isPeakNudgeSuppressed(now)) return;
   const buckets = hourBucketsForWeek();
   const band = buckets.find((b) => b.key === now);
   const goal = bandGoalFor(now);
   if (!band) return;
   if (goal && band.today >= goal) return;
   if (!goal && band.today >= 2) return;
-  const key = `foco-peak-nudge-${todayKey()}-${now}`;
-  if (localStorage.getItem(key) === "1") return;
-  localStorage.setItem(key, "1");
   const remaining = goal ? Math.max(0, goal - band.today) : 0;
   const copy = goal
     ? `Tu franja fuerte: ${bandLabel(now)}. Te faltan ${remaining}.`
@@ -954,14 +986,38 @@ function maybeNudgePeakBand() {
   showToast(copy, {
     actionLabel: "Empezar",
     onAction: () => {
+      suppressPeakNudge(now);
       if (state.phase !== "focus") setPhase("focus", { resetTime: true });
       start();
     },
-    duration: 7000,
+    secondaryLabel: "Más tarde",
+    onSecondary: () => {
+      snoozePeakNudge(2, now);
+      showToast("Aviso silenciado 2 horas");
+    },
+    onTimeout: () => {
+      snoozePeakNudge(1.5, now);
+    },
+    duration: 8000,
   });
 }
 
+function suggestDismissKey() {
+  return `foco-suggest-dismiss-${todayKey()}`;
+}
+
+function isSuggestDismissed() {
+  return localStorage.getItem(suggestDismissKey()) === "1";
+}
+
+function dismissSuggestSprint() {
+  localStorage.setItem(suggestDismissKey(), "1");
+  renderSuggestSprint();
+  showToast("Sugerencia ocultada por hoy");
+}
+
 function suggestedSprintSize() {
+  if (isSuggestDismissed()) return null;
   ensureQueueFresh();
   const pendingQueue = state.queue.items.filter((q) => !q.done).length;
   const today = countTodayFocus();
@@ -983,8 +1039,6 @@ function suggestedSprintSize() {
   } else if (dailyLeft >= 2) {
     size = Math.min(4, dailyLeft);
     reason = "meta del día";
-  } else if (dailyLeft === 1 || bandLeft === 1 || pendingQueue === 1) {
-    return null;
   } else {
     return null;
   }
@@ -1014,6 +1068,29 @@ function renderSuggestSprint() {
     els.suggestSprintBtn.dataset.sprint = String(suggestion.size);
     els.suggestSprintBtn.textContent = `Lanzar ×${suggestion.size}`;
   }
+}
+
+function maybeNudgeResumePause() {
+  if (state.running || state.completing) return;
+  if (!state.pausedAt) return;
+  if (state.remainingMs <= 0 || state.remainingMs >= state.totalMs) return;
+  if (Date.now() - state.pausedAt < 3 * 60_000) return;
+  if (isToastOpen()) return;
+  if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+  if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
+  const key = `foco-pause-nudge-${Math.floor(state.pausedAt / 60_000)}`;
+  if (sessionStorage.getItem(key) === "1") return;
+  sessionStorage.setItem(key, "1");
+  const left = formatTime(state.remainingMs);
+  showToast(`Llevas pausa · quedan ${left}`, {
+    actionLabel: "Continuar",
+    onAction: () => start(),
+    secondaryLabel: "Dejar",
+    onSecondary: () => {
+      state.pausedAt = null;
+    },
+    duration: 7000,
+  });
 }
 
 function todayKey(date = new Date()) {
@@ -3080,22 +3157,44 @@ function applyFocusPreset(minutes) {
   showToast(`Enfoque a ${minutes} min`);
 }
 
-function showToast(message, { actionLabel = null, onAction = null, duration = 2400 } = {}) {
+function showToast(
+  message,
+  {
+    actionLabel = null,
+    onAction = null,
+    secondaryLabel = null,
+    onSecondary = null,
+    onTimeout = null,
+    duration = 2400,
+  } = {}
+) {
   els.toast.hidden = false;
   els.toastMessage.textContent = message;
   state.toastActionHandler = onAction;
+  state.toastSecondaryHandler = onSecondary;
   if (actionLabel && onAction) {
     els.toastAction.hidden = false;
     els.toastAction.textContent = actionLabel;
   } else {
     els.toastAction.hidden = true;
   }
+  if (els.toastSecondary) {
+    if (secondaryLabel && onSecondary) {
+      els.toastSecondary.hidden = false;
+      els.toastSecondary.textContent = secondaryLabel;
+    } else {
+      els.toastSecondary.hidden = true;
+    }
+  }
   els.toast.classList.add("is-show");
   clearTimeout(state.toastTimer);
   state.toastTimer = setTimeout(() => {
     els.toast.classList.remove("is-show");
+    if (typeof onTimeout === "function") onTimeout();
     state.toastActionHandler = null;
+    state.toastSecondaryHandler = null;
     els.toastAction.hidden = true;
+    if (els.toastSecondary) els.toastSecondary.hidden = true;
     state.toastTimer = setTimeout(() => {
       if (!els.toast.classList.contains("is-show")) els.toast.hidden = true;
     }, 320);
@@ -3288,6 +3387,7 @@ function start({ silent = false } = {}) {
     state.remainingMs = state.totalMs;
   }
   state.running = true;
+  state.pausedAt = null;
   state.endAt = Date.now() + state.remainingMs;
   state.warnPlayed = state.remainingMs <= 60_000;
   state.lastDisplaySecond = -1;
@@ -3310,6 +3410,7 @@ function pause() {
   }
   state.running = false;
   state.endAt = null;
+  state.pausedAt = Date.now();
   clearTick();
   releaseWakeLock();
   saveSession({ force: true });
@@ -3768,9 +3869,31 @@ function bindEvents() {
 
   els.toastAction.addEventListener("click", () => {
     if (typeof state.toastActionHandler === "function") {
-      state.toastActionHandler();
+      const handler = state.toastActionHandler;
+      clearTimeout(state.toastTimer);
+      els.toast.classList.remove("is-show");
+      state.toastActionHandler = null;
+      state.toastSecondaryHandler = null;
+      els.toastAction.hidden = true;
+      if (els.toastSecondary) els.toastSecondary.hidden = true;
+      handler();
     }
   });
+
+  if (els.toastSecondary) {
+    els.toastSecondary.addEventListener("click", () => {
+      if (typeof state.toastSecondaryHandler === "function") {
+        const handler = state.toastSecondaryHandler;
+        clearTimeout(state.toastTimer);
+        els.toast.classList.remove("is-show");
+        state.toastActionHandler = null;
+        state.toastSecondaryHandler = null;
+        els.toastAction.hidden = true;
+        els.toastSecondary.hidden = true;
+        handler();
+      }
+    });
+  }
 
   els.confirmCancel.addEventListener("click", hideConfirm);
   els.confirmOk.addEventListener("click", () => {
@@ -4013,6 +4136,10 @@ function bindEvents() {
     });
   }
 
+  if (els.suggestSprintDismiss) {
+    els.suggestSprintDismiss.addEventListener("click", dismissSuggestSprint);
+  }
+
   if (els.queueClearDoneBtn) {
     els.queueClearDoneBtn.addEventListener("click", clearDoneQueueItems);
   }
@@ -4237,6 +4364,8 @@ function bindEvents() {
       if (state.running) {
         scheduleNextTick();
         await acquireWakeLock();
+      } else {
+        maybeNudgeResumePause();
       }
     } else {
       saveSession({ force: true });
@@ -4515,6 +4644,10 @@ function init() {
   setInterval(updateThemeColor, 60_000);
   renderWallClock();
   setInterval(renderWallClock, 15_000);
+  setInterval(() => {
+    if (!state.running) maybeNudgeResumePause();
+  }, 45_000);
+  setInterval(maybeNudgePeakBand, 10 * 60_000);
   registerSW();
   setupOfflineBadge();
   setupRitual();
