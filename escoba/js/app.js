@@ -150,11 +150,15 @@ function saveName() {
 
 function applyFan(el, index, total, { opp = false } = {}) {
   const mid = (total - 1) / 2;
-  const spread = opp ? 4.2 : 3.6;
-  const rot = (index - mid) * spread;
-  const y = Math.abs(index - mid) * (opp ? 1.4 : 2.2);
+  const dist = index - mid;
+  // Rival: abanico suave. Jugador: más abierto y sobre la misma base.
+  const spread = opp ? 4 : 5.2;
+  const rot = dist * spread;
+  // Positivo baja; en la mano del jugador usamos 0 / arco leve hacia arriba.
+  const y = opp ? Math.abs(dist) * 1.2 : -Math.abs(dist) * 1.8;
   el.style.setProperty('--fan-rot', `${rot}deg`);
   el.style.setProperty('--fan-y', `${y}px`);
+  el.style.setProperty('--fan-i', String(index));
 }
 
 function flashBad(msg) {
@@ -2293,7 +2297,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=41').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=42').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
