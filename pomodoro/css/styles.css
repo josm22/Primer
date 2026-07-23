@@ -1202,6 +1202,24 @@ body.is-deep-focus .primary {
   flex-shrink: 0;
 }
 
+.suggest-dismiss {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toast-secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
 body.is-deep-focus .suggest-sprint {
   display: none;
 }
@@ -2362,11 +2380,17 @@ body.is-deep-focus .task-field {
   opacity: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
   pointer-events: none;
-  max-width: min(92vw, 380px);
+  max-width: min(94vw, 420px);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   text-align: left;
+}
+
+.toast #toastMessage {
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .toast[hidden] {
