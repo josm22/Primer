@@ -1192,8 +1192,8 @@ button.card {
   .score-pill .pts { font-size: 0.95rem; }
   .score-track { height: 2px; }
   .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
-  .table-area { gap: 4px; }
-  .player-dock { gap: 1px; padding-top: 2px; }
+  .table-area { gap: 8px; }
+  .player-dock { gap: 1px; padding-top: 0; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
   .score-tip { display: none; }
