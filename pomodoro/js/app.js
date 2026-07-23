@@ -537,16 +537,26 @@ function reorderQueueById(fromId, toId) {
   renderTaskQueue();
 }
 
+function restoreAutoAdvanceFromSprint(sprint) {
+  if (!sprint || typeof sprint.prevAutoAdvance !== "boolean") return;
+  if (state.settings.autoAdvance === sprint.prevAutoAdvance) return;
+  state.settings.autoAdvance = sprint.prevAutoAdvance;
+  saveSettings();
+}
+
 function startSprint(total) {
   const n = clamp(Number(total) || 0, [2, 8]);
+  if (state.sprint) restoreAutoAdvanceFromSprint(state.sprint);
   state.sprint = {
     total: n,
     done: 0,
     startedAt: Date.now(),
     focusMinutes: 0,
+    prevAutoAdvance: state.settings.autoAdvance,
   };
   state.settings.autoAdvance = true;
   saveSettings();
+  saveSession({ force: true });
   render();
   showToast(`Sprint ×${n} · pausas de ${state.settings.sprintShortMins} min`);
   if (!state.running && state.phase === "focus") {
@@ -556,7 +566,9 @@ function startSprint(total) {
 
 function stopSprint({ toast = true } = {}) {
   if (!state.sprint) return;
+  restoreAutoAdvanceFromSprint(state.sprint);
   state.sprint = null;
+  saveSession({ force: true });
   render();
   if (toast) showToast("Sprint cancelado");
 }
@@ -636,6 +648,7 @@ function advanceSprintOnFocus(minutes = 0) {
   state.sprint.focusMinutes = (state.sprint.focusMinutes || 0) + (Number(minutes) || 0);
   if (state.sprint.done >= state.sprint.total) {
     const finished = { ...state.sprint };
+    restoreAutoAdvanceFromSprint(finished);
     state.sprint = null;
     recordSprintComplete(finished);
     showToast(`Sprint ×${finished.total} completado`, { duration: 4200 });
@@ -1576,7 +1589,9 @@ function renderEta() {
 
 function estimateCycleRemainingMs() {
   const focusMs = state.settings.focusMins * 60_000;
-  const shortMs = state.settings.shortMins * 60_000;
+  const shortMs = state.sprint
+    ? (Number(state.settings.sprintShortMins) || 3) * 60_000
+    : state.settings.shortMins * 60_000;
   const longMs = state.settings.longMins * 60_000;
   const rounds = state.settings.roundsUntilLong;
   let remaining = Math.max(0, state.remainingMs);
@@ -1603,12 +1618,84 @@ function estimateCycleRemainingMs() {
   return remaining;
 }
 
+function estimateSprintRemainingMs() {
+  if (!state.sprint) return 0;
+  const left = Math.max(0, state.sprint.total - state.sprint.done);
+  if (left <= 0) return Math.max(0, state.remainingMs);
+  const focusMs = state.settings.focusMins * 60_000;
+  const shortMs = (Number(state.settings.sprintShortMins) || 3) * 60_000;
+  let remaining = Math.max(0, state.remainingMs);
+  if (state.phase === "focus") {
+    for (let i = 1; i < left; i += 1) {
+      remaining += shortMs + focusMs;
+    }
+  } else {
+    for (let i = 0; i < left; i += 1) {
+      remaining += focusMs;
+      if (i < left - 1) remaining += shortMs;
+    }
+  }
+  return remaining;
+}
+
+function estimateQueueRemainingMs() {
+  ensureQueueFresh();
+  const pending = state.queue.items.filter((q) => !q.done).length;
+  if (pending < 2) return 0;
+  const focusMs = state.settings.focusMins * 60_000;
+  const shortMs = state.sprint
+    ? (Number(state.settings.sprintShortMins) || 3) * 60_000
+    : state.settings.shortMins * 60_000;
+  let remaining = 0;
+  let blocks = pending;
+  if (state.running) {
+    remaining = Math.max(0, state.remainingMs);
+    if (state.phase === "focus") {
+      blocks = Math.max(0, pending - 1);
+      for (let i = 0; i < blocks; i += 1) {
+        remaining += shortMs + focusMs;
+      }
+    } else {
+      for (let i = 0; i < blocks; i += 1) {
+        remaining += focusMs;
+        if (i < blocks - 1) remaining += shortMs;
+      }
+    }
+  } else {
+    for (let i = 0; i < blocks; i += 1) {
+      remaining += focusMs;
+      if (i < blocks - 1) remaining += shortMs;
+    }
+  }
+  return remaining;
+}
+
 function renderCycleEta() {
   if (!els.cycleEta) return;
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   if (deepActive || !state.running) {
     els.cycleEta.hidden = true;
     return;
+  }
+  if (state.sprint) {
+    const sprintMs = estimateSprintRemainingMs();
+    if (sprintMs < state.remainingMs + 30_000) {
+      els.cycleEta.hidden = true;
+      return;
+    }
+    els.cycleEta.hidden = false;
+    els.cycleEta.textContent = `Sprint ~ ${formatEta(sprintMs)}`;
+    return;
+  }
+  ensureQueueFresh();
+  const pending = state.queue.items.filter((q) => !q.done).length;
+  if (pending >= 2) {
+    const queueMs = estimateQueueRemainingMs();
+    if (queueMs > state.remainingMs + 60_000) {
+      els.cycleEta.hidden = false;
+      els.cycleEta.textContent = `Cola (${pending}) ~ ${formatEta(queueMs)}`;
+      return;
+    }
   }
   const ms = estimateCycleRemainingMs();
   if (ms < state.remainingMs + 60_000) {
@@ -1754,6 +1841,19 @@ function saveSession({ force = false } = {}) {
     endAt: state.running ? state.endAt : null,
     task: state.task,
     category: state.category,
+    pausedAt: !state.running && state.pausedAt ? state.pausedAt : null,
+    sprint: state.sprint
+      ? {
+          total: state.sprint.total,
+          done: state.sprint.done,
+          startedAt: state.sprint.startedAt,
+          focusMinutes: state.sprint.focusMinutes || 0,
+          prevAutoAdvance:
+            typeof state.sprint.prevAutoAdvance === "boolean"
+              ? state.sprint.prevAutoAdvance
+              : true,
+        }
+      : null,
     savedAt: now,
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
@@ -1761,6 +1861,27 @@ function saveSession({ force = false } = {}) {
 
 function clearSession() {
   localStorage.removeItem(SESSION_KEY);
+}
+
+function hydrateSprintFromSession(saved) {
+  if (!saved?.sprint || typeof saved.sprint !== "object") {
+    state.sprint = null;
+    return;
+  }
+  const total = clamp(Number(saved.sprint.total) || 0, [2, 8]);
+  const done = clamp(Number(saved.sprint.done) || 0, [0, total]);
+  if (done >= total) {
+    state.sprint = null;
+    return;
+  }
+  state.sprint = {
+    total,
+    done,
+    startedAt: Number(saved.sprint.startedAt) || Date.now(),
+    focusMinutes: Number(saved.sprint.focusMinutes) || 0,
+    prevAutoAdvance:
+      typeof saved.sprint.prevAutoAdvance === "boolean" ? saved.sprint.prevAutoAdvance : true,
+  };
 }
 
 function restoreSession() {
@@ -1771,10 +1892,13 @@ function restoreSession() {
     if (!saved || !PHASES[saved.phase]) return false;
 
     state.phase = saved.phase;
-    state.totalMs = Number(saved.totalMs) || phaseDurationMs(saved.phase);
     state.completedInCycle = Number(saved.completedInCycle) || 0;
     state.task = typeof saved.task === "string" ? saved.task : "";
     state.category = CATEGORIES[saved.category] ? saved.category : "trabajo";
+    hydrateSprintFromSession(saved);
+    state.totalMs = Number(saved.totalMs) || phaseDurationMs(saved.phase);
+    state.pausedAt =
+      !saved.running && Number(saved.pausedAt) > 0 ? Number(saved.pausedAt) : null;
 
     if (saved.running && saved.endAt) {
       const left = Math.max(0, Number(saved.endAt) - Date.now());
@@ -1782,6 +1906,7 @@ function restoreSession() {
       els.phaseLabel.textContent = PHASES[state.phase].label;
       els.supportText.textContent = PHASES[state.phase].support;
       updateThemeColor();
+      state.pausedAt = null;
       if (left > 0) {
         state.remainingMs = left;
         state.endAt = Number(saved.endAt);
@@ -1800,6 +1925,9 @@ function restoreSession() {
     state.running = false;
     state.endAt = null;
     state.remainingMs = Math.max(0, Number(saved.remainingMs) || state.totalMs);
+    if (state.remainingMs <= 0 || state.remainingMs >= state.totalMs) {
+      state.pausedAt = null;
+    }
     els.body.dataset.phase = state.phase;
     els.phaseLabel.textContent = PHASES[state.phase].label;
     els.supportText.textContent = PHASES[state.phase].support;
@@ -1901,6 +2029,7 @@ function setPhase(phase, { resetTime = true } = {}) {
     state.remainingMs = state.totalMs;
     state.endAt = null;
     state.warnPlayed = false;
+    state.pausedAt = null;
   }
   updateThemeColor();
   syncIdleLines();
@@ -2867,6 +2996,10 @@ async function buildWeekCardFile() {
   const { count, minutes, days } = weekSummary();
   const today = countTodayFocus();
   const streak = currentStreak();
+  const theme = ATMOSPHERES[state.settings.atmosphere] || ATMOSPHERES.slate;
+  const vars = theme.vars;
+  const ink = vars["--ink"] || "#101411";
+  const soft = vars["--ink-soft"] || "#4a524c";
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1350;
@@ -2874,9 +3007,9 @@ async function buildWeekCardFile() {
   if (!ctx) throw new Error("canvas");
 
   const bg = ctx.createLinearGradient(0, 0, 1080, 1350);
-  bg.addColorStop(0, "#eceee9");
-  bg.addColorStop(0.45, "#e2e4df");
-  bg.addColorStop(1, "#c5c9c0");
+  bg.addColorStop(0, vars["--bg-c"] || "#eceee9");
+  bg.addColorStop(0.45, vars["--bg-a"] || "#e2e4df");
+  bg.addColorStop(1, vars["--bg-b"] || "#c5c9c0");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1080, 1350);
 
@@ -2885,29 +3018,29 @@ async function buildWeekCardFile() {
   ctx.arc(840, 180, 220, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#101411";
+  ctx.fillStyle = ink;
   ctx.font = "800 96px Syne, sans-serif";
   ctx.fillText("FOCO", 88, 170);
   ctx.font = "600 28px Sora, sans-serif";
-  ctx.fillStyle = "#4a524c";
+  ctx.fillStyle = soft;
   ctx.fillText("RESUMEN DE LA SEMANA", 92, 220);
 
-  ctx.fillStyle = "#101411";
+  ctx.fillStyle = ink;
   ctx.font = "italic 120px 'Instrument Serif', serif";
   ctx.fillText(String(count), 88, 400);
   ctx.font = "500 36px Sora, sans-serif";
-  ctx.fillStyle = "#4a524c";
+  ctx.fillStyle = soft;
   ctx.fillText("enfoques", 88, 455);
 
-  ctx.fillStyle = "#101411";
+  ctx.fillStyle = ink;
   ctx.font = "italic 84px 'Instrument Serif', serif";
   ctx.fillText(`${minutes}`, 520, 400);
   ctx.font = "500 36px Sora, sans-serif";
-  ctx.fillStyle = "#4a524c";
+  ctx.fillStyle = soft;
   ctx.fillText("minutos", 520, 455);
 
   ctx.font = "500 34px Sora, sans-serif";
-  ctx.fillStyle = "#101411";
+  ctx.fillStyle = ink;
   ctx.fillText(`Hoy ${today}/${state.settings.dailyGoal}  ·  Racha ${streak}`, 88, 540);
 
   const max = Math.max(1, ...days.map((d) => d.count));
@@ -2918,18 +3051,24 @@ async function buildWeekCardFile() {
   days.forEach((day, i) => {
     const h = Math.round((day.count / max) * 320);
     const x = baseX + i * (barW + gap);
-    ctx.fillStyle = day.isToday ? "#d62818" : "rgba(16,20,17,0.18)";
+    if (day.isToday) {
+      ctx.fillStyle = "#d62818";
+    } else {
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = 0.18;
+    }
     ctx.fillRect(x, baseY - h, barW, Math.max(8, h));
-    ctx.fillStyle = "#4a524c";
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = soft;
     ctx.font = "700 26px Syne, sans-serif";
     ctx.fillText(day.label, x + 18, baseY + 48);
     ctx.font = "500 24px Sora, sans-serif";
     ctx.fillText(String(day.count), x + 34, baseY - h - 18);
   });
 
-  ctx.fillStyle = "#4a524c";
+  ctx.fillStyle = soft;
   ctx.font = "500 28px Sora, sans-serif";
-  ctx.fillText("Tu tiempo · tu sello", 88, 1260);
+  ctx.fillText(`Tu tiempo · tu sello · ${theme.label}`, 88, 1260);
 
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("blob"))), "image/png");
@@ -3445,15 +3584,28 @@ function nextPhaseAfter(current) {
 function completePhaseQuietly() {
   const finished = state.phase;
   const minutes = sessionMinutes();
+  const finishedTask = state.task;
   state.completing = true;
   state.running = false;
   state.endAt = null;
+  state.pausedAt = null;
   clearTick();
   releaseWakeLock();
   state.remainingMs = 0;
 
   if (finished === "focus") {
     recordFocusSession(minutes);
+    markQueueDoneByTask(finishedTask);
+    advanceSprintOnFocus(minutes);
+    const upcoming = nextQueueItem();
+    if (
+      upcoming &&
+      (!finishedTask ||
+        finishedTask.trim().toLocaleLowerCase("es") !== upcoming.text.toLocaleLowerCase("es"))
+    ) {
+      state.task = upcoming.text;
+      if (els.taskInput) els.taskInput.value = upcoming.text;
+    }
   }
 
   const next = nextPhaseAfter(finished);
@@ -3548,6 +3700,7 @@ function onPhaseComplete() {
   let celebratedSomething = false;
   let recorded = null;
   let sprintFinished = false;
+  let pulledFromQueue = false;
   if (finished === "focus") {
     recorded = recordFocusSession(minutes);
     markQueueDoneByTask(finishedTask);
@@ -3564,6 +3717,7 @@ function onPhaseComplete() {
     ) {
       state.task = upcoming.text;
       if (els.taskInput) els.taskInput.value = upcoming.text;
+      pulledFromQueue = true;
     }
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
@@ -3576,9 +3730,21 @@ function onPhaseComplete() {
       const sprintLabel = state.sprint
         ? ` · sprint ${state.sprint.done}/${state.sprint.total}`
         : "";
-      showToast(`Enfoque completado · ${today}/${goal}${sprintLabel}`, {
+      const message = pulledFromQueue
+        ? `Listo · sigue «${state.task}»`
+        : `Enfoque completado · ${today}/${goal}${sprintLabel}`;
+      showToast(message, {
         actionLabel: "Deshacer",
         onAction: undoLastFocusSession,
+        secondaryLabel: pulledFromQueue ? "Sin tarea" : null,
+        onSecondary: pulledFromQueue
+          ? () => {
+              state.task = "";
+              if (els.taskInput) els.taskInput.value = "";
+              saveSession({ force: true });
+              render();
+            }
+          : null,
         duration: 5000,
       });
     }
@@ -4656,6 +4822,7 @@ function init() {
   scheduleDaySummary();
   setTimeout(maybeNudgeStreak, 2200);
   setTimeout(maybeNudgePeakBand, 2800);
+  setTimeout(maybeNudgeResumePause, 3200);
   setTimeout(() => {
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     maybeShowIntention();
