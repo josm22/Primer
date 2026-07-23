@@ -534,8 +534,8 @@ body::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 6px;
   min-height: 0;
 }
 
@@ -544,9 +544,9 @@ body::before {
   justify-content: center;
   align-items: flex-end;
   gap: 0;
-  min-height: calc(var(--card-h) * 0.92);
+  min-height: calc(var(--card-h) * 0.78);
   flex: 1;
-  padding: 2px 6px 0;
+  padding: 2px 4px 0;
   overflow: visible;
 }
 
@@ -557,15 +557,17 @@ body::before {
   padding-bottom: 2px;
 }
 
+/* Mano justo debajo de la mesa, cartas en una línea base clara */
 .my-hand {
-  min-height: calc(var(--card-h) * 1.2 + 12px);
-  padding: 4px 4px 8px;
+  min-height: calc(var(--card-h) * 1.2);
+  padding: 10px 2px 2px; /* hueco arriba solo para la carta seleccionada */
   align-items: flex-end;
+  justify-content: center;
 }
 
 .opp-hand .card,
 .my-hand .card {
-  margin-left: -12px;
+  margin-left: -11px;
   flex-shrink: 0;
 }
 
@@ -579,16 +581,14 @@ body::before {
   height: calc(var(--card-h) * 0.78);
 }
 
-/* Mano del jugador: más grande que la mesa, abanico anclado abajo */
 .my-hand .card {
-  width: calc(var(--card-w) * 1.18);
-  height: calc(var(--card-h) * 1.18);
+  width: calc(var(--card-w) * 1.2);
+  height: calc(var(--card-h) * 1.2);
   transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-rot, 0deg));
   transform-origin: 50% 100%;
   z-index: calc(2 + var(--fan-i, 0));
 }
 
-/* Rival: dorsos en abanico normal (sin giro 180 que las mandaba arriba) */
 .opp-hand .card.face-down {
   transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-rot, 0deg));
   transform-origin: 50% 0%;
@@ -674,8 +674,9 @@ body::before {
   animation: feltBreath 2.8s ease-in-out infinite;
 }
 
+/* Sin handBreath: movía toda la mano y parecía mal colocada */
 #screenGame.my-turn .my-hand {
-  animation: handBreath 2.8s ease-in-out infinite;
+  animation: none;
 }
 
 .felt.selecting {
@@ -863,10 +864,10 @@ button.card {
   border-radius: 9px;
 }
 
-/* Selección en mano: sube un poco sin romper el abanico */
+/* Selección: sube sobre la misma base del abanico */
 .my-hand .card.selected {
-  transform: translateY(calc(var(--fan-y, 0px) - 12px)) rotate(var(--fan-rot, 0deg)) scale(1.05);
-  box-shadow: 0 10px 22px rgba(224, 179, 77, 0.4);
+  transform: translateY(-10px) rotate(var(--fan-rot, 0deg)) scale(1.04);
+  box-shadow: 0 8px 18px rgba(224, 179, 77, 0.38);
   z-index: 8;
   outline: 2px solid var(--gold);
   outline-offset: 2px;
@@ -984,8 +985,10 @@ button.card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   overflow: visible;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .opp-row {
@@ -994,6 +997,7 @@ button.card {
 
 .my-row {
   align-items: flex-end;
+  margin-top: 2px;
 }
 
 .pile {
@@ -1429,7 +1433,7 @@ button.card {
   flex-direction: column;
   gap: 2px;
   min-height: 0;
-  margin: 3px 0 2px;
+  margin: 2px 0 2px;
   max-height: 2.6em;
   overflow: hidden;
   flex-shrink: 0;
