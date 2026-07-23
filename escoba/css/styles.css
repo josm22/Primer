@@ -1490,7 +1490,8 @@ button.card {
   top: 34%;
 }
 
-.card.ghosting {
+.card.ghosting,
+.escoba-mark.ghosting {
   opacity: 0 !important;
   pointer-events: none !important;
 }
