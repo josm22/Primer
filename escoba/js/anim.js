@@ -453,7 +453,7 @@ function cssPileSize() {
     }
   } catch (_) {}
   const short = typeof window !== 'undefined' && window.innerHeight <= 780;
-  return short ? { width: 20, height: 30 } : { width: 22, height: 32 };
+  return short ? { width: 42, height: 64 } : { width: 48, height: 72 };
 }
 
 function pileLanding(pile, felt, meSide, { crossed = false } = {}) {
@@ -492,14 +492,16 @@ function measurePileDest(meSide, { crossed = false } = {}) {
     const marks = document.querySelectorAll(`${root} .escoba-mark`);
     const el = marks[marks.length - 1];
     if (el) {
+      // offset* = caja sin rotar; AABB de getBoundingClientRect está girada
+      const w = el.offsetWidth || cssPileSize().width;
+      const h = el.offsetHeight || cssPileSize().height;
       const r = el.getBoundingClientRect();
-      if (r.width > 2) {
-        // Franja boca abajo: el flyer aterriza centrado (sigue cruzado en el vuelo)
-        const w = cssPileSize().width;
-        const h = cssPileSize().height;
+      if (r.width > 4) {
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
         return {
-          left: r.left + r.width / 2 - w / 2,
-          top: r.top + r.height / 2 - h / 2,
+          left: cx - w / 2,
+          top: cy - h / 2,
           width: w,
           height: h,
           rotate: 90,
@@ -507,9 +509,7 @@ function measurePileDest(meSide, { crossed = false } = {}) {
       }
     }
   }
-  const cards = document.querySelectorAll(
-    `${root} .pile-stack .card.tiny:not(.escoba-mark)`
-  );
+  const cards = document.querySelectorAll(`${root} .pile-stack .card.tiny`);
   const el = cards[cards.length - 1];
   if (el) {
     const r = el.getBoundingClientRect();

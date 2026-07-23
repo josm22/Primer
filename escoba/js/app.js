@@ -638,105 +638,19 @@ function renderStats() {
   fill($('#statsMe'), tMe, state.names[me]);
 }
 
-/** Capas del montón: cartas cara arriba y marcas de escoba intercaladas según el log. */
-function buildPileLayers(game, playerIdx, cards) {
-  const hide = state.holdLeftoverIds;
-  const visible = hide?.size ? cards.filter((c) => !hide.has(c.id)) : cards.slice();
-  const layers = [];
-  let cursor = 0;
-
-  for (const raw of game.moveLog || []) {
-    const mv = normalizeLogMove(raw);
-    if (!mv || Number(mv.player) !== Number(playerIdx)) continue;
-    if (mv.type !== 'capture' && mv.type !== 'escoba') continue;
-    const n = 1 + (mv.captureIds?.length || 0);
-    const slice = cards.slice(cursor, cursor + n);
-    cursor += n;
-    if (mv.type === 'escoba') {
-      layers.push({ kind: 'escoba' });
-    } else {
-      for (const c of slice) {
-        if (hide?.has(c.id)) continue;
-        layers.push({ kind: 'card', card: c });
-      }
-    }
-  }
-
-  while (cursor < cards.length) {
-    const c = cards[cursor++];
-    if (hide?.has(c.id)) continue;
-    layers.push({ kind: 'card', card: c });
-  }
-
-  if (!layers.length && visible.length) {
-    for (const c of visible) layers.push({ kind: 'card', card: c });
-  }
-
-  const marked = layers.filter((l) => l.kind === 'escoba').length;
-  const need = game.escobas[playerIdx] || 0;
-  for (let i = marked; i < need; i++) layers.push({ kind: 'escoba' });
-
-  return layers;
-}
-
-/**
- * Montón compacto: escobas como franjas + 1–2 cartas entre ellas.
- * Sin girar 90° (eso ensancha el mazo). Máx. 5 capas visibles.
- */
-function compactPileShow(layers) {
-  const out = [];
-  let buf = [];
-  const flush = (max) => {
-    const take = buf.slice(-max);
-    buf = [];
-    for (const card of take) out.push({ kind: 'card', card });
-  };
-  for (const layer of layers) {
-    if (layer.kind === 'escoba') {
-      flush(1);
-      out.push(layer);
-    } else if (layer.card) {
-      buf.push(layer.card);
-    }
-  }
-  flush(2);
-  if (out.length <= 5) return out;
-
-  const kept = [];
-  let cardsKept = 0;
-  for (let i = out.length - 1; i >= 0 && kept.length < 5; i--) {
-    const l = out[i];
-    if (l.kind === 'escoba') kept.push(l);
-    else if (cardsKept < 2) {
-      kept.push(l);
-      cardsKept += 1;
-    }
-  }
-  return kept.reverse();
-}
-
-/** Desplaza en vertical desde la base: la franja de escoba asoma bajo la carta. */
-function pileLayerOffsets(show) {
-  let y = 0;
-  return show.map((layer) => {
-    const item = { ...layer, y };
-    y += layer.kind === 'escoba' ? 5 : 3;
-    return item;
-  });
-}
-
+/** Montón grande: últimas capturas cara arriba + escobas cruzadas encima (como al principio). */
 function renderPiles() {
   const g = state.game;
   const me = state.me;
   const opp = 1 - me;
+  const hide = state.holdLeftoverIds;
 
   const paint = (el, cards, playerIdx) => {
     if (!el) return;
+    const visible = hide?.size ? cards.filter((c) => !hide.has(c.id)) : cards;
     const prev = state.lastPileCount[playerIdx] || 0;
     const prevEsc = state.lastEscCount?.[playerIdx] || 0;
     const escCount = g.escobas[playerIdx] || 0;
-    const layers = buildPileLayers(g, playerIdx, cards);
-    const faceUp = layers.filter((l) => l.kind === 'card').length;
 
     el.innerHTML = '';
     el.setAttribute('role', 'button');
@@ -753,7 +667,7 @@ function renderPiles() {
       }
     };
 
-    if (!layers.length) {
+    if (!visible.length && !escCount) {
       el.innerHTML = `<div class="pile-empty">Sin capturas</div>`;
       state.lastPileCount[playerIdx] = 0;
       if (!state.lastEscCount) state.lastEscCount = [0, 0];
@@ -763,34 +677,37 @@ function renderPiles() {
 
     const stage = document.createElement('div');
     stage.className = 'pile-stage';
-    if (faceUp > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
+    if (visible.length > prev || escCount > prevEsc) stage.classList.add('pile-pulse');
 
-    const wrap = document.createElement('div');
-    wrap.className = 'pile-stack interleaved';
+    if (visible.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pile-stack';
+      const show = visible.slice(-3);
+      show.forEach((c, i) => {
+        const card = cardEl(c, { face: true, tiny: true });
+        card.style.setProperty('--i', String(i));
+        wrap.appendChild(card);
+      });
+      stage.appendChild(wrap);
+    }
 
-    const show = pileLayerOffsets(compactPileShow(layers));
-    show.forEach((layer, i) => {
-      if (layer.kind === 'escoba') {
-        const mark = document.createElement('div');
-        mark.className = 'escoba-mark escoba-slab';
-        mark.setAttribute('aria-hidden', 'true');
-        mark.title = 'Escoba';
-        mark.innerHTML = buildCardBackHtml();
-        mark.style.setProperty('--i', String(i));
-        mark.style.setProperty('--y', String(layer.y));
-        if (i === show.length - 1 && escCount > prevEsc) {
+    if (escCount > 0) {
+      const escWrap = document.createElement('div');
+      escWrap.className = 'pile-escobas';
+      escWrap.setAttribute('aria-hidden', 'true');
+      const showEsc = Math.min(escCount, 3);
+      for (let i = 0; i < showEsc; i++) {
+        const mark = cardEl(null, { face: false, tiny: true });
+        mark.classList.add('escoba-mark');
+        mark.style.setProperty('--e', String(i));
+        if (i === showEsc - 1 && escCount > prevEsc) {
           mark.classList.add('escoba-mark-new');
         }
-        wrap.appendChild(mark);
-      } else {
-        const card = cardEl(layer.card, { face: true, tiny: true });
-        card.style.setProperty('--i', String(i));
-        card.style.setProperty('--y', String(layer.y));
-        wrap.appendChild(card);
+        escWrap.appendChild(mark);
       }
-    });
+      stage.appendChild(escWrap);
+    }
 
-    stage.appendChild(wrap);
     el.appendChild(stage);
     const meta = document.createElement('div');
     meta.className = 'pile-meta';
@@ -801,7 +718,7 @@ function renderPiles() {
     meta.textContent = bits.join(' · ');
     el.appendChild(meta);
 
-    state.lastPileCount[playerIdx] = faceUp;
+    state.lastPileCount[playerIdx] = visible.length;
     if (!state.lastEscCount) state.lastEscCount = [0, 0];
     state.lastEscCount[playerIdx] = escCount;
   };
@@ -1031,18 +948,22 @@ function render(opts = {}) {
   }
 
   const felt = $('#felt');
+  const deckHost = $('#deckHost');
+  const wrap = felt?.closest('.felt-wrap');
   const prevDeck = Number(felt.dataset.deckCount || -1);
   felt.innerHTML = '';
+  if (deckHost) deckHost.innerHTML = '';
   felt.classList.toggle('deck-low', g.deck.length > 0 && g.deck.length <= 6);
   felt.classList.toggle('deck-empty', g.deck.length === 0);
   felt.classList.toggle('selecting', myTurn && !!state.selectedHand && !state.holdLeftoverIds?.size);
+  wrap?.classList.toggle('deck-low', g.deck.length > 0 && g.deck.length <= 6);
+  wrap?.classList.toggle('deck-empty', g.deck.length === 0);
   felt.dataset.deckCount = String(g.deck.length);
 
   const deckStack = document.createElement('div');
   deckStack.className = 'deck-stack';
   deckStack.setAttribute('aria-label', `Mazo: ${g.deck.length} cartas`);
-  // Grosor solo vertical (2–3 capas); no se abre hacia el lado
-  const layers = g.deck.length === 0 ? 0 : Math.min(3, Math.max(1, Math.ceil(g.deck.length / 12)));
+  const layers = g.deck.length === 0 ? 0 : Math.min(4, Math.max(1, Math.ceil(g.deck.length / 10)));
   for (let i = 0; i < layers; i++) {
     const layer = document.createElement('div');
     layer.className = 'deck-layer';
@@ -1058,7 +979,7 @@ function render(opts = {}) {
     deckCount.classList.add('tick');
   }
   deckStack.appendChild(deckCount);
-  felt.appendChild(deckStack);
+  (deckHost || felt).appendChild(deckStack);
 
   // Restos de fin de ronda se muestran en mesa hasta el barrido
   const stagedLeft =
@@ -2299,7 +2220,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=32').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=33').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
