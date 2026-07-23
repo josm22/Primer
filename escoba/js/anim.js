@@ -453,7 +453,7 @@ function cssPileSize() {
     }
   } catch (_) {}
   const short = typeof window !== 'undefined' && window.innerHeight <= 780;
-  return short ? { width: 36, height: 54 } : { width: 40, height: 60 };
+  return short ? { width: 34, height: 50 } : { width: 38, height: 56 };
 }
 
 function pileLanding(pile, felt, meSide, { crossed = false } = {}) {

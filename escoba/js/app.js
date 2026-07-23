@@ -681,7 +681,7 @@ function buildPileLayers(game, playerIdx, cards) {
   return layers;
 }
 
-/** Pocas cartas por tramo + escobas (máx. 3): se ve el orden sin hinchar. */
+/** Pocas cartas por tramo + escobas (máx. 4). */
 function compactPileShow(layers) {
   const out = [];
   let buf = [];
@@ -697,20 +697,20 @@ function compactPileShow(layers) {
       buf.push(layer.card);
     }
   }
-  flush(2);
+  flush(1);
 
   const escTotal = out.filter((l) => l.kind === 'escoba').length;
-  if (escTotal <= 3 && out.length <= 7) return out;
+  if (escTotal <= 4 && out.length <= 9) return out;
 
   const kept = [];
   let escKept = 0;
   for (let i = out.length - 1; i >= 0; i--) {
     const l = out[i];
     if (l.kind === 'escoba') {
-      if (escKept >= 3) continue;
+      if (escKept >= 4) continue;
       escKept += 1;
       kept.push(l);
-    } else if (escKept === 0 || kept.length < 8) {
+    } else if (escKept === 0 || kept.length < 10) {
       kept.push(l);
     }
   }
@@ -2291,7 +2291,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=36').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=37').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
