@@ -1228,6 +1228,52 @@ body.is-deep-focus .primary {
   color: var(--ink-soft);
 }
 
+.hour-goal {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.hour-goal.is-met {
+  color: var(--phase);
+}
+
+.band-goal-row {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.band-goal-row[hidden] {
+  display: none;
+}
+
+.sprint-history {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.sprint-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 0.88rem;
+}
+
+.sprint-history-item span {
+  color: var(--ink-soft);
+}
+
 body.is-deep-focus .sprint-row,
 body.is-deep-focus .sprint-status {
   display: none;

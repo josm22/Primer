@@ -109,6 +109,8 @@ const FREEZE_KEY = "foco-streak-freeze-v1";
 const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
 const INTENTION_KEY = "foco-intention-v1";
 const QUEUE_KEY = "foco-queue-v1";
+const SPRINTS_KEY = "foco-sprints-v1";
+const BAND_GOAL_KEY = "foco-band-goals-celebrated-v1";
 
 const ATMOSPHERES = {
   slate: {
@@ -168,6 +170,9 @@ const DEFAULTS = {
   roundsUntilLong: 4,
   dailyGoal: 8,
   weeklyGoal: 40,
+  morningGoal: 3,
+  afternoonGoal: 3,
+  sprintShortMins: 3,
   sound: true,
   haptic: true,
   notify: true,
@@ -191,6 +196,9 @@ const LIMITS = {
   roundsUntilLong: [2, 8],
   dailyGoal: [1, 20],
   weeklyGoal: [5, 100],
+  morningGoal: [0, 12],
+  afternoonGoal: [0, 12],
+  sprintShortMins: [1, 15],
 };
 
 const els = {
@@ -329,6 +337,9 @@ const els = {
   sprintRow: document.getElementById("sprintRow"),
   sprintChip: document.getElementById("sprintChip"),
   sprintStopBtn: document.getElementById("sprintStopBtn"),
+  sprintHistory: document.getElementById("sprintHistory"),
+  sprintHistoryEmpty: document.getElementById("sprintHistoryEmpty"),
+  bandGoalRow: document.getElementById("bandGoalRow"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -336,6 +347,9 @@ const els = {
     roundsUntilLong: document.getElementById("roundsUntilLong"),
     dailyGoal: document.getElementById("dailyGoal"),
     weeklyGoal: document.getElementById("weeklyGoal"),
+    morningGoal: document.getElementById("morningGoal"),
+    afternoonGoal: document.getElementById("afternoonGoal"),
+    sprintShortMins: document.getElementById("sprintShortMins"),
   },
 };
 
@@ -383,6 +397,8 @@ const state = {
   queue: loadQueue(),
   sprint: null,
   dragQueueId: null,
+  sprints: loadSprintHistory(),
+  bandCelebrated: loadBandCelebrated(),
 };
 
 function loadIntention() {
@@ -507,11 +523,16 @@ function reorderQueueById(fromId, toId) {
 
 function startSprint(total) {
   const n = clamp(Number(total) || 0, [2, 8]);
-  state.sprint = { total: n, done: 0 };
+  state.sprint = {
+    total: n,
+    done: 0,
+    startedAt: Date.now(),
+    focusMinutes: 0,
+  };
   state.settings.autoAdvance = true;
   saveSettings();
   render();
-  showToast(`Sprint ×${n} en marcha`);
+  showToast(`Sprint ×${n} · pausas de ${state.settings.sprintShortMins} min`);
   if (!state.running && state.phase === "focus") {
     start();
   }
@@ -524,13 +545,76 @@ function stopSprint({ toast = true } = {}) {
   if (toast) showToast("Sprint cancelado");
 }
 
-function advanceSprintOnFocus() {
+function loadSprintHistory() {
+  try {
+    const raw = localStorage.getItem(SPRINTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, 30) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSprintHistory() {
+  localStorage.setItem(SPRINTS_KEY, JSON.stringify(state.sprints.slice(0, 30)));
+}
+
+function recordSprintComplete(sprint) {
+  const entry = {
+    id: `sp-${Date.now()}`,
+    date: todayKey(),
+    total: sprint.total,
+    minutes: sprint.focusMinutes || sprint.total * state.settings.focusMins,
+    endedAt: new Date().toISOString(),
+  };
+  state.sprints.unshift(entry);
+  saveSprintHistory();
+}
+
+function loadBandCelebrated() {
+  try {
+    const raw = localStorage.getItem(BAND_GOAL_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBandCelebrated() {
+  localStorage.setItem(BAND_GOAL_KEY, JSON.stringify(state.bandCelebrated));
+}
+
+function bandGoalFor(key) {
+  if (key === "morning") return Number(state.settings.morningGoal) || 0;
+  if (key === "afternoon") return Number(state.settings.afternoonGoal) || 0;
+  return 0;
+}
+
+function maybeCelebrateBandGoal(bandKey, todayCount) {
+  const goal = bandGoalFor(bandKey);
+  if (!goal || todayCount < goal) return false;
+  const day = todayKey();
+  const stamp = `${day}:${bandKey}`;
+  if (state.bandCelebrated[stamp]) return false;
+  state.bandCelebrated[stamp] = 1;
+  saveBandCelebrated();
+  const label = bandKey === "morning" ? "mañana" : "tarde";
+  showToast(`Meta de ${label} sellada · ${todayCount}/${goal}`, { duration: 4200 });
+  return true;
+}
+
+function advanceSprintOnFocus(minutes = 0) {
   if (!state.sprint) return false;
   state.sprint.done += 1;
+  state.sprint.focusMinutes = (state.sprint.focusMinutes || 0) + (Number(minutes) || 0);
   if (state.sprint.done >= state.sprint.total) {
-    const total = state.sprint.total;
+    const finished = { ...state.sprint };
     state.sprint = null;
-    showToast(`Sprint ×${total} completado`, { duration: 4200 });
+    recordSprintComplete(finished);
+    showToast(`Sprint ×${finished.total} completado`, { duration: 4200 });
     return true;
   }
   return false;
@@ -715,15 +799,19 @@ function renderHourChart() {
     .map((bucket) => {
       const height = Math.max(4, Math.round((bucket.count / max) * 100));
       const current = bucket.key === nowBand ? " is-current" : "";
+      const goal = bandGoalFor(bucket.key);
+      const goalText = goal
+        ? `<div class="hour-goal ${bucket.today >= goal ? "is-met" : ""}">${bucket.today}/${goal}</div>`
+        : `<div class="hour-today">Hoy ${bucket.today}</div>`;
       return `
-        <div class="hour-col${current}" title="${bucket.label}: ${bucket.count} · hoy ${bucket.today}">
+        <div class="hour-col${current}" title="${bucket.label}: ${bucket.count} · hoy ${bucket.today}${goal ? ` · meta ${goal}` : ""}">
           <div class="hour-bar-wrap">
             <div class="hour-bar" style="height:${bucket.count ? height : 4}%"></div>
           </div>
           <div class="hour-count">${bucket.count || "·"}</div>
           <div class="hour-name">${bucket.label}</div>
           <div class="hour-range">${bucket.range}</div>
-          <div class="hour-today">Hoy ${bucket.today}</div>
+          ${goalText}
         </div>
       `;
     })
@@ -741,10 +829,52 @@ function renderHourChart() {
       parts.push(`Suele irte bien de ${top.label.toLowerCase()} (${top.range}h)`);
     }
     if (now) {
-      parts.push(`ahora ${now.today} en ${now.label.toLowerCase()}`);
+      const goal = bandGoalFor(now.key);
+      if (goal) {
+        parts.push(`ahora ${now.today}/${goal} en ${now.label.toLowerCase()}`);
+      } else {
+        parts.push(`ahora ${now.today} en ${now.label.toLowerCase()}`);
+      }
     }
     els.hourInsight.textContent = `${parts.join(" · ")}.`;
   }
+
+  if (els.bandGoalRow) {
+    const morning = buckets.find((b) => b.key === "morning");
+    const afternoon = buckets.find((b) => b.key === "afternoon");
+    const mGoal = bandGoalFor("morning");
+    const aGoal = bandGoalFor("afternoon");
+    const bits = [];
+    if (mGoal) bits.push(`Mañana ${morning?.today || 0}/${mGoal}`);
+    if (aGoal) bits.push(`Tarde ${afternoon?.today || 0}/${aGoal}`);
+    els.bandGoalRow.hidden = !bits.length;
+    els.bandGoalRow.textContent = bits.join(" · ");
+  }
+}
+
+function renderSprintHistory() {
+  if (!els.sprintHistory) return;
+  const recent = state.sprints.slice(0, 6);
+  if (els.sprintHistoryEmpty) els.sprintHistoryEmpty.hidden = recent.length > 0;
+  els.sprintHistory.innerHTML = recent
+    .map((sprint) => {
+      const when = sprint.endedAt
+        ? new Date(sprint.endedAt).toLocaleString("es-ES", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : sprint.date;
+      return `
+        <li class="sprint-history-item">
+          <strong>Sprint ×${sprint.total}</strong>
+          <span>${sprint.minutes || 0} min · ${escapeHtml(when)}</span>
+        </li>
+      `;
+    })
+    .join("");
 }
 
 function todayKey(date = new Date()) {
@@ -1498,6 +1628,9 @@ function clamp(value, [min, max]) {
 }
 
 function phaseDurationMs(phase = state.phase) {
+  if (phase === "short" && state.sprint) {
+    return (Number(state.settings.sprintShortMins) || 3) * 60 * 1000;
+  }
   const key = PHASES[phase].setting;
   return state.settings[key] * 60 * 1000;
 }
@@ -2069,6 +2202,11 @@ function resetStatsData() {
       localStorage.removeItem("foco-goal-celebrated");
       localStorage.removeItem(FREEZE_KEY);
       localStorage.removeItem(PRESET_OVERRIDES_KEY);
+      localStorage.removeItem(SPRINTS_KEY);
+      localStorage.removeItem(BAND_GOAL_KEY);
+      state.sprints = [];
+      state.bandCelebrated = {};
+      state.sprint = null;
       clearSession();
       render();
       renderStatsPanel();
@@ -2296,6 +2434,7 @@ function renderStatsPanel() {
   renderCategoryBreakdown();
   renderLifetimeStats();
   renderHourChart();
+  renderSprintHistory();
 }
 
 function recentTaskNames() {
@@ -2396,6 +2535,9 @@ function render() {
   els.outputs.roundsUntilLong.value = state.settings.roundsUntilLong;
   els.outputs.dailyGoal.value = state.settings.dailyGoal;
   if (els.outputs.weeklyGoal) els.outputs.weeklyGoal.value = state.settings.weeklyGoal;
+  if (els.outputs.morningGoal) els.outputs.morningGoal.value = state.settings.morningGoal;
+  if (els.outputs.afternoonGoal) els.outputs.afternoonGoal.value = state.settings.afternoonGoal;
+  if (els.outputs.sprintShortMins) els.outputs.sprintShortMins.value = state.settings.sprintShortMins;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.hapticToggle.setAttribute("aria-checked", String(state.settings.haptic));
@@ -3163,7 +3305,11 @@ function onPhaseComplete() {
   if (finished === "focus") {
     recorded = recordFocusSession(minutes);
     markQueueDoneByTask(finishedTask);
-    sprintFinished = advanceSprintOnFocus();
+    sprintFinished = advanceSprintOnFocus(minutes);
+    const band = currentHourBand();
+    const buckets = hourBucketsForWeek();
+    const bandToday = buckets.find((b) => b.key === band)?.today || 0;
+    maybeCelebrateBandGoal(band, bandToday);
     const upcoming = nextQueueItem();
     if (
       upcoming &&
@@ -3400,8 +3546,17 @@ function adjustSetting(key, delta) {
   if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
     persistCategoryOverride();
   }
-  if (key === "dailyGoal" || key === "weeklyGoal") {
+  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal") {
     render();
+    return;
+  }
+  if (key === "sprintShortMins") {
+    if (!state.running || state.phase === "short") {
+      if (!state.running) setPhase(state.phase, { resetTime: true });
+      else render();
+    } else {
+      render();
+    }
     return;
   }
   if (!state.running) {
