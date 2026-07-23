@@ -622,8 +622,8 @@ function renderStats() {
   const fill = (root, t, who) => {
     if (!root) return;
     root.innerHTML = `
-      <div class="stat-who">${who}</div>
       <div class="stat-chips">
+        <span class="stat-who">${who}</span>
         <span class="chip" title="Cartas"><em>${t.cards}</em> cartas</span>
         <span class="chip chip-oro" title="Oros"><em>${t.oros}</em> oros</span>
         <span class="chip chip-7" title="Sietes"><em>${t.sietes}</em> sietes</span>
@@ -825,7 +825,7 @@ function renderFeed() {
     return;
   }
   el.innerHTML = state.feed
-    .slice(0, 5)
+    .slice(0, 2)
     .map(
       (f) =>
         `<div class="feed-item ${f.cls || ''}"><strong>${f.who}</strong> ${f.text}</div>`
@@ -2293,7 +2293,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=40').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=41').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

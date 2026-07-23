@@ -407,20 +407,21 @@ body::before {
   min-width: 0;
 }
 
-/* Una sola línea: NOMBRE · puntos */
+/* Una sola línea: NOMBRE · puntos (barra de progreso debajo, sin subir altura) */
 .score-pill {
   flex: 1;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(244, 235, 224, 0.1);
-  border-radius: 10px;
-  padding: 5px 9px;
+  border-radius: 8px;
+  padding: 3px 8px 5px;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: 6px;
   backdrop-filter: blur(8px);
   min-width: 0;
+  position: relative;
 }
 
 .score-pill.active {
@@ -445,41 +446,42 @@ body::before {
 }
 
 .score-pill .who {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: rgba(244, 235, 224, 0.55);
   font-weight: 600;
-  max-width: 10ch;
+  max-width: 9ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  order: 1;
 }
 
 .score-pill .pts {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1rem;
   line-height: 1;
   font-weight: 600;
   margin-left: auto;
-  order: 2;
 }
 
 .score-track {
-  order: 3;
-  flex: 1 1 100%;
-  margin-top: 0;
-  height: 3px;
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  height: 2px;
   border-radius: 999px;
   background: rgba(255,255,255,0.1);
   overflow: hidden;
 }
 
 .top-bar .btn-small {
-  padding: 6px 8px;
-  font-size: 0.72rem;
+  padding: 4px 7px;
+  font-size: 0.66rem;
   flex-shrink: 0;
+  border-radius: 8px;
+  min-height: 0;
 }
 
 .net-chip {
@@ -893,45 +895,57 @@ button.card {
 
 /* ---- Live stats & piles ---- */
 .live-stats {
-  margin: 2px 0 4px;
-  padding: 5px 8px;
-  border-radius: 12px;
+  margin: 1px 0 3px;
+  padding: 3px 6px;
+  border-radius: 10px;
   background: rgba(0,0,0,0.28);
   border: 1px solid rgba(244,235,224,0.14);
   flex-shrink: 0;
 }
 
 .stat-who {
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(244,235,224,0.55);
+  color: rgba(244,235,224,0.6);
   font-weight: 700;
-  margin-bottom: 3px;
+  margin: 0 2px 0 0;
+  flex-shrink: 0;
+  max-width: 7ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stat-chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 3px;
   align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
+.stat-chips::-webkit-scrollbar { display: none; }
+
 .chip {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  padding: 3px 7px;
+  padding: 2px 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.42);
   color: #f4ebe0;
   border: 1px solid rgba(244, 235, 224, 0.22);
   line-height: 1.15;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chip em {
   font-style: normal;
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   margin-right: 2px;
   color: #fff8ee;
   font-weight: 700;
@@ -1129,15 +1143,15 @@ button.card {
 
 @media (max-height: 720px) {
   .live-stats {
-    padding: 4px 6px;
-    margin: 1px 0 3px;
+    padding: 2px 5px;
+    margin: 1px 0 2px;
   }
-  .live-stats .stat-who { display: none; }
-  .live-stats .chip { padding: 3px 6px; font-size: 0.7rem; }
-  .live-stats .chip em { font-size: 0.92rem; }
+  .live-stats .stat-who { display: inline; }
+  .live-stats .chip { padding: 2px 5px; font-size: 0.64rem; }
+  .live-stats .chip em { font-size: 0.82rem; }
   .move-feed {
-    max-height: 1.3em;
-    margin: 1px 0;
+    max-height: 2.4em;
+    margin: 2px 0;
   }
   .feed-empty { display: none; }
   .msg-bar {
@@ -1146,9 +1160,10 @@ button.card {
     min-height: 1.1em;
   }
   .top-bar { margin-bottom: 2px; gap: 4px; }
-  .score-pill { padding: 4px 7px; }
-  .score-pill .pts { font-size: 1.05rem; }
+  .score-pill { padding: 2px 6px 4px; }
+  .score-pill .pts { font-size: 0.95rem; }
   .score-track { height: 2px; }
+  .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
   .table-area { gap: 6px; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
@@ -1401,22 +1416,24 @@ button.card {
 .move-feed {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 1.2em;
-  margin: 6px 0 4px;
-  max-height: 4.8em;
+  gap: 2px;
+  min-height: 0;
+  margin: 3px 0 2px;
+  max-height: 2.6em;
   overflow: hidden;
+  flex-shrink: 0;
 }
 .feed-empty {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: rgba(244,235,224,0.35);
   text-align: center;
 }
 .feed-item {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: rgba(244,235,224,0.7);
   text-align: center;
   animation: fadeIn 0.35s ease both;
+  line-height: 1.25;
 }
 .feed-item.feed-escoba { color: var(--gold); font-weight: 700; }
 .feed-item.feed-cap { color: #b8f0d0; }
