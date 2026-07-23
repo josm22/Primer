@@ -131,6 +131,10 @@
         <button type="button" class="sprint-btn" data-sprint="3">Sprint ×3</button>
         <button type="button" class="sprint-btn" data-sprint="4">Sprint ×4</button>
       </div>
+      <div class="suggest-sprint" id="suggestSprint" hidden>
+        <p class="suggest-sprint-text" id="suggestSprintText">—</p>
+        <button type="button" class="secondary" id="suggestSprintBtn">Lanzar</button>
+      </div>
       <div class="sprint-status">
         <span class="sprint-chip" id="sprintChip" hidden>Sprint 0/0</span>
         <button type="button" class="secondary sprint-stop" id="sprintStopBtn" hidden>Parar sprint</button>
@@ -410,6 +414,18 @@
 
       <div class="field">
         <div class="field-row">
+          <label for="nightGoal">Meta de madrugada (0–6)</label>
+          <div class="stepper">
+            <button type="button" data-setting="nightGoal" data-delta="-1" aria-label="Bajar meta de madrugada">−</button>
+            <output id="nightGoal">0</output>
+            <button type="button" data-setting="nightGoal" data-delta="1" aria-label="Subir meta de madrugada">+</button>
+          </div>
+        </div>
+        <p class="hint">Por defecto off (0). Útil si trabajas de madrugada.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
           <label for="sprintShortMins">Pausa corta en sprint</label>
           <div class="stepper">
             <button type="button" data-setting="sprintShortMins" data-delta="-1" aria-label="Menos minutos de pausa en sprint">−</button>
@@ -461,6 +477,14 @@
           <p class="hint">Oculta el campo libre y arranca solo desde la cola de hoy.</p>
         </div>
         <button class="toggle" id="queueOnlyToggle" type="button" role="switch" aria-checked="false" aria-label="Solo cola"></button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div>Aviso de franja fuerte</div>
+          <p class="hint">Si abres Foco en tu franja habitual, sugiere empezar un bloque.</p>
+        </div>
+        <button class="toggle" id="peakNudgeToggle" type="button" role="switch" aria-checked="true" aria-label="Aviso de franja fuerte"></button>
       </div>
 
       <div class="preset-actions">

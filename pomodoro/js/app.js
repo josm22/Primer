@@ -173,6 +173,7 @@ const DEFAULTS = {
   morningGoal: 3,
   afternoonGoal: 3,
   eveningGoal: 2,
+  nightGoal: 0,
   sprintShortMins: 3,
   sound: true,
   haptic: true,
@@ -186,6 +187,7 @@ const DEFAULTS = {
   soundTheme: "soft",
   atmosphere: "slate",
   queueOnly: false,
+  peakNudge: true,
 };
 
 const SPRINT_OPTIONS = [2, 3, 4];
@@ -200,6 +202,7 @@ const LIMITS = {
   morningGoal: [0, 12],
   afternoonGoal: [0, 12],
   eveningGoal: [0, 12],
+  nightGoal: [0, 12],
   sprintShortMins: [1, 15],
 };
 
@@ -333,12 +336,16 @@ const els = {
   queueList: document.getElementById("queueList"),
   atmosphereRow: document.getElementById("atmosphereRow"),
   queueOnlyToggle: document.getElementById("queueOnlyToggle"),
+  peakNudgeToggle: document.getElementById("peakNudgeToggle"),
   queueClearDoneBtn: document.getElementById("queueClearDoneBtn"),
   hourChart: document.getElementById("hourChart"),
   hourInsight: document.getElementById("hourInsight"),
   sprintRow: document.getElementById("sprintRow"),
   sprintChip: document.getElementById("sprintChip"),
   sprintStopBtn: document.getElementById("sprintStopBtn"),
+  suggestSprint: document.getElementById("suggestSprint"),
+  suggestSprintText: document.getElementById("suggestSprintText"),
+  suggestSprintBtn: document.getElementById("suggestSprintBtn"),
   sprintHistory: document.getElementById("sprintHistory"),
   sprintHistoryEmpty: document.getElementById("sprintHistoryEmpty"),
   sprintWeekStat: document.getElementById("sprintWeekStat"),
@@ -353,6 +360,7 @@ const els = {
     morningGoal: document.getElementById("morningGoal"),
     afternoonGoal: document.getElementById("afternoonGoal"),
     eveningGoal: document.getElementById("eveningGoal"),
+    nightGoal: document.getElementById("nightGoal"),
     sprintShortMins: document.getElementById("sprintShortMins"),
   },
 };
@@ -595,6 +603,7 @@ function bandGoalFor(key) {
   if (key === "morning") return Number(state.settings.morningGoal) || 0;
   if (key === "afternoon") return Number(state.settings.afternoonGoal) || 0;
   if (key === "evening") return Number(state.settings.eveningGoal) || 0;
+  if (key === "night") return Number(state.settings.nightGoal) || 0;
   return 0;
 }
 
@@ -832,13 +841,16 @@ function renderHourChart() {
     const morning = buckets.find((b) => b.key === "morning");
     const afternoon = buckets.find((b) => b.key === "afternoon");
     const evening = buckets.find((b) => b.key === "evening");
+    const night = buckets.find((b) => b.key === "night");
     const mGoal = bandGoalFor("morning");
     const aGoal = bandGoalFor("afternoon");
     const eGoal = bandGoalFor("evening");
+    const nGoal = bandGoalFor("night");
     const bits = [];
     if (mGoal) bits.push(`Mañana ${morning?.today || 0}/${mGoal}`);
     if (aGoal) bits.push(`Tarde ${afternoon?.today || 0}/${aGoal}`);
     if (eGoal) bits.push(`Noche ${evening?.today || 0}/${eGoal}`);
+    if (nGoal) bits.push(`Madrugada ${night?.today || 0}/${nGoal}`);
     els.bandGoalRow.hidden = !bits.length;
     els.bandGoalRow.textContent = bits.join(" · ");
   }
@@ -919,12 +931,13 @@ function strongestBandKey() {
 }
 
 function maybeNudgePeakBand() {
+  if (!state.settings.peakNudge) return;
   if (state.running || state.sprint) return;
   if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
   if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
   const peak = strongestBandKey();
   const now = currentHourBand();
-  if (!peak || peak !== now || peak === "night") return;
+  if (!peak || peak !== now) return;
   const buckets = hourBucketsForWeek();
   const band = buckets.find((b) => b.key === now);
   const goal = bandGoalFor(now);
@@ -946,6 +959,61 @@ function maybeNudgePeakBand() {
     },
     duration: 7000,
   });
+}
+
+function suggestedSprintSize() {
+  ensureQueueFresh();
+  const pendingQueue = state.queue.items.filter((q) => !q.done).length;
+  const today = countTodayFocus();
+  const dailyLeft = Math.max(0, state.settings.dailyGoal - today);
+  const band = currentHourBand();
+  const bandGoal = bandGoalFor(band);
+  const buckets = hourBucketsForWeek();
+  const bandToday = buckets.find((b) => b.key === band)?.today || 0;
+  const bandLeft = bandGoal ? Math.max(0, bandGoal - bandToday) : 0;
+
+  let size = 0;
+  let reason = "";
+  if (pendingQueue >= 2) {
+    size = Math.min(4, Math.max(2, pendingQueue));
+    reason = `${pendingQueue} en cola`;
+  } else if (bandLeft >= 2) {
+    size = Math.min(4, bandLeft);
+    reason = `meta de ${bandLabel(band)}`;
+  } else if (dailyLeft >= 2) {
+    size = Math.min(4, dailyLeft);
+    reason = "meta del día";
+  } else if (dailyLeft === 1 || bandLeft === 1 || pendingQueue === 1) {
+    return null;
+  } else {
+    return null;
+  }
+  if (size < 2) return null;
+  return { size, reason };
+}
+
+function renderSuggestSprint() {
+  if (!els.suggestSprint) return;
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  const showIdle =
+    state.phase === "focus" &&
+    !state.running &&
+    state.remainingMs === state.totalMs &&
+    !state.sprint &&
+    !deepActive;
+  const suggestion = showIdle ? suggestedSprintSize() : null;
+  if (!suggestion) {
+    els.suggestSprint.hidden = true;
+    return;
+  }
+  els.suggestSprint.hidden = false;
+  if (els.suggestSprintText) {
+    els.suggestSprintText.textContent = `Próximo sprint sugerido: ×${suggestion.size} · ${suggestion.reason}`;
+  }
+  if (els.suggestSprintBtn) {
+    els.suggestSprintBtn.dataset.sprint = String(suggestion.size);
+    els.suggestSprintBtn.textContent = `Lanzar ×${suggestion.size}`;
+  }
 }
 
 function todayKey(date = new Date()) {
@@ -2594,6 +2662,7 @@ function render() {
   renderBreakActivities();
   renderRepeatLast();
   renderSprint();
+  renderSuggestSprint();
   renderEta();
   renderCycleEta();
   renderIntentionChip();
@@ -2609,6 +2678,7 @@ function render() {
   if (els.outputs.morningGoal) els.outputs.morningGoal.value = state.settings.morningGoal;
   if (els.outputs.afternoonGoal) els.outputs.afternoonGoal.value = state.settings.afternoonGoal;
   if (els.outputs.eveningGoal) els.outputs.eveningGoal.value = state.settings.eveningGoal;
+  if (els.outputs.nightGoal) els.outputs.nightGoal.value = state.settings.nightGoal;
   if (els.outputs.sprintShortMins) els.outputs.sprintShortMins.value = state.settings.sprintShortMins;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
@@ -2626,6 +2696,9 @@ function render() {
   }
   if (els.queueOnlyToggle) {
     els.queueOnlyToggle.setAttribute("aria-checked", String(state.settings.queueOnly));
+  }
+  if (els.peakNudgeToggle) {
+    els.peakNudgeToggle.setAttribute("aria-checked", String(state.settings.peakNudge));
   }
   renderSoundThemes();
   renderAtmosphere();
@@ -3618,7 +3691,7 @@ function adjustSetting(key, delta) {
   if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
     persistCategoryOverride();
   }
-  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal" || key === "eveningGoal") {
+  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal" || key === "eveningGoal" || key === "nightGoal") {
     render();
     return;
   }
@@ -3921,6 +3994,22 @@ function bindEvents() {
       }
       render();
       showToast(state.settings.queueOnly ? "Modo solo cola on" : "Modo solo cola off");
+    });
+  }
+
+  if (els.peakNudgeToggle) {
+    els.peakNudgeToggle.addEventListener("click", () => {
+      state.settings.peakNudge = !state.settings.peakNudge;
+      saveSettings();
+      render();
+      showToast(state.settings.peakNudge ? "Aviso de franja fuerte on" : "Aviso de franja fuerte off");
+    });
+  }
+
+  if (els.suggestSprintBtn) {
+    els.suggestSprintBtn.addEventListener("click", () => {
+      const size = Number(els.suggestSprintBtn.dataset.sprint) || 0;
+      if (size >= 2) startSprint(size);
     });
   }
 
