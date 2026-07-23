@@ -395,14 +395,14 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-bottom: 2px;
   flex-shrink: 0;
 }
 
 .scoreboard {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -1138,7 +1138,7 @@ button.card {
   }
   .deck-stack { width: 34px; height: 50px; }
   .deck-layer { width: 34px; height: 50px; }
-  .live-stats { padding: 4px 7px; }
+  .live-stats { padding: 2px 5px; }
 }
 
 @media (max-height: 720px) {
