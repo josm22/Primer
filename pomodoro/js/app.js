@@ -60,8 +60,108 @@ const CATEGORIES = {
   extra: { key: "extra", label: "Extra" },
 };
 
+const BREAK_ACTIVITIES = {
+  stretch: { label: "Estirar", tip: "Cuello y hombros. 30 segundos." },
+  water: { label: "Agua", tip: "Un vaso ahora vale más que dos después." },
+  walk: { label: "Caminar", tip: "Da diez pasos lejos de la pantalla." },
+};
+
+const CATEGORY_PRESETS = {
+  trabajo: { focusMins: 25, shortMins: 5, longMins: 15, roundsUntilLong: 4 },
+  estudio: { focusMins: 50, shortMins: 10, longMins: 20, roundsUntilLong: 4 },
+  personal: { focusMins: 25, shortMins: 5, longMins: 15, roundsUntilLong: 3 },
+  extra: { focusMins: 15, shortMins: 3, longMins: 10, roundsUntilLong: 3 },
+};
+
+const SOUND_THEMES = {
+  soft: {
+    label: "Suave",
+    focusEnd: [659.25, 523.25, 392],
+    breakEnd: [523.25, 659.25, 784],
+    start: 880,
+    warn: 698.46,
+    soft: [784, 1046.5],
+    osc: "sine",
+  },
+  bell: {
+    label: "Campana",
+    focusEnd: [880, 659.25, 523.25],
+    breakEnd: [659.25, 880, 1046.5],
+    start: 988,
+    warn: 740,
+    soft: [880, 1174.66],
+    osc: "triangle",
+  },
+  wood: {
+    label: "Madera",
+    focusEnd: [329.63, 261.63, 196],
+    breakEnd: [261.63, 329.63, 392],
+    start: 440,
+    warn: 349.23,
+    soft: [392, 523.25],
+    osc: "sine",
+  },
+};
+
 const STREAK_MILESTONES = [3, 7, 14, 30];
 const MILESTONE_KEY = "foco-streak-milestones-v1";
+const FREEZE_KEY = "foco-streak-freeze-v1";
+const PRESET_OVERRIDES_KEY = "foco-category-overrides-v1";
+const INTENTION_KEY = "foco-intention-v1";
+const QUEUE_KEY = "foco-queue-v1";
+const SPRINTS_KEY = "foco-sprints-v1";
+const BAND_GOAL_KEY = "foco-band-goals-celebrated-v1";
+
+const ATMOSPHERES = {
+  slate: {
+    label: "Pizarra",
+    vars: {
+      "--bg-a": "#e2e4df",
+      "--bg-b": "#c5c9c0",
+      "--bg-c": "#eceee9",
+      "--ink": "#101411",
+      "--ink-soft": "#4a524c",
+      "--paper": "#f3f4f0",
+      "--surface": "rgba(243, 244, 240, 0.55)",
+    },
+  },
+  olive: {
+    label: "Olivo",
+    vars: {
+      "--bg-a": "#dde3d4",
+      "--bg-b": "#b9c4a8",
+      "--bg-c": "#e8eee0",
+      "--ink": "#1a2216",
+      "--ink-soft": "#4f5a45",
+      "--paper": "#f1f4ea",
+      "--surface": "rgba(241, 244, 234, 0.58)",
+    },
+  },
+  dusk: {
+    label: "Crepúsculo",
+    vars: {
+      "--bg-a": "#ddd6d0",
+      "--bg-b": "#b8ada4",
+      "--bg-c": "#ebe4de",
+      "--ink": "#1c1612",
+      "--ink-soft": "#5a5048",
+      "--paper": "#f5efe9",
+      "--surface": "rgba(245, 239, 233, 0.58)",
+    },
+  },
+  mist: {
+    label: "Bruma",
+    vars: {
+      "--bg-a": "#d7e0e4",
+      "--bg-b": "#aebcc4",
+      "--bg-c": "#e5eef1",
+      "--ink": "#12181c",
+      "--ink-soft": "#4a555c",
+      "--paper": "#eef4f6",
+      "--surface": "rgba(238, 244, 246, 0.58)",
+    },
+  },
+};
 
 const DEFAULTS = {
   focusMins: 25,
@@ -70,6 +170,10 @@ const DEFAULTS = {
   roundsUntilLong: 4,
   dailyGoal: 8,
   weeklyGoal: 40,
+  morningGoal: 3,
+  afternoonGoal: 3,
+  eveningGoal: 2,
+  sprintShortMins: 3,
   sound: true,
   haptic: true,
   notify: true,
@@ -78,7 +182,13 @@ const DEFAULTS = {
   nightSoft: true,
   quietHours: false,
   category: "trabajo",
+  categoryPresets: true,
+  soundTheme: "soft",
+  atmosphere: "slate",
+  queueOnly: false,
 };
+
+const SPRINT_OPTIONS = [2, 3, 4];
 
 const LIMITS = {
   focusMins: [1, 90],
@@ -87,6 +197,10 @@ const LIMITS = {
   roundsUntilLong: [2, 8],
   dailyGoal: [1, 20],
   weeklyGoal: [5, 100],
+  morningGoal: [0, 12],
+  afternoonGoal: [0, 12],
+  eveningGoal: [0, 12],
+  sprintShortMins: [1, 15],
 };
 
 const els = {
@@ -96,6 +210,8 @@ const els = {
   phaseLabel: document.getElementById("phaseLabel"),
   timeDisplay: document.getElementById("timeDisplay"),
   supportText: document.getElementById("supportText"),
+  breakActivities: document.getElementById("breakActivities"),
+  etaText: document.getElementById("etaText"),
   primaryBtn: document.getElementById("primaryBtn"),
   skipBtn: document.getElementById("skipBtn"),
   extendBtn: document.getElementById("extendBtn"),
@@ -118,6 +234,7 @@ const els = {
   toastAction: document.getElementById("toastAction"),
   greeting: document.getElementById("greeting"),
   todayStrip: document.getElementById("todayStrip"),
+  offlineBadge: document.getElementById("offlineBadge"),
   metaTheme: document.getElementById("metaTheme"),
   weekFocusCount: document.getElementById("weekFocusCount"),
   weekFocusMins: document.getElementById("weekFocusMins"),
@@ -130,6 +247,9 @@ const els = {
   goalFill: document.getElementById("goalFill"),
   weekGoalStat: document.getElementById("weekGoalStat"),
   weekGoalFill: document.getElementById("weekGoalFill"),
+  focusScoreValue: document.getElementById("focusScoreValue"),
+  focusScoreCopy: document.getElementById("focusScoreCopy"),
+  focusScoreRing: document.getElementById("focusScoreRing"),
   bestDay: document.getElementById("bestDay"),
   presets: document.getElementById("presets"),
   goalOverlay: document.getElementById("goalOverlay"),
@@ -145,6 +265,11 @@ const els = {
   deepToggle: document.getElementById("deepToggle"),
   nightToggle: document.getElementById("nightToggle"),
   quietToggle: document.getElementById("quietToggle"),
+  categoryPresetsToggle: document.getElementById("categoryPresetsToggle"),
+  soundThemeRow: document.getElementById("soundThemeRow"),
+  streakFreezeRow: document.getElementById("streakFreezeRow"),
+  streakFreezeCopy: document.getElementById("streakFreezeCopy"),
+  streakFreezeBtn: document.getElementById("streakFreezeBtn"),
   resetDataBtn: document.getElementById("resetDataBtn"),
   shareWeekBtn: document.getElementById("shareWeekBtn"),
   exportBtn: document.getElementById("exportBtn"),
@@ -168,6 +293,56 @@ const els = {
   ritualTask: document.getElementById("ritualTask"),
   ritualStart: document.getElementById("ritualStart"),
   ritualSkip: document.getElementById("ritualSkip"),
+  dayOverlay: document.getElementById("dayOverlay"),
+  dayKicker: document.getElementById("dayKicker"),
+  dayTitle: document.getElementById("dayTitle"),
+  dayText: document.getElementById("dayText"),
+  dayClose: document.getElementById("dayClose"),
+  recapTip: document.getElementById("recapTip"),
+  recapTipText: document.getElementById("recapTipText"),
+  recapShareBtn: document.getElementById("recapShareBtn"),
+  recapCloseBtn: document.getElementById("recapCloseBtn"),
+  repeatLastBtn: document.getElementById("repeatLastBtn"),
+  categoryBreakdown: document.getElementById("categoryBreakdown"),
+  streakMilestoneRow: document.getElementById("streakMilestoneRow"),
+  streakMilestoneText: document.getElementById("streakMilestoneText"),
+  streakMilestoneFill: document.getElementById("streakMilestoneFill"),
+  exportWeekPngBtn: document.getElementById("exportWeekPngBtn"),
+  shortcutsOverlay: document.getElementById("shortcutsOverlay"),
+  shortcutsClose: document.getElementById("shortcutsClose"),
+  monthFocusCount: document.getElementById("monthFocusCount"),
+  monthFocusMins: document.getElementById("monthFocusMins"),
+  allFocusCount: document.getElementById("allFocusCount"),
+  allFocusMins: document.getElementById("allFocusMins"),
+  historyFilter: document.getElementById("historyFilter"),
+  savePresetBtn: document.getElementById("savePresetBtn"),
+  resetPresetBtn: document.getElementById("resetPresetBtn"),
+  intentionOverlay: document.getElementById("intentionOverlay"),
+  intentionInput: document.getElementById("intentionInput"),
+  intentionBlocks: document.getElementById("intentionBlocks"),
+  intentionSave: document.getElementById("intentionSave"),
+  intentionSkip: document.getElementById("intentionSkip"),
+  intentionChip: document.getElementById("intentionChip"),
+  cycleEta: document.getElementById("cycleEta"),
+  printDayBtn: document.getElementById("printDayBtn"),
+  printReport: document.getElementById("printReport"),
+  wallClock: document.getElementById("wallClock"),
+  taskQueue: document.getElementById("taskQueue"),
+  queueInput: document.getElementById("queueInput"),
+  queueAddBtn: document.getElementById("queueAddBtn"),
+  queueList: document.getElementById("queueList"),
+  atmosphereRow: document.getElementById("atmosphereRow"),
+  queueOnlyToggle: document.getElementById("queueOnlyToggle"),
+  queueClearDoneBtn: document.getElementById("queueClearDoneBtn"),
+  hourChart: document.getElementById("hourChart"),
+  hourInsight: document.getElementById("hourInsight"),
+  sprintRow: document.getElementById("sprintRow"),
+  sprintChip: document.getElementById("sprintChip"),
+  sprintStopBtn: document.getElementById("sprintStopBtn"),
+  sprintHistory: document.getElementById("sprintHistory"),
+  sprintHistoryEmpty: document.getElementById("sprintHistoryEmpty"),
+  sprintWeekStat: document.getElementById("sprintWeekStat"),
+  bandGoalRow: document.getElementById("bandGoalRow"),
   outputs: {
     focusMins: document.getElementById("focusMins"),
     shortMins: document.getElementById("shortMins"),
@@ -175,6 +350,10 @@ const els = {
     roundsUntilLong: document.getElementById("roundsUntilLong"),
     dailyGoal: document.getElementById("dailyGoal"),
     weeklyGoal: document.getElementById("weeklyGoal"),
+    morningGoal: document.getElementById("morningGoal"),
+    afternoonGoal: document.getElementById("afternoonGoal"),
+    eveningGoal: document.getElementById("eveningGoal"),
+    sprintShortMins: document.getElementById("sprintShortMins"),
   },
 };
 
@@ -216,7 +395,558 @@ const state = {
   roundDotsKey: "",
   pendingNoteSessionId: null,
   deferReload: false,
+  historyFilter: "all",
+  breakActsDone: [],
+  intention: loadIntention(),
+  queue: loadQueue(),
+  sprint: null,
+  dragQueueId: null,
+  sprints: loadSprintHistory(),
+  bandCelebrated: loadBandCelebrated(),
 };
+
+function loadIntention() {
+  try {
+    const raw = localStorage.getItem(INTENTION_KEY);
+    if (!raw) return { date: "", text: "", blocks: 0 };
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== todayKey()) return { date: "", text: "", blocks: 0 };
+    return {
+      date: parsed.date,
+      text: typeof parsed.text === "string" ? parsed.text.slice(0, 48) : "",
+      blocks: Number(parsed.blocks) || 0,
+    };
+  } catch {
+    return { date: "", text: "", blocks: 0 };
+  }
+}
+
+function saveIntention(data) {
+  state.intention = data;
+  localStorage.setItem(INTENTION_KEY, JSON.stringify(data));
+}
+
+function clearIntentionIfStale() {
+  if (state.intention.date && state.intention.date !== todayKey()) {
+    state.intention = { date: "", text: "", blocks: 0 };
+  }
+}
+
+function loadQueue() {
+  try {
+    const raw = localStorage.getItem(QUEUE_KEY);
+    if (!raw) return { date: todayKey(), items: [] };
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== todayKey()) return { date: todayKey(), items: [] };
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .filter((item) => item && typeof item.text === "string" && item.text.trim())
+          .map((item, index) => ({
+            id: item.id || `q-${Date.now()}-${index}`,
+            text: item.text.trim().slice(0, 48),
+            done: Boolean(item.done),
+          }))
+          .slice(0, 12)
+      : [];
+    return { date: parsed.date, items };
+  } catch {
+    return { date: todayKey(), items: [] };
+  }
+}
+
+function saveQueue() {
+  state.queue.date = todayKey();
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(state.queue));
+}
+
+function ensureQueueFresh() {
+  if (state.queue.date !== todayKey()) {
+    state.queue = { date: todayKey(), items: [] };
+  }
+}
+
+function addQueueItem(text) {
+  ensureQueueFresh();
+  const clean = text.trim().slice(0, 48);
+  if (!clean) return;
+  if (state.queue.items.some((item) => item.text.toLocaleLowerCase("es") === clean.toLocaleLowerCase("es") && !item.done)) {
+    showToast("Ya está en la cola");
+    return;
+  }
+  state.queue.items.push({
+    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    text: clean,
+    done: false,
+  });
+  saveQueue();
+  renderTaskQueue();
+  showToast("Añadido a la cola");
+}
+
+function toggleQueueItem(id) {
+  ensureQueueFresh();
+  const item = state.queue.items.find((q) => q.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  saveQueue();
+  renderTaskQueue();
+}
+
+function removeQueueItem(id) {
+  ensureQueueFresh();
+  state.queue.items = state.queue.items.filter((q) => q.id !== id);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function moveQueueItem(id, direction) {
+  ensureQueueFresh();
+  const index = state.queue.items.findIndex((q) => q.id === id);
+  if (index < 0) return;
+  const target = index + direction;
+  if (target < 0 || target >= state.queue.items.length) return;
+  const items = state.queue.items;
+  const [item] = items.splice(index, 1);
+  items.splice(target, 0, item);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function reorderQueueById(fromId, toId) {
+  ensureQueueFresh();
+  if (!fromId || !toId || fromId === toId) return;
+  const from = state.queue.items.findIndex((q) => q.id === fromId);
+  const to = state.queue.items.findIndex((q) => q.id === toId);
+  if (from < 0 || to < 0) return;
+  const items = state.queue.items;
+  const [item] = items.splice(from, 1);
+  items.splice(to, 0, item);
+  saveQueue();
+  renderTaskQueue();
+}
+
+function startSprint(total) {
+  const n = clamp(Number(total) || 0, [2, 8]);
+  state.sprint = {
+    total: n,
+    done: 0,
+    startedAt: Date.now(),
+    focusMinutes: 0,
+  };
+  state.settings.autoAdvance = true;
+  saveSettings();
+  render();
+  showToast(`Sprint ×${n} · pausas de ${state.settings.sprintShortMins} min`);
+  if (!state.running && state.phase === "focus") {
+    start();
+  }
+}
+
+function stopSprint({ toast = true } = {}) {
+  if (!state.sprint) return;
+  state.sprint = null;
+  render();
+  if (toast) showToast("Sprint cancelado");
+}
+
+function loadSprintHistory() {
+  try {
+    const raw = localStorage.getItem(SPRINTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, 30) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSprintHistory() {
+  localStorage.setItem(SPRINTS_KEY, JSON.stringify(state.sprints.slice(0, 30)));
+}
+
+function recordSprintComplete(sprint) {
+  const entry = {
+    id: `sp-${Date.now()}`,
+    date: todayKey(),
+    total: sprint.total,
+    minutes: sprint.focusMinutes || sprint.total * state.settings.focusMins,
+    endedAt: new Date().toISOString(),
+  };
+  state.sprints.unshift(entry);
+  saveSprintHistory();
+}
+
+function loadBandCelebrated() {
+  try {
+    const raw = localStorage.getItem(BAND_GOAL_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBandCelebrated() {
+  localStorage.setItem(BAND_GOAL_KEY, JSON.stringify(state.bandCelebrated));
+}
+
+function bandGoalFor(key) {
+  if (key === "morning") return Number(state.settings.morningGoal) || 0;
+  if (key === "afternoon") return Number(state.settings.afternoonGoal) || 0;
+  if (key === "evening") return Number(state.settings.eveningGoal) || 0;
+  return 0;
+}
+
+function bandLabel(key) {
+  if (key === "morning") return "mañana";
+  if (key === "afternoon") return "tarde";
+  if (key === "evening") return "noche";
+  return "madrugada";
+}
+
+function maybeCelebrateBandGoal(bandKey, todayCount) {
+  const goal = bandGoalFor(bandKey);
+  if (!goal || todayCount < goal) return false;
+  const day = todayKey();
+  const stamp = `${day}:${bandKey}`;
+  if (state.bandCelebrated[stamp]) return false;
+  state.bandCelebrated[stamp] = 1;
+  saveBandCelebrated();
+  showToast(`Meta de ${bandLabel(bandKey)} sellada · ${todayCount}/${goal}`, { duration: 4200 });
+  return true;
+}
+
+function advanceSprintOnFocus(minutes = 0) {
+  if (!state.sprint) return false;
+  state.sprint.done += 1;
+  state.sprint.focusMinutes = (state.sprint.focusMinutes || 0) + (Number(minutes) || 0);
+  if (state.sprint.done >= state.sprint.total) {
+    const finished = { ...state.sprint };
+    state.sprint = null;
+    recordSprintComplete(finished);
+    showToast(`Sprint ×${finished.total} completado`, { duration: 4200 });
+    return true;
+  }
+  return false;
+}
+
+function renderSprint() {
+  if (els.sprintRow) {
+    const show =
+      state.phase === "focus" &&
+      !state.running &&
+      state.remainingMs === state.totalMs &&
+      !state.sprint &&
+      !(state.settings.deepFocus && state.running);
+    els.sprintRow.hidden = !show;
+  }
+  if (els.sprintChip) {
+    if (!state.sprint) {
+      els.sprintChip.hidden = true;
+    } else {
+      els.sprintChip.hidden = false;
+      els.sprintChip.textContent = `Sprint ${state.sprint.done}/${state.sprint.total}`;
+    }
+  }
+  if (els.sprintStopBtn) {
+    els.sprintStopBtn.hidden = !state.sprint;
+  }
+  els.body.classList.toggle("is-sprint", Boolean(state.sprint));
+}
+
+function clearDoneQueueItems() {
+  ensureQueueFresh();
+  const before = state.queue.items.length;
+  state.queue.items = state.queue.items.filter((q) => !q.done);
+  if (state.queue.items.length === before) {
+    showToast("No hay hechos que limpiar");
+    return;
+  }
+  saveQueue();
+  renderTaskQueue();
+  showToast("Cola limpia");
+}
+
+function pullQueueItem(id) {
+  ensureQueueFresh();
+  const item = state.queue.items.find((q) => q.id === id);
+  if (!item || state.running) return;
+  state.task = item.text;
+  els.taskInput.value = item.text;
+  saveSession({ force: true });
+  render();
+  showToast("Tarea lista");
+}
+
+function markQueueDoneByTask(task) {
+  ensureQueueFresh();
+  const clean = (task || "").trim().toLocaleLowerCase("es");
+  if (!clean) return;
+  const item = state.queue.items.find(
+    (q) => !q.done && q.text.toLocaleLowerCase("es") === clean
+  );
+  if (!item) return;
+  item.done = true;
+  saveQueue();
+}
+
+function nextQueueItem() {
+  ensureQueueFresh();
+  return state.queue.items.find((q) => !q.done) || null;
+}
+
+function applyAtmosphere(name = state.settings.atmosphere) {
+  const theme = ATMOSPHERES[name] || ATMOSPHERES.slate;
+  state.settings.atmosphere = ATMOSPHERES[name] ? name : "slate";
+  els.body.dataset.atmosphere = state.settings.atmosphere;
+  for (const [key, value] of Object.entries(theme.vars)) {
+    document.documentElement.style.setProperty(key, value);
+  }
+}
+
+function renderAtmosphere() {
+  if (!els.atmosphereRow) return;
+  const current = ATMOSPHERES[state.settings.atmosphere] ? state.settings.atmosphere : "slate";
+  els.atmosphereRow.querySelectorAll("[data-atmosphere]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.atmosphere === current);
+    btn.setAttribute("aria-pressed", String(btn.dataset.atmosphere === current));
+  });
+}
+
+function renderWallClock() {
+  if (!els.wallClock) return;
+  const now = new Date();
+  els.wallClock.textContent = now.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderTaskQueue() {
+  if (!els.taskQueue || !els.queueList) return;
+  ensureQueueFresh();
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  const show = state.phase === "focus" && !deepActive;
+  els.taskQueue.hidden = !show;
+  if (!show) return;
+
+  const items = state.queue.items;
+  const doneCount = items.filter((q) => q.done).length;
+  if (els.queueClearDoneBtn) {
+    els.queueClearDoneBtn.hidden = doneCount === 0;
+  }
+
+  if (!items.length) {
+    els.queueList.innerHTML = `<li class="queue-empty">${
+      state.settings.queueOnly
+        ? "Cola vacía. En modo solo cola, añade lo que vas a sellar."
+        : "Cola vacía. Añade lo que quieres sellar hoy."
+    }</li>`;
+    return;
+  }
+
+  els.queueList.innerHTML = items
+    .map((item, index) => {
+      const doneClass = item.done ? " is-done" : "";
+      const upDisabled = index === 0 ? " disabled" : "";
+      const downDisabled = index === items.length - 1 ? " disabled" : "";
+      return `
+        <li class="queue-item${doneClass}" data-id="${escapeHtml(item.id)}">
+          <button type="button" class="queue-handle" data-drag="${escapeHtml(item.id)}" aria-label="Arrastrar">⋮⋮</button>
+          <button type="button" class="queue-check" data-toggle="${escapeHtml(item.id)}" aria-label="${item.done ? "Marcar pendiente" : "Marcar hecho"}">${item.done ? "✓" : ""}</button>
+          <button type="button" class="queue-text" data-pull="${escapeHtml(item.id)}">${escapeHtml(item.text)}</button>
+          <div class="queue-move">
+            <button type="button" class="queue-move-btn" data-move="${escapeHtml(item.id)}" data-dir="-1" aria-label="Subir"${upDisabled}>↑</button>
+            <button type="button" class="queue-move-btn" data-move="${escapeHtml(item.id)}" data-dir="1" aria-label="Bajar"${downDisabled}>↓</button>
+          </div>
+          <button type="button" class="queue-del" data-remove="${escapeHtml(item.id)}" aria-label="Quitar">×</button>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function hourBucketsForWeek() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const buckets = [
+    { key: "morning", label: "Mañana", range: "6–12", count: 0, today: 0 },
+    { key: "afternoon", label: "Tarde", range: "12–18", count: 0, today: 0 },
+    { key: "evening", label: "Noche", range: "18–24", count: 0, today: 0 },
+    { key: "night", label: "Madrugada", range: "0–6", count: 0, today: 0 },
+  ];
+  const today = todayKey();
+  for (const session of state.history) {
+    if (!keys.has(session.date)) continue;
+    const date = session.endedAt ? new Date(session.endedAt) : null;
+    if (!date || Number.isNaN(date.getTime())) continue;
+    const hour = date.getHours();
+    let idx = 3;
+    if (hour >= 6 && hour < 12) idx = 0;
+    else if (hour >= 12 && hour < 18) idx = 1;
+    else if (hour >= 18) idx = 2;
+    buckets[idx].count += 1;
+    if (session.date === today) buckets[idx].today += 1;
+  }
+  return buckets;
+}
+
+function currentHourBand() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 18) return "afternoon";
+  if (hour >= 18) return "evening";
+  return "night";
+}
+
+function renderHourChart() {
+  if (!els.hourChart) return;
+  const buckets = hourBucketsForWeek();
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  const max = Math.max(1, ...buckets.map((b) => b.count));
+  const nowBand = currentHourBand();
+  els.hourChart.innerHTML = buckets
+    .map((bucket) => {
+      const height = Math.max(4, Math.round((bucket.count / max) * 100));
+      const current = bucket.key === nowBand ? " is-current" : "";
+      const goal = bandGoalFor(bucket.key);
+      const goalText = goal
+        ? `<div class="hour-goal ${bucket.today >= goal ? "is-met" : ""}">${bucket.today}/${goal}</div>`
+        : `<div class="hour-today">Hoy ${bucket.today}</div>`;
+      return `
+        <div class="hour-col${current}" title="${bucket.label}: ${bucket.count} · hoy ${bucket.today}${goal ? ` · meta ${goal}` : ""}">
+          <div class="hour-bar-wrap">
+            <div class="hour-bar" style="height:${bucket.count ? height : 4}%"></div>
+          </div>
+          <div class="hour-count">${bucket.count || "·"}</div>
+          <div class="hour-name">${bucket.label}</div>
+          <div class="hour-range">${bucket.range}</div>
+          ${goalText}
+        </div>
+      `;
+    })
+    .join("");
+
+  if (els.bandGoalRow) {
+    const morning = buckets.find((b) => b.key === "morning");
+    const afternoon = buckets.find((b) => b.key === "afternoon");
+    const evening = buckets.find((b) => b.key === "evening");
+    const mGoal = bandGoalFor("morning");
+    const aGoal = bandGoalFor("afternoon");
+    const eGoal = bandGoalFor("evening");
+    const bits = [];
+    if (mGoal) bits.push(`Mañana ${morning?.today || 0}/${mGoal}`);
+    if (aGoal) bits.push(`Tarde ${afternoon?.today || 0}/${aGoal}`);
+    if (eGoal) bits.push(`Noche ${evening?.today || 0}/${eGoal}`);
+    els.bandGoalRow.hidden = !bits.length;
+    els.bandGoalRow.textContent = bits.join(" · ");
+  }
+
+  if (els.hourInsight) {
+    if (!total) {
+      els.hourInsight.textContent = "Cuando completes sellos verás tu franja fuerte.";
+      return;
+    }
+    const top = buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null);
+    const now = buckets.find((b) => b.key === nowBand);
+    const parts = [];
+    if (top && top.count) {
+      parts.push(`Suele irte bien de ${top.label.toLowerCase()} (${top.range}h)`);
+    }
+    if (now) {
+      const goal = bandGoalFor(now.key);
+      if (goal) {
+        parts.push(`ahora ${now.today}/${goal} en ${now.label.toLowerCase()}`);
+      } else {
+        parts.push(`ahora ${now.today} en ${now.label.toLowerCase()}`);
+      }
+    }
+    els.hourInsight.textContent = `${parts.join(" · ")}.`;
+  }
+}
+
+function weekSprintSummary() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const weekSprints = state.sprints.filter((s) => keys.has(s.date));
+  return {
+    count: weekSprints.length,
+    blocks: weekSprints.reduce((sum, s) => sum + (Number(s.total) || 0), 0),
+    minutes: weekSprints.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
+}
+
+function renderSprintHistory() {
+  if (!els.sprintHistory) return;
+  const week = weekSprintSummary();
+  if (els.sprintWeekStat) {
+    if (week.count > 0) {
+      els.sprintWeekStat.hidden = false;
+      els.sprintWeekStat.textContent = `Esta semana: ${week.count} sprint${week.count === 1 ? "" : "s"} · ${week.blocks} bloques · ${week.minutes} min`;
+    } else {
+      els.sprintWeekStat.hidden = true;
+    }
+  }
+  const recent = state.sprints.slice(0, 6);
+  if (els.sprintHistoryEmpty) els.sprintHistoryEmpty.hidden = recent.length > 0;
+  els.sprintHistory.innerHTML = recent
+    .map((sprint) => {
+      const when = sprint.endedAt
+        ? new Date(sprint.endedAt).toLocaleString("es-ES", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : sprint.date;
+      return `
+        <li class="sprint-history-item">
+          <strong>Sprint ×${sprint.total}</strong>
+          <span>${sprint.minutes || 0} min · ${escapeHtml(when)}</span>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function strongestBandKey() {
+  const buckets = hourBucketsForWeek();
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  if (total < 3) return null;
+  return buckets.reduce((acc, b) => (b.count > (acc?.count || 0) ? b : acc), null)?.key || null;
+}
+
+function maybeNudgePeakBand() {
+  if (state.running || state.sprint) return;
+  if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+  if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
+  const peak = strongestBandKey();
+  const now = currentHourBand();
+  if (!peak || peak !== now || peak === "night") return;
+  const buckets = hourBucketsForWeek();
+  const band = buckets.find((b) => b.key === now);
+  const goal = bandGoalFor(now);
+  if (!band) return;
+  if (goal && band.today >= goal) return;
+  if (!goal && band.today >= 2) return;
+  const key = `foco-peak-nudge-${todayKey()}-${now}`;
+  if (localStorage.getItem(key) === "1") return;
+  localStorage.setItem(key, "1");
+  const remaining = goal ? Math.max(0, goal - band.today) : 0;
+  const copy = goal
+    ? `Tu franja fuerte: ${bandLabel(now)}. Te faltan ${remaining}.`
+    : `Estás en tu franja fuerte (${bandLabel(now)}). Un bloque ahora suma.`;
+  showToast(copy, {
+    actionLabel: "Empezar",
+    onAction: () => {
+      if (state.phase !== "focus") setPhase("focus", { resetTime: true });
+      start();
+    },
+    duration: 7000,
+  });
+}
 
 function todayKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -231,7 +961,10 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULTS };
-    return { ...DEFAULTS, ...JSON.parse(raw) };
+    const settings = { ...DEFAULTS, ...JSON.parse(raw) };
+    if (!SOUND_THEMES[settings.soundTheme]) settings.soundTheme = "soft";
+    if (!ATMOSPHERES[settings.atmosphere]) settings.atmosphere = "slate";
+    return settings;
   } catch {
     return { ...DEFAULTS };
   }
@@ -319,6 +1052,79 @@ function categoryTag(key) {
   return `<span class="tag tag-${safe}">${categoryLabel(safe)}</span>`;
 }
 
+function loadPresetOverrides() {
+  try {
+    const raw = localStorage.getItem(PRESET_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePresetOverrides(overrides) {
+  localStorage.setItem(PRESET_OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function getCategoryPreset(category) {
+  const base = CATEGORY_PRESETS[category];
+  if (!base) return null;
+  const overrides = loadPresetOverrides();
+  return { ...base, ...(overrides[category] || {}) };
+}
+
+function persistCategoryOverride() {
+  if (!state.settings.categoryPresets || !CATEGORIES[state.category]) return;
+  const overrides = loadPresetOverrides();
+  overrides[state.category] = {
+    focusMins: state.settings.focusMins,
+    shortMins: state.settings.shortMins,
+    longMins: state.settings.longMins,
+    roundsUntilLong: state.settings.roundsUntilLong,
+  };
+  savePresetOverrides(overrides);
+}
+
+function saveCurrentAsCategoryPreset() {
+  if (!CATEGORIES[state.category]) return;
+  persistCategoryOverride();
+  showToast(`Plantilla ${categoryLabel(state.category).toLowerCase()} guardada`);
+}
+
+function resetCategoryPreset(category = state.category) {
+  if (!CATEGORIES[category]) return;
+  const overrides = loadPresetOverrides();
+  delete overrides[category];
+  savePresetOverrides(overrides);
+  if (state.settings.categoryPresets && !state.running) {
+    applyCategoryPreset(category);
+  }
+  render();
+  showToast(`Plantilla ${categoryLabel(category).toLowerCase()} restaurada`);
+}
+
+function applyCategoryPreset(category) {
+  if (!state.settings.categoryPresets || state.running) return false;
+  const preset = getCategoryPreset(category);
+  if (!preset) return false;
+  Object.assign(state.settings, preset);
+  saveSettings();
+  setPhase(state.phase, { resetTime: true });
+  return true;
+}
+
+function setCategory(category, { toast = true } = {}) {
+  if (!CATEGORIES[category]) return;
+  state.category = category;
+  state.settings.category = category;
+  saveSettings();
+  const applied = applyCategoryPreset(category);
+  saveSession({ force: true });
+  renderCategories();
+  if (toast && applied) {
+    showToast(`Plantilla ${categoryLabel(category).toLowerCase()}`);
+  }
+}
+
 function recordFocusSession(minutes) {
   const now = new Date();
   const task = state.task.trim();
@@ -359,10 +1165,10 @@ function ensureAudio() {
   return state.audioCtx;
 }
 
-function playTone(ctx, frequency, startAt, duration, gainValue) {
+function playTone(ctx, frequency, startAt, duration, gainValue, type = "sine") {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = "sine";
+  osc.type = type;
   osc.frequency.value = frequency;
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.02);
@@ -383,30 +1189,35 @@ function playChime(kind = "soft") {
   if (!state.settings.sound || isQuietHours()) return;
   const ctx = ensureAudio();
   if (!ctx) return;
+  const theme = SOUND_THEMES[state.settings.soundTheme] || SOUND_THEMES.soft;
   const t = ctx.currentTime;
+  const osc = theme.osc;
   if (kind === "focus-end") {
-    playTone(ctx, 659.25, t, 0.16, 0.09);
-    playTone(ctx, 523.25, t + 0.13, 0.2, 0.08);
-    playTone(ctx, 392, t + 0.3, 0.42, 0.07);
+    const [a, b, c] = theme.focusEnd;
+    playTone(ctx, a, t, 0.16, 0.09, osc);
+    playTone(ctx, b, t + 0.13, 0.2, 0.08, osc);
+    playTone(ctx, c, t + 0.3, 0.42, 0.07, osc);
     return;
   }
   if (kind === "break-end") {
-    playTone(ctx, 523.25, t, 0.14, 0.07);
-    playTone(ctx, 659.25, t + 0.12, 0.18, 0.08);
-    playTone(ctx, 784, t + 0.28, 0.34, 0.07);
+    const [a, b, c] = theme.breakEnd;
+    playTone(ctx, a, t, 0.14, 0.07, osc);
+    playTone(ctx, b, t + 0.12, 0.18, 0.08, osc);
+    playTone(ctx, c, t + 0.28, 0.34, 0.07, osc);
     return;
   }
   if (kind === "start") {
-    playTone(ctx, 880, t, 0.1, 0.05);
+    playTone(ctx, theme.start, t, 0.1, 0.05, osc);
     return;
   }
   if (kind === "warn") {
-    playTone(ctx, 698.46, t, 0.12, 0.05);
-    playTone(ctx, 698.46, t + 0.18, 0.18, 0.045);
+    playTone(ctx, theme.warn, t, 0.12, 0.05, osc);
+    playTone(ctx, theme.warn, t + 0.18, 0.18, 0.045, osc);
     return;
   }
-  playTone(ctx, 784, t, 0.22, 0.08);
-  playTone(ctx, 1046.5, t + 0.16, 0.34, 0.07);
+  const [a, b] = theme.soft;
+  playTone(ctx, a, t, 0.22, 0.08, osc);
+  playTone(ctx, b, t + 0.16, 0.34, 0.07, osc);
 }
 
 function hapticPulse(kind = "end") {
@@ -456,8 +1267,40 @@ function shiftDayKey(key, deltaDays) {
   return todayKey(date);
 }
 
+function weekKey(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return todayKey(d);
+}
+
+function loadStreakFreeze() {
+  try {
+    const raw = localStorage.getItem(FREEZE_KEY);
+    if (!raw) return { week: weekKey(), usedDate: null };
+    const parsed = JSON.parse(raw);
+    if (parsed.week !== weekKey()) return { week: weekKey(), usedDate: null };
+    return { week: parsed.week, usedDate: parsed.usedDate || null };
+  } catch {
+    return { week: weekKey(), usedDate: null };
+  }
+}
+
+function saveStreakFreeze(data) {
+  localStorage.setItem(FREEZE_KEY, JSON.stringify(data));
+}
+
+function focusDaysSet() {
+  const days = new Set(state.history.map((s) => s.date));
+  const freeze = loadStreakFreeze();
+  if (freeze.usedDate) days.add(freeze.usedDate);
+  return days;
+}
+
 function currentStreak() {
-  const daysWithFocus = new Set(state.history.map((s) => s.date));
+  const daysWithFocus = focusDaysSet();
   let cursor = todayKey();
   if (!daysWithFocus.has(cursor)) {
     cursor = shiftDayKey(cursor, -1);
@@ -469,6 +1312,288 @@ function currentStreak() {
     cursor = shiftDayKey(cursor, -1);
   }
   return streak;
+}
+
+function canUseStreakFreeze() {
+  const today = todayKey();
+  if (countTodayFocus() > 0) return false;
+  const freeze = loadStreakFreeze();
+  if (freeze.usedDate) return false;
+  const yesterday = shiftDayKey(today, -1);
+  const daysWithFocus = new Set(state.history.map((s) => s.date));
+  if (!daysWithFocus.has(yesterday)) return false;
+  return currentStreak() >= 1;
+}
+
+function useStreakFreeze() {
+  if (!canUseStreakFreeze()) return;
+  saveStreakFreeze({ week: weekKey(), usedDate: todayKey() });
+  render();
+  renderStatsPanel();
+  showToast("Racha protegida por hoy");
+}
+
+function nextStreakMilestone() {
+  const streak = currentStreak();
+  const next = STREAK_MILESTONES.find((m) => m > streak);
+  if (!next) return null;
+  return { next, remaining: next - streak, streak };
+}
+
+function lastFocusSession() {
+  return state.history.find((s) => Number(s.minutes) > 0) || null;
+}
+
+function repeatLastBlock() {
+  if (state.running || state.phase !== "focus") return;
+  const last = lastFocusSession();
+  if (!last) return;
+  if (last.task) {
+    state.task = last.task;
+    els.taskInput.value = last.task;
+  }
+  if (CATEGORIES[last.category]) {
+    setCategory(last.category, { toast: false });
+  }
+  if (last.minutes && last.minutes !== state.settings.focusMins) {
+    state.settings.focusMins = clamp(last.minutes, LIMITS.focusMins);
+    saveSettings();
+    persistCategoryOverride();
+    setPhase("focus", { resetTime: true });
+  }
+  saveSession({ force: true });
+  render();
+  const label = last.task ? `«${last.task}»` : "Último bloque";
+  showToast(`${label} listo`);
+}
+
+function showShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  els.shortcutsOverlay.hidden = false;
+  const card = els.shortcutsOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+}
+
+function hideShortcuts() {
+  if (!els.shortcutsOverlay) return;
+  clearFocusTrap();
+  els.shortcutsOverlay.hidden = true;
+}
+
+function weekCategoryBreakdown() {
+  const { days } = weekSummary();
+  const keys = new Set(days.map((d) => d.key));
+  const counts = {};
+  for (const session of state.history) {
+    if (!keys.has(session.date)) continue;
+    const cat = session.category || "extra";
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+function monthKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthSummary(date = new Date()) {
+  const key = monthKey(date);
+  const sessions = state.history.filter((s) => String(s.date || "").startsWith(key));
+  return {
+    count: sessions.length,
+    minutes: sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
+}
+
+function lifetimeSummary() {
+  return {
+    count: state.history.length,
+    minutes: state.history.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0),
+  };
+}
+
+function formatEta(ms) {
+  const end = new Date(Date.now() + Math.max(0, ms));
+  return end.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderEta() {
+  if (!els.etaText) return;
+  const show = state.running && state.remainingMs > 0;
+  els.etaText.hidden = !show;
+  if (!show) return;
+  const label = state.phase === "focus" ? "Termina" : "Vuelve";
+  els.etaText.textContent = `${label} a las ${formatEta(state.remainingMs)}`;
+}
+
+function estimateCycleRemainingMs() {
+  const focusMs = state.settings.focusMins * 60_000;
+  const shortMs = state.settings.shortMins * 60_000;
+  const longMs = state.settings.longMins * 60_000;
+  const rounds = state.settings.roundsUntilLong;
+  let remaining = Math.max(0, state.remainingMs);
+  let phase = state.phase;
+  let done = state.completedInCycle;
+
+  if (phase === "focus") {
+    const afterThis = done + 1;
+    if (afterThis >= rounds) {
+      remaining += longMs;
+    } else {
+      remaining += shortMs;
+      for (let i = afterThis; i < rounds; i += 1) {
+        remaining += focusMs + (i + 1 >= rounds ? longMs : shortMs);
+      }
+    }
+  } else if (phase === "short") {
+    for (let i = done; i < rounds; i += 1) {
+      remaining += focusMs + (i + 1 >= rounds ? longMs : shortMs);
+    }
+  } else {
+    remaining += focusMs;
+  }
+  return remaining;
+}
+
+function renderCycleEta() {
+  if (!els.cycleEta) return;
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  if (deepActive || !state.running) {
+    els.cycleEta.hidden = true;
+    return;
+  }
+  const ms = estimateCycleRemainingMs();
+  if (ms < state.remainingMs + 60_000) {
+    els.cycleEta.hidden = true;
+    return;
+  }
+  els.cycleEta.hidden = false;
+  els.cycleEta.textContent = `Ciclo ~ ${formatEta(ms)}`;
+}
+
+function renderIntentionChip() {
+  if (!els.intentionChip) return;
+  clearIntentionIfStale();
+  const text = (state.intention.text || "").trim();
+  const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
+  if (!text || deepActive) {
+    els.intentionChip.hidden = true;
+    return;
+  }
+  const today = countTodayFocus();
+  const planned = state.intention.blocks || 0;
+  const progress = planned > 0 ? ` · ${today}/${planned}` : "";
+  els.intentionChip.hidden = false;
+  els.intentionChip.textContent = `Hoy: ${text}${progress}`;
+}
+
+function showIntentionPrompt() {
+  if (!els.intentionOverlay) return;
+  if (els.intentionInput) els.intentionInput.value = state.intention.text || state.task || "";
+  if (els.intentionBlocks) {
+    els.intentionBlocks.value = String(state.intention.blocks || state.settings.dailyGoal || 4);
+  }
+  els.intentionOverlay.hidden = false;
+  const card = els.intentionOverlay.querySelector(".goal-card");
+  if (card) {
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    trapFocus(card);
+  }
+  setTimeout(() => els.intentionInput?.focus(), 250);
+}
+
+function hideIntentionPrompt() {
+  if (!els.intentionOverlay) return;
+  clearFocusTrap();
+  els.intentionOverlay.hidden = true;
+}
+
+function commitIntention({ skip = false } = {}) {
+  const key = todayKey();
+  if (skip) {
+    saveIntention({ date: key, text: "", blocks: 0 });
+    localStorage.setItem(`foco-intention-skip-${key}`, "1");
+    hideIntentionPrompt();
+    render();
+    return;
+  }
+  const text = (els.intentionInput?.value || "").trim().slice(0, 48);
+  const blocks = clamp(Number(els.intentionBlocks?.value) || 0, [0, 20]);
+  saveIntention({ date: key, text, blocks });
+  if (text && !state.task && state.phase === "focus" && !state.running) {
+    state.task = text;
+    els.taskInput.value = text;
+    saveSession({ force: true });
+  }
+  hideIntentionPrompt();
+  render();
+  showToast(text ? "Intención sellada" : "Día sin intención escrita");
+}
+
+function maybeShowIntention() {
+  const hour = new Date().getHours();
+  if (hour >= 14) return;
+  const key = todayKey();
+  if (localStorage.getItem(`foco-intention-skip-${key}`) === "1") return;
+  if (state.intention.date === key && (state.intention.text || state.intention.blocks)) return;
+  if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+  if (state.running) return;
+  showIntentionPrompt();
+}
+
+function buildPrintReportHtml() {
+  const key = todayKey();
+  const sessions = state.history.filter((s) => s.date === key);
+  const minutes = sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  const intention = (state.intention.text || "").trim();
+  const planned = state.intention.blocks || 0;
+  const streak = currentStreak();
+  const score = computeFocusScore().score;
+  const rows = sessions
+    .map((s) => {
+      const time = s.endedAt
+        ? new Date(s.endedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+        : "—";
+      const task = s.task || "Enfoque";
+      const note = s.note ? ` — ${s.note}` : "";
+      return `<li><strong>${time}</strong> · ${escapeHtml(task)} · ${s.minutes} min · ${categoryLabel(s.category || "extra")}${escapeHtml(note)}</li>`;
+    })
+    .join("");
+  return `
+    <div class="print-brand">FOCO</div>
+    <h1>Resumen del ${new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</h1>
+    ${intention ? `<p class="print-intention">Intención: ${escapeHtml(intention)}${planned ? ` · meta ${planned}` : ""}</p>` : ""}
+    <p class="print-stats">${sessions.length} enfoques · ${minutes} min · racha ${streak}${score ? ` · score ${score}` : ""}</p>
+    <ol class="print-list">${rows || "<li>Sin sellos hoy.</li>"}</ol>
+    <p class="print-foot">Tu tiempo · tu sello</p>
+  `;
+}
+
+function printDayReport() {
+  if (!els.printReport) {
+    window.print();
+    return;
+  }
+  els.printReport.innerHTML = buildPrintReportHtml();
+  els.printReport.hidden = false;
+  document.body.classList.add("is-printing");
+  const cleanup = () => {
+    document.body.classList.remove("is-printing");
+    els.printReport.hidden = true;
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(() => window.print(), 50);
+}
+
+function toggleDeepFocus() {
+  state.settings.deepFocus = !state.settings.deepFocus;
+  saveSettings();
+  render();
+  showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
 }
 
 function saveSession({ force = false } = {}) {
@@ -574,6 +1699,9 @@ function clamp(value, [min, max]) {
 }
 
 function phaseDurationMs(phase = state.phase) {
+  if (phase === "short" && state.sprint) {
+    return (Number(state.settings.sprintShortMins) || 3) * 60 * 1000;
+  }
   const key = PHASES[phase].setting;
   return state.settings[key] * 60 * 1000;
 }
@@ -617,7 +1745,12 @@ function setPhase(phase, { resetTime = true } = {}) {
   els.body.dataset.phase = phase;
   const info = PHASES[phase];
   swapText(els.phaseLabel, info.label);
-  swapText(els.supportText, phase === "focus" ? info.support : pickBreakTip(phase));
+  if (phase === "focus") {
+    swapText(els.supportText, info.support);
+  } else {
+    state.breakActsDone = [];
+    swapText(els.supportText, pickBreakTip(phase));
+  }
   if (resetTime) {
     state.totalMs = phaseDurationMs(phase);
     state.remainingMs = state.totalMs;
@@ -627,6 +1760,202 @@ function setPhase(phase, { resetTime = true } = {}) {
   updateThemeColor();
   syncIdleLines();
   render();
+}
+
+function renderBreakActivities() {
+  if (!els.breakActivities) return;
+  const onBreak = state.phase !== "focus";
+  els.breakActivities.hidden = !onBreak;
+  if (!onBreak) return;
+  els.breakActivities.querySelectorAll(".break-act").forEach((btn) => {
+    const key = btn.dataset.act;
+    btn.classList.toggle("is-done", state.breakActsDone.includes(key));
+  });
+}
+
+function toggleBreakActivity(key) {
+  if (!BREAK_ACTIVITIES[key] || state.phase === "focus") return;
+  if (state.breakActsDone.includes(key)) {
+    state.breakActsDone = state.breakActsDone.filter((k) => k !== key);
+    swapText(els.supportText, pickBreakTip(state.phase));
+  } else {
+    state.breakActsDone.push(key);
+    swapText(els.supportText, BREAK_ACTIVITIES[key].tip);
+  }
+  renderBreakActivities();
+  if (state.breakActsDone.length === Object.keys(BREAK_ACTIVITIES).length) {
+    showToast("Descanso activo completo");
+  }
+}
+
+function computeFocusScore() {
+  const today = countTodayFocus();
+  const goal = state.settings.dailyGoal;
+  const { count: weekCount } = weekSummary();
+  const weekGoal = state.settings.weeklyGoal || 40;
+  const streak = currentStreak();
+
+  if (!today && !weekCount) return { score: 0, label: "Empieza un bloque para calcularla." };
+
+  const dailyPart = Math.min(40, Math.round((today / Math.max(1, goal)) * 40));
+  const weeklyPart = Math.min(30, Math.round((weekCount / Math.max(1, weekGoal)) * 30));
+  const streakPart = Math.min(20, Math.round((streak / 14) * 20));
+  const activePart = today > 0 ? 10 : 0;
+  const score = Math.min(100, dailyPart + weeklyPart + streakPart + activePart);
+
+  let label = "Ritmo en construcción.";
+  if (score >= 85) label = "Ritmo excelente. Sigue sellando.";
+  else if (score >= 65) label = "Buen impulso. La constancia suma.";
+  else if (score >= 40) label = "Vas encaminado. Un bloque más.";
+  else if (today > 0) label = "Has empezado. Eso ya cuenta.";
+
+  return { score, label };
+}
+
+function renderFocusScore() {
+  if (!els.focusScoreValue) return;
+  const { score, label } = computeFocusScore();
+  els.focusScoreValue.textContent = score > 0 ? String(score) : "—";
+  if (els.focusScoreCopy) els.focusScoreCopy.textContent = label;
+  if (els.focusScoreRing) {
+    els.focusScoreRing.dataset.score = String(score);
+    const alpha = 0.15 + (score / 100) * 0.65;
+    els.focusScoreRing.style.borderColor = score > 0
+      ? `rgba(214, 40, 24, ${alpha})`
+      : "";
+  }
+}
+
+function daySummaryFor(dateKey) {
+  const sessions = state.history.filter((s) => s.date === dateKey);
+  const count = sessions.length;
+  const minutes = sessions.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  const cats = sessions.reduce((acc, s) => {
+    const k = s.category || "extra";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  const lastNote = sessions.find((s) => s.note)?.note || null;
+  return { count, minutes, topCat, lastNote };
+}
+
+function showDaySummary(forKey, { kicker = "Resumen del día" } = {}) {
+  if (!els.dayOverlay) return;
+  const summary = daySummaryFor(forKey);
+  if (!summary.count) return;
+
+  const goal = state.settings.dailyGoal;
+  const isToday = forKey === todayKey();
+  const yesterdayKey = shiftDayKey(forKey, -1);
+  const yesterday = daySummaryFor(yesterdayKey).count;
+  const catLabel = summary.topCat ? categoryLabel(summary.topCat[0]).toLowerCase() : "foco";
+
+  let compare = "";
+  if (yesterday > 0 && summary.count !== yesterday) {
+    compare =
+      summary.count > yesterday
+        ? ` Más que ayer (+${summary.count - yesterday}).`
+        : ` Menos que ayer (${summary.count - yesterday}).`;
+  }
+
+  if (els.dayKicker) els.dayKicker.textContent = kicker;
+  if (els.dayTitle) {
+    els.dayTitle.textContent = isToday ? "Tu día en foco" : "Ayer en foco";
+  }
+  if (els.dayText) {
+    els.dayText.textContent = [
+      `${summary.count} enfoques · ${summary.minutes} min`,
+      isToday ? `Meta: ${summary.count}/${goal}.${compare}` : compare.trim(),
+      `Más en ${catLabel}.`,
+      summary.lastNote ? `Nota: «${summary.lastNote}»` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  els.dayOverlay.hidden = false;
+  localStorage.setItem(`foco-day-summary-${forKey}`, "1");
+}
+
+function hideDaySummary() {
+  if (!els.dayOverlay) return;
+  els.dayOverlay.hidden = true;
+}
+
+function maybeShowDaySummary() {
+  const hour = new Date().getHours();
+  const key = todayKey();
+  const shownToday = localStorage.getItem(`foco-day-summary-${key}`) === "1";
+
+  if (hour >= 20 && !shownToday) {
+    const today = daySummaryFor(key);
+    if (today.count > 0) {
+      showDaySummary(key);
+      return;
+    }
+  }
+
+  if (hour < 12) {
+    const yesterday = shiftDayKey(key, -1);
+    if (localStorage.getItem(`foco-day-summary-${yesterday}`) === "1") return;
+    const y = daySummaryFor(yesterday);
+    if (y.count > 0) {
+      showDaySummary(yesterday, { kicker: "Ayer en Foco" });
+    }
+  }
+}
+
+function weekRecapKey() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? 0 : day;
+  d.setDate(d.getDate() - diff);
+  return todayKey(d);
+}
+
+function setupWeeklyRecap() {
+  if (!els.recapTip) return;
+  const key = weekRecapKey();
+  if (localStorage.getItem(`foco-week-recap-${key}`) === "1") return;
+  if (new Date().getDay() !== 0) return;
+
+  const { count, minutes } = weekSummary();
+  if (count < 2) return;
+
+  const streak = currentStreak();
+  if (els.recapTipText) {
+    els.recapTipText.textContent = `${count} enfoques · ${minutes} min · racha ${streak}`;
+  }
+  els.recapTip.hidden = false;
+
+  els.recapCloseBtn?.addEventListener("click", () => {
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+
+  els.recapShareBtn?.addEventListener("click", () => {
+    shareWeek();
+    els.recapTip.hidden = true;
+    localStorage.setItem(`foco-week-recap-${key}`, "1");
+  });
+}
+
+function setupOfflineBadge() {
+  if (!els.offlineBadge) return;
+  const sync = () => {
+    els.offlineBadge.hidden = navigator.onLine;
+  };
+  window.addEventListener("online", sync);
+  window.addEventListener("offline", sync);
+  sync();
+}
+
+function streakMilestoneCopy(hit) {
+  if (hit >= 30) return "Constancia de nivel alto. Esto ya es un hábito.";
+  if (hit >= 14) return "Dos semanas de racha. Imparable.";
+  if (hit >= 7) return "Una semana entera de foco. Sigue así.";
+  return "Tres días seguidos. El hábito empieza aquí.";
 }
 
 function stopIdleLines() {
@@ -708,9 +2037,11 @@ function greetingText() {
   const hour = new Date().getHours();
   const today = countTodayFocus();
   const goal = state.settings.dailyGoal;
+  const intention = (state.intention.text || "").trim();
   if (state.running && state.phase === "focus") return "El sello está en marcha.";
   if (state.running && state.phase !== "focus") return "Pausa con intención.";
   if (today >= goal) return "Meta sellada. Qué bien.";
+  if (intention && today === 0 && hour < 14) return `Hoy: ${intention}`;
   if (hour < 12) return today ? `Buenos días · ${today}/${goal}` : "Buenos días. Empieza con calma.";
   if (hour < 19) return today ? `Buenas tardes · ${today}/${goal}` : "Buenas tardes. Un bloque y listo.";
   return today ? `Buenas noches · ${today}/${goal}` : "Buenas noches. Un último sello.";
@@ -759,6 +2090,10 @@ function renderTodayStrip() {
   const { count } = weekSummary();
   const weekGoal = state.settings.weeklyGoal || 40;
   parts.push(`<span class="today-pill">Sem <strong>${count}/${weekGoal}</strong></span>`);
+  const { score } = computeFocusScore();
+  if (score > 0) {
+    parts.push(`<span class="today-pill today-score">Foco <strong>${score}</strong></span>`);
+  }
   for (const task of chips) {
     parts.push(
       `<button type="button" class="today-chip" data-task="${escapeHtml(task)}">${escapeHtml(task)}</button>`
@@ -826,8 +2161,25 @@ function renderWeekChart() {
 }
 
 function renderHistoryList() {
-  const recent = state.history.slice(0, 8);
+  const filter = state.historyFilter || "all";
+  const filtered =
+    filter === "all"
+      ? state.history
+      : state.history.filter((s) => (s.category || "extra") === filter);
+  const recent = filtered.slice(0, 10);
   els.historyEmpty.hidden = recent.length > 0;
+  if (els.historyEmpty) {
+    els.historyEmpty.innerHTML =
+      filter === "all"
+        ? "Aún no hay sellos.<br><span>Termina tu primer enfoque para verlo aquí.</span>"
+        : `Sin sellos en ${categoryLabel(filter).toLowerCase()}.<br><span>Prueba otra categoría.</span>`;
+  }
+  if (els.historyFilter) {
+    els.historyFilter.querySelectorAll("[data-filter]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.filter === filter);
+      btn.setAttribute("aria-pressed", String(btn.dataset.filter === filter));
+    });
+  }
   els.historyList.innerHTML = recent
     .map((session) => {
       const title = session.task
@@ -852,6 +2204,15 @@ function renderHistoryList() {
     `;
     })
     .join("");
+}
+
+function renderLifetimeStats() {
+  const month = monthSummary();
+  const all = lifetimeSummary();
+  if (els.monthFocusCount) els.monthFocusCount.textContent = String(month.count);
+  if (els.monthFocusMins) els.monthFocusMins.textContent = String(month.minutes);
+  if (els.allFocusCount) els.allFocusCount.textContent = String(all.count);
+  if (els.allFocusMins) els.allFocusMins.textContent = String(all.minutes);
 }
 
 function renderHeatmap() {
@@ -910,6 +2271,13 @@ function resetStatsData() {
       saveHistory();
       saveCelebratedMilestones();
       localStorage.removeItem("foco-goal-celebrated");
+      localStorage.removeItem(FREEZE_KEY);
+      localStorage.removeItem(PRESET_OVERRIDES_KEY);
+      localStorage.removeItem(SPRINTS_KEY);
+      localStorage.removeItem(BAND_GOAL_KEY);
+      state.sprints = [];
+      state.bandCelebrated = {};
+      state.sprint = null;
       clearSession();
       render();
       renderStatsPanel();
@@ -929,12 +2297,16 @@ function renderTodayTimeline() {
         ? "--:--"
         : date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
       const title = session.task ? escapeHtml(session.task) : "Enfoque";
+      const note = session.note
+        ? `<span class="history-note">${escapeHtml(session.note)}</span>`
+        : "";
       return `
         <li class="timeline-item">
           <div class="timeline-time">${time}</div>
           <div class="timeline-body">
             <strong>${title}</strong>
             <span>${session.minutes} min</span>
+            ${note}
             ${categoryTag(session.category || "extra")}
           </div>
         </li>
@@ -1025,13 +2397,115 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function renderSoundThemes() {
+  if (!els.soundThemeRow) return;
+  const theme = SOUND_THEMES[state.settings.soundTheme] ? state.settings.soundTheme : "soft";
+  els.soundThemeRow.querySelectorAll("[data-theme]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.theme === theme);
+    btn.setAttribute("aria-pressed", String(btn.dataset.theme === theme));
+  });
+}
+
+function renderStreakFreeze() {
+  if (!els.streakFreezeRow) return;
+  const freeze = loadStreakFreeze();
+  const canUse = canUseStreakFreeze();
+  const usedToday = freeze.usedDate === todayKey();
+  els.streakFreezeRow.hidden = !canUse && !usedToday;
+  if (els.streakFreezeCopy) {
+    if (usedToday) {
+      els.streakFreezeCopy.textContent = "Racha protegida hoy. Una vez por semana.";
+    } else if (canUse) {
+      els.streakFreezeCopy.textContent = `Sin enfoque hoy. Protege tu racha de ${currentStreak()} días.`;
+    }
+  }
+  if (els.streakFreezeBtn) {
+    els.streakFreezeBtn.hidden = !canUse;
+    els.streakFreezeBtn.disabled = !canUse;
+  }
+}
+
+function renderStreakMilestone() {
+  if (!els.streakMilestoneRow) return;
+  const info = nextStreakMilestone();
+  if (!info || info.streak < 1) {
+    els.streakMilestoneRow.hidden = true;
+    return;
+  }
+  els.streakMilestoneRow.hidden = false;
+  if (els.streakMilestoneText) {
+    els.streakMilestoneText.textContent =
+      info.remaining === 1
+        ? `Mañana puedes llegar a ${info.next} días de racha.`
+        : `Siguiente hito: ${info.next} días · faltan ${info.remaining}.`;
+  }
+  if (els.streakMilestoneFill) {
+    const prev = STREAK_MILESTONES.filter((m) => m <= info.streak).pop() || 0;
+    const span = info.next - prev;
+    const progress = span > 0 ? (info.streak - prev) / span : 1;
+    els.streakMilestoneFill.style.width = `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`;
+  }
+}
+
+function renderCategoryBreakdown() {
+  if (!els.categoryBreakdown) return;
+  const rows = weekCategoryBreakdown();
+  if (!rows.length) {
+    els.categoryBreakdown.hidden = true;
+    els.categoryBreakdown.innerHTML = "";
+    return;
+  }
+  const total = rows.reduce((sum, [, count]) => sum + count, 0);
+  els.categoryBreakdown.hidden = false;
+  els.categoryBreakdown.innerHTML = rows
+    .map(([cat, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="cat-breakdown-item">
+          <div class="cat-breakdown-head">
+            ${categoryTag(cat)}
+            <span>${count} · ${pct}%</span>
+          </div>
+          <div class="cat-breakdown-track" aria-hidden="true">
+            <div class="cat-breakdown-fill tag-${cat}" style="width:${pct}%"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderRepeatLast() {
+  if (!els.repeatLastBtn) return;
+  const last = lastFocusSession();
+  const show =
+    last &&
+    state.phase === "focus" &&
+    !state.running &&
+    state.remainingMs === state.totalMs &&
+    !(state.settings.deepFocus && state.running);
+  els.repeatLastBtn.hidden = !show;
+  if (show && last.task) {
+    els.repeatLastBtn.textContent = `Repetir «${last.task.slice(0, 18)}${last.task.length > 18 ? "…" : ""}»`;
+  } else if (show) {
+    els.repeatLastBtn.textContent = "Repetir último";
+  }
+}
+
 function renderStatsPanel() {
   renderWeekChart();
   renderTodayTimeline();
   renderHeatmap();
   renderHistoryList();
   renderBestDay();
+  renderFocusScore();
   renderInsight();
+  renderStreakFreeze();
+  renderStreakMilestone();
+  renderCategoryBreakdown();
+  renderLifetimeStats();
+  renderHourChart();
+  renderSprintHistory();
 }
 
 function recentTaskNames() {
@@ -1117,6 +2591,12 @@ function render() {
   renderGoalProgress();
   renderGreeting();
   renderTodayStrip();
+  renderBreakActivities();
+  renderRepeatLast();
+  renderSprint();
+  renderEta();
+  renderCycleEta();
+  renderIntentionChip();
   renderPresets();
   renderRecentTasks();
   renderCategories();
@@ -1126,6 +2606,10 @@ function render() {
   els.outputs.roundsUntilLong.value = state.settings.roundsUntilLong;
   els.outputs.dailyGoal.value = state.settings.dailyGoal;
   if (els.outputs.weeklyGoal) els.outputs.weeklyGoal.value = state.settings.weeklyGoal;
+  if (els.outputs.morningGoal) els.outputs.morningGoal.value = state.settings.morningGoal;
+  if (els.outputs.afternoonGoal) els.outputs.afternoonGoal.value = state.settings.afternoonGoal;
+  if (els.outputs.eveningGoal) els.outputs.eveningGoal.value = state.settings.eveningGoal;
+  if (els.outputs.sprintShortMins) els.outputs.sprintShortMins.value = state.settings.sprintShortMins;
   els.notifyToggle.setAttribute("aria-checked", String(state.settings.notify));
   els.soundToggle.setAttribute("aria-checked", String(state.settings.sound));
   els.hapticToggle.setAttribute("aria-checked", String(state.settings.haptic));
@@ -1137,15 +2621,29 @@ function render() {
   if (els.quietToggle) {
     els.quietToggle.setAttribute("aria-checked", String(state.settings.quietHours));
   }
+  if (els.categoryPresetsToggle) {
+    els.categoryPresetsToggle.setAttribute("aria-checked", String(state.settings.categoryPresets));
+  }
+  if (els.queueOnlyToggle) {
+    els.queueOnlyToggle.setAttribute("aria-checked", String(state.settings.queueOnly));
+  }
+  renderSoundThemes();
+  renderAtmosphere();
+  renderWallClock();
+  renderTaskQueue();
   renderTaskSuggestions();
   const deepActive = state.settings.deepFocus && state.running && state.phase === "focus";
   els.body.classList.toggle("is-deep-focus", deepActive);
+  els.body.classList.toggle("is-queue-only", Boolean(state.settings.queueOnly));
   updateThemeColor();
   els.shell.setAttribute("aria-label", state.running ? "Pausar temporizador" : "Empezar o continuar temporizador");
   if (document.activeElement !== els.taskInput) {
     els.taskInput.value = state.task;
   }
-  els.taskInput.closest(".task-field").hidden = state.phase !== "focus";
+  const taskField = els.taskInput.closest(".task-field");
+  if (taskField) {
+    taskField.hidden = state.phase !== "focus" || state.settings.queueOnly;
+  }
   if (state.openSheet === "stats") renderStatsPanel();
 }
 
@@ -1156,6 +2654,8 @@ function renderTimerChrome() {
   updateRingTicks(progress);
   els.shell.classList.toggle("is-ending", state.running && state.remainingMs > 0 && state.remainingMs <= 60_000);
   updateDocumentTitle();
+  renderEta();
+  renderCycleEta();
 }
 
 function weekShareText() {
@@ -1195,6 +2695,21 @@ async function shareWeek() {
     showToast("Resumen copiado");
   } catch {
     showToast("No se pudo compartir");
+  }
+}
+
+async function downloadWeekCard() {
+  try {
+    const file = await buildWeekCardFile();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Tarjeta semanal descargada");
+  } catch {
+    showToast("No se pudo generar la tarjeta");
   }
 }
 
@@ -1421,6 +2936,7 @@ function importBackupText(text) {
     saveSettings();
   }
 
+  applyAtmosphere(state.settings.atmosphere);
   render();
   showToast(`Importados ${normalized.length} enfoques`);
   return true;
@@ -1485,6 +3001,7 @@ function applyFocusPreset(minutes) {
   if (state.running || state.phase !== "focus") return;
   state.settings.focusMins = clamp(minutes, LIMITS.focusMins);
   saveSettings();
+  persistCategoryOverride();
   setPhase("focus", { resetTime: true });
   saveSession();
   showToast(`Enfoque a ${minutes} min`);
@@ -1588,16 +3105,21 @@ async function requestNotifyPermission() {
   return result === "granted";
 }
 
-function notifyEnd(kind = "soft") {
+function notifyEnd(kind = "soft", { phase = state.phase, task = state.task } = {}) {
   playChime(kind);
   hapticPulse(kind === "soft" ? "end" : kind);
   if (isQuietHours()) return;
   if (!state.settings.notify || !("Notification" in window) || Notification.permission !== "granted") return;
-  const title = state.phase === "focus" ? "Enfoque terminado" : "Descanso terminado";
-  const body =
-    state.phase === "focus"
-      ? "Toca para empezar el descanso."
-      : "Cuando quieras, vuelve al enfoque.";
+  const taskLabel = (task || "").trim();
+  let title;
+  let body;
+  if (phase === "focus") {
+    title = taskLabel ? `«${taskLabel}» sellado` : "Enfoque terminado";
+    body = taskLabel ? "Bloque completado. Toca para el descanso." : "Toca para empezar el descanso.";
+  } else {
+    title = "Descanso terminado";
+    body = "Cuando quieras, vuelve al enfoque.";
+  }
   try {
     new Notification(title, { body, icon: "./icon.svg", tag: "foco-phase-end" });
   } catch {
@@ -1675,6 +3197,19 @@ function tick() {
 
 function start({ silent = false } = {}) {
   if (state.running || state.completing) return;
+  if (state.settings.queueOnly && state.phase === "focus") {
+    ensureQueueFresh();
+    if (!(state.task || "").trim()) {
+      const next = nextQueueItem();
+      if (next) {
+        state.task = next.text;
+        if (els.taskInput) els.taskInput.value = next.text;
+      } else {
+        showToast("Añade una tarea a la cola para empezar");
+        return;
+      }
+    }
+  }
   if (state.remainingMs <= 0) {
     state.totalMs = phaseDurationMs();
     state.remainingMs = state.totalMs;
@@ -1763,12 +3298,7 @@ function maybeCelebrateStreak() {
   state.celebratedMilestones.push(hit);
   saveCelebratedMilestones();
   els.goalOverlayTitle.textContent = `Racha de ${hit} días`;
-  els.goalOverlayText.textContent =
-    hit >= 30
-      ? "Constancia de nivel alto. Esto ya es un hábito."
-      : hit >= 7
-        ? "Una semana entera de foco. Sigue así."
-        : "Tres días seguidos. El hábito empieza aquí.";
+  els.goalOverlayText.textContent = streakMilestoneCopy(hit);
   els.goalOverlay.hidden = false;
   burstGoalSparks();
   return true;
@@ -1815,7 +3345,7 @@ function skipSessionNote() {
 }
 
 function maybeStartAfterNote() {
-  if (state.settings.autoAdvance && !state.running) {
+  if ((state.settings.autoAdvance || state.sprint) && !state.running) {
     start({ silent: true });
   }
 }
@@ -1838,12 +3368,29 @@ function onPhaseComplete() {
   state.remainingMs = 0;
   render();
   playPhaseStamp();
-  notifyEnd(chimeKind);
+  const finishedTask = state.task;
+  notifyEnd(chimeKind, { phase: finished, task: finishedTask });
 
   let celebratedSomething = false;
   let recorded = null;
+  let sprintFinished = false;
   if (finished === "focus") {
     recorded = recordFocusSession(minutes);
+    markQueueDoneByTask(finishedTask);
+    sprintFinished = advanceSprintOnFocus(minutes);
+    const band = currentHourBand();
+    const buckets = hourBucketsForWeek();
+    const bandToday = buckets.find((b) => b.key === band)?.today || 0;
+    maybeCelebrateBandGoal(band, bandToday);
+    const upcoming = nextQueueItem();
+    if (
+      upcoming &&
+      (!finishedTask ||
+        finishedTask.trim().toLocaleLowerCase("es") !== upcoming.text.toLocaleLowerCase("es"))
+    ) {
+      state.task = upcoming.text;
+      if (els.taskInput) els.taskInput.value = upcoming.text;
+    }
     const today = countTodayFocus();
     const goal = state.settings.dailyGoal;
     if (today >= goal) {
@@ -1851,15 +3398,18 @@ function onPhaseComplete() {
       celebratedSomething = true;
     } else if (maybeCelebrateStreak()) {
       celebratedSomething = true;
-    } else {
-      showToast(`Enfoque completado · ${today}/${goal}`, {
+    } else if (!sprintFinished) {
+      const sprintLabel = state.sprint
+        ? ` · sprint ${state.sprint.done}/${state.sprint.total}`
+        : "";
+      showToast(`Enfoque completado · ${today}/${goal}${sprintLabel}`, {
         actionLabel: "Deshacer",
         onAction: undoLastFocusSession,
         duration: 5000,
       });
     }
   } else {
-    showToast("Descanso completado");
+    showToast(state.sprint ? `Descanso · sprint ${state.sprint.done}/${state.sprint.total}` : "Descanso completado");
   }
 
   const next = nextPhaseAfter(finished);
@@ -1867,7 +3417,7 @@ function onPhaseComplete() {
   saveSession({ force: true });
   state.completing = false;
 
-  if (finished === "focus" && recorded && !celebratedSomething) {
+  if (finished === "focus" && recorded && !celebratedSomething && !state.sprint && !sprintFinished) {
     openNotePrompt(recorded.id);
     return;
   }
@@ -1876,7 +3426,7 @@ function onPhaseComplete() {
     state.pendingNoteSessionId = recorded.id;
   }
 
-  if (state.settings.autoAdvance && !celebratedSomething) {
+  if ((state.settings.autoAdvance || state.sprint) && !celebratedSomething) {
     start({ silent: true });
   }
 }
@@ -1884,9 +3434,9 @@ function onPhaseComplete() {
 function doSkipPhase() {
   const finished = state.phase;
   pause();
-  // Saltar no cuenta el enfoque hacia el descanso largo.
   if (finished === "focus") {
-    setPhase("short", { resetTime: true });
+    const next = nextPhaseAfter("focus");
+    setPhase(next, { resetTime: true });
   } else {
     setPhase("focus", { resetTime: true });
   }
@@ -2065,8 +3615,20 @@ function adjustSetting(key, delta) {
   const [min, max] = LIMITS[key];
   state.settings[key] = clamp(state.settings[key] + delta, [min, max]);
   saveSettings();
-  if (key === "dailyGoal" || key === "weeklyGoal") {
+  if (["focusMins", "shortMins", "longMins", "roundsUntilLong"].includes(key)) {
+    persistCategoryOverride();
+  }
+  if (key === "dailyGoal" || key === "weeklyGoal" || key === "morningGoal" || key === "afternoonGoal" || key === "eveningGoal") {
     render();
+    return;
+  }
+  if (key === "sprintShortMins") {
+    if (!state.running || state.phase === "short") {
+      if (!state.running) setPhase(state.phase, { resetTime: true });
+      else render();
+    } else {
+      render();
+    }
     return;
   }
   if (!state.running) {
@@ -2151,6 +3713,21 @@ function bindEvents() {
     if (event.target === els.goalOverlay) hideGoalCelebration();
   });
 
+  if (els.dayClose) {
+    els.dayClose.addEventListener("click", hideDaySummary);
+  }
+  els.dayOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.dayOverlay) hideDaySummary();
+  });
+
+  if (els.breakActivities) {
+    els.breakActivities.addEventListener("click", (event) => {
+      const btn = event.target.closest(".break-act");
+      if (!btn) return;
+      toggleBreakActivity(btn.dataset.act);
+    });
+  }
+
   els.presets.querySelectorAll("[data-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyFocusPreset(Number(btn.dataset.preset)));
   });
@@ -2230,10 +3807,7 @@ function bindEvents() {
   });
 
   els.deepToggle.addEventListener("click", () => {
-    state.settings.deepFocus = !state.settings.deepFocus;
-    saveSettings();
-    render();
-    showToast(state.settings.deepFocus ? "Modo profundo activado" : "Modo profundo desactivado");
+    toggleDeepFocus();
   });
 
   document.querySelector(".brand")?.addEventListener("click", () => {
@@ -2255,9 +3829,7 @@ function bindEvents() {
         (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
       );
       if (match && CATEGORIES[match.category]) {
-        state.category = match.category;
-        state.settings.category = match.category;
-        saveSettings();
+        setCategory(match.category, { toast: false });
       }
       saveSession({ force: true });
       render();
@@ -2287,6 +3859,12 @@ function bindEvents() {
   els.shareWeekBtn.addEventListener("click", () => {
     shareWeek();
   });
+
+  if (els.exportWeekPngBtn) {
+    els.exportWeekPngBtn.addEventListener("click", () => {
+      downloadWeekCard();
+    });
+  }
 
   els.exportBtn.addEventListener("click", () => {
     exportBackup();
@@ -2320,6 +3898,208 @@ function bindEvents() {
     });
   }
 
+  if (els.categoryPresetsToggle) {
+    els.categoryPresetsToggle.addEventListener("click", () => {
+      state.settings.categoryPresets = !state.settings.categoryPresets;
+      saveSettings();
+      render();
+      showToast(state.settings.categoryPresets ? "Plantillas por categoría on" : "Plantillas por categoría off");
+    });
+  }
+
+  if (els.queueOnlyToggle) {
+    els.queueOnlyToggle.addEventListener("click", () => {
+      state.settings.queueOnly = !state.settings.queueOnly;
+      saveSettings();
+      if (state.settings.queueOnly && !(state.task || "").trim()) {
+        const next = nextQueueItem();
+        if (next) {
+          state.task = next.text;
+          if (els.taskInput) els.taskInput.value = next.text;
+          saveSession({ force: true });
+        }
+      }
+      render();
+      showToast(state.settings.queueOnly ? "Modo solo cola on" : "Modo solo cola off");
+    });
+  }
+
+  if (els.queueClearDoneBtn) {
+    els.queueClearDoneBtn.addEventListener("click", clearDoneQueueItems);
+  }
+
+  if (els.soundThemeRow) {
+    els.soundThemeRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-theme]");
+      if (!btn || !SOUND_THEMES[btn.dataset.theme]) return;
+      state.settings.soundTheme = btn.dataset.theme;
+      saveSettings();
+      render();
+      ensureAudio();
+      playChime("soft");
+    });
+  }
+
+  if (els.atmosphereRow) {
+    els.atmosphereRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-atmosphere]");
+      if (!btn || !ATMOSPHERES[btn.dataset.atmosphere]) return;
+      applyAtmosphere(btn.dataset.atmosphere);
+      saveSettings();
+      render();
+      showToast(`Atmósfera ${ATMOSPHERES[btn.dataset.atmosphere].label.toLowerCase()}`);
+    });
+  }
+
+  if (els.queueAddBtn) {
+    els.queueAddBtn.addEventListener("click", () => {
+      addQueueItem(els.queueInput?.value || "");
+      if (els.queueInput) els.queueInput.value = "";
+    });
+  }
+  els.queueInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addQueueItem(els.queueInput.value || "");
+      els.queueInput.value = "";
+    }
+  });
+  if (els.queueList) {
+    els.queueList.addEventListener("click", (event) => {
+      if (state.dragQueueId) return;
+      const toggle = event.target.closest("[data-toggle]");
+      if (toggle) {
+        toggleQueueItem(toggle.dataset.toggle);
+        return;
+      }
+      const move = event.target.closest("[data-move]");
+      if (move) {
+        moveQueueItem(move.dataset.move, Number(move.dataset.dir) || 0);
+        return;
+      }
+      const pull = event.target.closest("[data-pull]");
+      if (pull) {
+        pullQueueItem(pull.dataset.pull);
+        return;
+      }
+      const remove = event.target.closest("[data-remove]");
+      if (remove) {
+        removeQueueItem(remove.dataset.remove);
+      }
+    });
+
+    let dragFrom = null;
+    els.queueList.addEventListener("pointerdown", (event) => {
+      const handle = event.target.closest("[data-drag]");
+      if (!handle) return;
+      event.preventDefault();
+      dragFrom = handle.dataset.drag;
+      state.dragQueueId = dragFrom;
+      handle.closest(".queue-item")?.classList.add("is-dragging");
+      handle.setPointerCapture?.(event.pointerId);
+    });
+    els.queueList.addEventListener("pointermove", (event) => {
+      if (!dragFrom) return;
+      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const over = el?.closest?.(".queue-item");
+      els.queueList.querySelectorAll(".queue-item.is-drop").forEach((node) => {
+        node.classList.remove("is-drop");
+      });
+      if (over && over.dataset.id !== dragFrom) over.classList.add("is-drop");
+    });
+    const endDrag = (event) => {
+      if (!dragFrom) return;
+      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const over = el?.closest?.(".queue-item");
+      if (over?.dataset.id) reorderQueueById(dragFrom, over.dataset.id);
+      else renderTaskQueue();
+      dragFrom = null;
+      state.dragQueueId = null;
+    };
+    els.queueList.addEventListener("pointerup", endDrag);
+    els.queueList.addEventListener("pointercancel", () => {
+      dragFrom = null;
+      state.dragQueueId = null;
+      renderTaskQueue();
+    });
+  }
+
+  if (els.sprintRow) {
+    els.sprintRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-sprint]");
+      if (!btn) return;
+      startSprint(Number(btn.dataset.sprint));
+    });
+  }
+  if (els.sprintStopBtn) {
+    els.sprintStopBtn.addEventListener("click", () => stopSprint());
+  }
+
+  if (els.streakFreezeBtn) {
+    els.streakFreezeBtn.addEventListener("click", () => {
+      askConfirm({
+        title: "¿Proteger la racha?",
+        text: "Cuenta hoy como día de racha sin enfoque. Solo una vez por semana.",
+        okLabel: "Proteger",
+        onConfirm: useStreakFreeze,
+      });
+    });
+  }
+
+  if (els.repeatLastBtn) {
+    els.repeatLastBtn.addEventListener("click", repeatLastBlock);
+  }
+
+  if (els.shortcutsClose) {
+    els.shortcutsClose.addEventListener("click", hideShortcuts);
+  }
+  els.shortcutsOverlay?.addEventListener("click", (event) => {
+    if (event.target === els.shortcutsOverlay) hideShortcuts();
+  });
+
+  if (els.historyFilter) {
+    els.historyFilter.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-filter]");
+      if (!btn) return;
+      state.historyFilter = btn.dataset.filter;
+      renderHistoryList();
+    });
+  }
+
+  if (els.savePresetBtn) {
+    els.savePresetBtn.addEventListener("click", saveCurrentAsCategoryPreset);
+  }
+  if (els.resetPresetBtn) {
+    els.resetPresetBtn.addEventListener("click", () => {
+      askConfirm({
+        title: "¿Restaurar plantilla?",
+        text: `Vuelve a los minutos por defecto de ${categoryLabel(state.category)}.`,
+        okLabel: "Restaurar",
+        onConfirm: () => resetCategoryPreset(),
+      });
+    });
+  }
+
+  if (els.intentionSave) {
+    els.intentionSave.addEventListener("click", () => commitIntention());
+  }
+  if (els.intentionSkip) {
+    els.intentionSkip.addEventListener("click", () => commitIntention({ skip: true }));
+  }
+  els.intentionInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitIntention();
+    }
+  });
+  els.intentionChip?.addEventListener("click", () => {
+    showIntentionPrompt();
+  });
+
+  if (els.printDayBtn) {
+    els.printDayBtn.addEventListener("click", printDayReport);
+  }
+
   els.importInput.addEventListener("change", async () => {
     const file = els.importInput.files && els.importInput.files[0];
     await handleImportFile(file);
@@ -2342,11 +4122,7 @@ function bindEvents() {
   els.categoryRow.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-category]");
     if (!btn) return;
-    state.category = btn.dataset.category;
-    state.settings.category = state.category;
-    saveSettings();
-    saveSession({ force: true });
-    renderCategories();
+    setCategory(btn.dataset.category);
   });
 
   els.recentTasks.addEventListener("click", (event) => {
@@ -2359,9 +4135,7 @@ function bindEvents() {
       (s) => (s.task || "").toLocaleLowerCase("es") === task.toLocaleLowerCase("es")
     );
     if (match && CATEGORIES[match.category]) {
-      state.category = match.category;
-      state.settings.category = match.category;
-      saveSettings();
+      setCategory(match.category, { toast: false });
     }
     saveSession({ force: true });
     renderCategories();
@@ -2401,6 +4175,18 @@ function bindEvents() {
         skipSessionNote();
         return;
       }
+      if (els.dayOverlay && !els.dayOverlay.hidden) {
+        hideDaySummary();
+        return;
+      }
+      if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) {
+        hideShortcuts();
+        return;
+      }
+      if (els.intentionOverlay && !els.intentionOverlay.hidden) {
+        commitIntention({ skip: true });
+        return;
+      }
       if (state.openSheet) closeSheet();
       return;
     }
@@ -2412,6 +4198,9 @@ function bindEvents() {
     if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
     if (!els.confirmOverlay.hidden || !els.goalOverlay.hidden) return;
     if (els.noteOverlay && !els.noteOverlay.hidden) return;
+    if (els.dayOverlay && !els.dayOverlay.hidden) return;
+    if (els.shortcutsOverlay && !els.shortcutsOverlay.hidden) return;
+    if (els.intentionOverlay && !els.intentionOverlay.hidden) return;
     if (state.openSheet) return;
 
     const key = event.key.toLowerCase();
@@ -2443,7 +4232,27 @@ function bindEvents() {
     }
     if (key === "?") {
       event.preventDefault();
-      showToast("Espacio pausa · R reinicia · S salta · +1 · 1/2/3 presets", { duration: 4200 });
+      showShortcuts();
+      return;
+    }
+    if (key === "l") {
+      event.preventDefault();
+      repeatLastBlock();
+      return;
+    }
+    if (key === "d") {
+      event.preventDefault();
+      toggleDeepFocus();
+      return;
+    }
+    if (key === "i") {
+      event.preventDefault();
+      showIntentionPrompt();
+      return;
+    }
+    if (key === "p") {
+      event.preventDefault();
+      printDayReport();
     }
   });
 }
@@ -2532,6 +4341,7 @@ function dismissRitual() {
   if (!els.ritualOverlay) return;
   els.ritualOverlay.hidden = true;
   localStorage.setItem(RITUAL_KEY, "1");
+  setTimeout(maybeShowIntention, 500);
 }
 
 function setupRitual() {
@@ -2570,10 +4380,40 @@ function setupRitual() {
   setTimeout(() => els.ritualTask?.focus(), 350);
 }
 
+function scheduleDaySummary() {
+  setTimeout(() => {
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    maybeShowDaySummary();
+  }, 1400);
+}
+
+function maybeNudgeStreak() {
+  const hour = new Date().getHours();
+  if (hour < 17 || hour >= 22) return;
+  if (countTodayFocus() > 0) return;
+  if (!canUseStreakFreeze()) return;
+  const key = `foco-streak-nudge-${todayKey()}`;
+  if (localStorage.getItem(key) === "1") return;
+  localStorage.setItem(key, "1");
+  showToast(`Racha en riesgo · ${currentStreak()} días`, {
+    actionLabel: "Proteger",
+    onAction: () => {
+      askConfirm({
+        title: "¿Proteger la racha?",
+        text: "Cuenta hoy como día de racha sin enfoque. Solo una vez por semana.",
+        okLabel: "Proteger",
+        onConfirm: useStreakFreeze,
+      });
+    },
+    duration: 7000,
+  });
+}
+
 function init() {
   if (CATEGORIES[state.settings.category]) {
     state.category = state.settings.category;
   }
+  applyAtmosphere(state.settings.atmosphere);
   bindEvents();
   buildRingTicks();
   if (!restoreSession()) {
@@ -2584,9 +4424,20 @@ function init() {
   }
   updateThemeColor();
   setInterval(updateThemeColor, 60_000);
+  renderWallClock();
+  setInterval(renderWallClock, 15_000);
   registerSW();
+  setupOfflineBadge();
   setupRitual();
   setupInstallTip();
+  setupWeeklyRecap();
+  scheduleDaySummary();
+  setTimeout(maybeNudgeStreak, 2200);
+  setTimeout(maybeNudgePeakBand, 2800);
+  setTimeout(() => {
+    if (els.ritualOverlay && !els.ritualOverlay.hidden) return;
+    maybeShowIntention();
+  }, 1800);
 }
 
 init();
