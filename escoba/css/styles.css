@@ -651,23 +651,36 @@ body::before {
 
 .deck-stack {
   position: absolute;
-  top: 12px;
-  right: 14px;
-  width: 42px;
-  height: 62px;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 50px;
   z-index: 3;
   pointer-events: none;
 }
 
 .deck-layer {
   position: absolute;
-  inset: 0;
-  border-radius: 6px;
-  background:
-    linear-gradient(145deg, #2a1a12 0%, #1a100c 55%, #3d2412 100%);
-  border: 1px solid rgba(224, 179, 77, 0.35);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transform: translate(calc(var(--i) * -1.5px), calc(var(--i) * -1.5px));
+  left: 0;
+  bottom: 0;
+  width: 34px;
+  height: 50px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #1a100c;
+  border: 1px solid rgba(224, 179, 77, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  /* Solo hacia arriba: no se ensancha al lado */
+  transform: translateY(calc(var(--i) * -2px));
+  z-index: calc(1 + var(--i));
+}
+
+.deck-layer .card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
 }
 
 .deck-count {
@@ -676,11 +689,11 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: rgba(244, 235, 224, 0.85);
-  z-index: 2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  color: #fff8ee;
+  z-index: 5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.45);
 }
 
 .deck-count.tick {
@@ -906,9 +919,9 @@ button.card {
 }
 
 .pile {
-  width: 58px;
+  width: 44px;
   flex-shrink: 0;
-  min-height: 64px;
+  min-height: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -925,7 +938,7 @@ button.card {
 .pile:active { background: rgba(255,255,255,0.06); }
 
 .pile-empty {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: rgba(244,235,224,0.35);
   text-align: center;
   padding: 6px 2px;
@@ -933,66 +946,81 @@ button.card {
 
 .pile-stage {
   position: relative;
-  width: 42px;
-  height: 58px;
-  overflow: hidden; /* no deja que el montón se escape */
+  width: 28px;
+  height: 46px;
+  overflow: hidden;
 }
 
 .pile-stack {
   position: absolute;
   left: 50%;
-  bottom: 1px;
-  width: 28px;
-  height: 42px;
-  margin-left: -14px;
+  bottom: 0;
+  width: 22px;
+  height: 44px;
+  margin-left: -11px;
 }
 
 .pile-stack .card.tiny {
   position: absolute;
-  width: 28px !important;
-  height: 42px !important;
+  width: 22px !important;
+  height: 32px !important;
   left: 0;
-  top: 0;
-  border-radius: 5px;
-  /* Solo vertical, sin abrirse al lado */
-  transform: translate(0, calc(var(--i) * -1.05px));
-  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  bottom: 0;
+  border-radius: 3px;
+  transform: translateY(calc(var(--y, 0) * -1px));
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
   z-index: calc(1 + var(--i));
   transition: none;
 }
 
-/* Escobas: perpendiculares, finas y centradas */
-.pile-stack .card.tiny.escoba-mark {
-  width: 24px !important;
-  height: 36px !important;
-  left: 2px;
-  top: 3px;
-  transform: translate(0, calc(var(--i) * -1.05px)) rotate(90deg);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(224, 179, 77, 0.45);
+/* Escoba = franja boca abajo que asoma bajo las cartas (ancho fijo) */
+.pile-stack .escoba-mark.escoba-slab {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 22px;
+  height: 6px;
+  border-radius: 1px;
+  overflow: hidden;
+  transform: translateY(calc(var(--y, 0) * -1px));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(224, 179, 77, 0.7);
+  background: #1a100c;
   z-index: calc(2 + var(--i));
+  pointer-events: none;
 }
 
-.pile-stack .card.tiny.escoba-mark-new {
-  animation: escobaMarkIn 0.45s cubic-bezier(.22,.8,.3,1) both;
+.pile-stack .escoba-mark.escoba-slab .card-img {
+  width: 22px;
+  height: 32px;
+  object-fit: cover;
+  object-position: center 40%;
+  margin-top: -12px;
+  display: block;
+  pointer-events: none;
+}
+
+.pile-stack .escoba-mark-new {
+  animation: escobaMarkIn 0.4s cubic-bezier(.22,.8,.3,1) both;
 }
 
 @keyframes escobaMarkIn {
   0% {
     opacity: 0;
-    transform: translate(0, calc(var(--i) * -1.05px + 5px)) rotate(35deg) scale(1.08);
+    transform: translateY(calc(var(--y, 0) * -1px + 5px)) scaleX(0.65);
   }
   100% {
     opacity: 1;
-    transform: translate(0, calc(var(--i) * -1.05px)) rotate(90deg) scale(1);
+    transform: translateY(calc(var(--y, 0) * -1px)) scaleX(1);
   }
 }
 
-/* Legacy wrapper (por si queda vacío) */
+/* Legacy */
 .pile-escobas { display: none; }
+.pile-stack .card.tiny.escoba-mark { display: none; }
 
 .pile-meta {
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   color: rgba(244,235,224,0.6);
   font-weight: 600;
   text-align: center;
@@ -1016,23 +1044,26 @@ button.card {
 }
 
 @media (max-height: 780px) {
-  .pile { width: 52px; min-height: 58px; }
-  .pile-stage { width: 38px; height: 52px; }
+  .pile { width: 40px; min-height: 50px; }
+  .pile-stage { width: 26px; height: 42px; }
   .pile-stack {
-    width: 26px;
-    height: 38px;
-    margin-left: -13px;
+    width: 20px;
+    height: 40px;
+    margin-left: -10px;
   }
   .pile-stack .card.tiny {
-    width: 26px !important;
-    height: 38px !important;
+    width: 20px !important;
+    height: 30px !important;
   }
-  .pile-stack .card.tiny.escoba-mark {
-    width: 22px !important;
-    height: 32px !important;
-    left: 2px;
-    top: 3px;
+  .pile-stack .escoba-mark.escoba-slab {
+    width: 20px;
   }
+  .pile-stack .escoba-mark.escoba-slab .card-img {
+    width: 20px;
+    height: 30px;
+  }
+  .deck-stack { width: 30px; height: 44px; }
+  .deck-layer { width: 30px; height: 44px; }
   .live-stats { padding: 7px 9px; }
 }
 
@@ -1459,7 +1490,8 @@ button.card {
   top: 34%;
 }
 
-.card.ghosting {
+.card.ghosting,
+.escoba-mark.ghosting {
   opacity: 0 !important;
   pointer-events: none !important;
 }
