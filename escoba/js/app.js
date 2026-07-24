@@ -49,6 +49,8 @@ const state = {
   feltClearedUntil: 0,
   feltClearTimer: null,
   heroIdle: null,
+  heroLandTimer: null,
+  heroTiltCleanup: null,
   guestPoll: null,
   netChain: Promise.resolve(),
   nameHelloSent: false,
