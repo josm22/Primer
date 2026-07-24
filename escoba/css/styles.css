@@ -430,15 +430,6 @@ body::before {
   }
 }
 
-@keyframes cueIn {
-  from { opacity: 0; transform: translateY(10px); letter-spacing: 0.4em; filter: blur(4px); }
-  to { opacity: 1; transform: none; letter-spacing: 0.18em; filter: none; }
-}
-
-@keyframes cueOut {
-  to { opacity: 0; transform: translateY(-8px) scale(0.96); filter: blur(3px); }
-}
-
 @keyframes cardSwept {
   0% {
     opacity: 1;
@@ -1019,47 +1010,6 @@ body::before {
     0 20px 44px rgba(0, 0, 0, 0.28);
 }
 
-.home-cue {
-  position: absolute;
-  left: 50%;
-  top: 2%;
-  z-index: 3;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.42em;
-  transform: translateX(-50%);
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: clamp(0.78rem, 3.4vw, 1rem);
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(239, 197, 106, 0.88);
-  opacity: 1;
-  pointer-events: none;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-  max-width: 92%;
-}
-
-.home-cue span {
-  display: inline-block;
-  opacity: 0;
-}
-
-#screenHome.is-cue .home-cue .ew-mesa {
-  animation: cueIn 0.6s cubic-bezier(.18,.85,.25,1) calc(0.05s + var(--w, 0) * 0.12s) forwards;
-}
-
-#screenHome.is-ready .home-cue .ew-ready {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
-}
-
-#screenHome.is-sweeping .home-cue,
-#screenHome.is-brand .home-cue {
-  animation: cueOut 0.4s ease forwards;
-}
-
 .home-birth-flash {
   position: absolute;
   left: 42%;
@@ -1112,9 +1062,28 @@ body::before {
   -webkit-text-fill-color: currentColor;
 }
 
-#screenHome.is-brand.is-ready .brand-home .brand-sub .ew,
-#screenHome.is-playable .brand-home .brand-sub .ew {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.06s + var(--w, 0) * 0.08s) forwards;
+/* Misma posición fija del subtítulo: primero «La mesa», luego «está lista» */
+#screenHome.is-cue .brand-home .brand-sub .ew-mesa {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.05s + var(--w, 0) * 0.1s) forwards;
+}
+
+#screenHome.is-ready .brand-home .brand-sub .ew-ready {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
+}
+
+/* Permanecen visibles en su sitio (sin moverse ni recrearse) */
+#screenHome.is-ready .brand-home .brand-sub .ew-mesa,
+#screenHome.is-sum15 .brand-home .brand-sub .ew-mesa,
+#screenHome.is-sweeping .brand-home .brand-sub .ew-mesa,
+#screenHome.is-brand .brand-home .brand-sub .ew-mesa,
+#screenHome.is-playable .brand-home .brand-sub .ew-mesa,
+#screenHome.is-sum15 .brand-home .brand-sub .ew-ready,
+#screenHome.is-sweeping .brand-home .brand-sub .ew-ready,
+#screenHome.is-brand .brand-home .brand-sub .ew-ready,
+#screenHome.is-playable .brand-home .brand-sub .ew-ready {
+  opacity: 1;
+  transform: none;
+  filter: none;
 }
 
 #screenHome.is-flourish .brand-home .brand-sub .ew {
@@ -2813,11 +2782,7 @@ button.card {
   .home-broom .broom-svg,
   .home-sweep-trail,
   .home-birth-flash,
-  .home-cue,
   .home-sum15 { animation: none; opacity: 0; }
-  .home-cue span,
-  .home-cue .ew-mesa,
-  .home-cue .ew-ready,
   .brand-home .brand-sub .ew { opacity: 1; }
   .hero-art { transition: none; transform: none; }
   #screenHome .hero-art .mini-card::after,

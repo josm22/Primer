@@ -2519,7 +2519,7 @@ function startHeroIdle() {
   buildHeroFan(hand15, { animateDeal: !reduceMotion });
 
   if (reduceMotion) {
-    setHomeStage('is-brand', 'is-ready', 'is-playable', 'is-landed');
+    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed');
     state.heroIntroDone = true;
     buildHeroFan(pickDecorHand(5), { animateDeal: false });
     startIdleLoop();
@@ -2538,7 +2538,7 @@ function startHeroIdle() {
     }
   }, 2750);
   heroLater(() => {
-    setHomeStage('is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
@@ -2553,7 +2553,7 @@ function startHeroIdle() {
   }, 3600);
   // ~66% del barrido (1.85s): vuelve al medio y trae ESCOBA hacia la izquierda
   heroLater(() => {
-    setHomeStage('is-ready', 'is-landed', 'is-sweeping', 'is-brand');
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sweeping', 'is-brand');
     if (audioCtx?.state === 'running') {
       tone(392, 0.07, 'sine', 0.03);
       setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
@@ -2561,10 +2561,10 @@ function startHeroIdle() {
     }
   }, 4800);
   heroLater(() => {
-    setHomeStage('is-brand', 'is-ready', 'is-landed');
+    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-landed');
   }, 5600);
   heroLater(() => {
-    setHomeStage('is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
+    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
@@ -2589,7 +2589,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=72').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=73').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
