@@ -2315,7 +2315,7 @@ function startHeroIdle() {
     }, 1000);
   };
   clearTimeout(state.heroLandTimer);
-  state.heroLandTimer = setTimeout(markLanded, 1350);
+  state.heroLandTimer = setTimeout(markLanded, 1880);
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = window.matchMedia('(pointer: fine)').matches;
   if (!reduceMotion && finePointer && visual) {

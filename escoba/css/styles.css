@@ -283,19 +283,40 @@ body::before {
 
 @keyframes listaReady {
   0% {
-    color: rgba(224, 179, 77, 0.72);
-    transform: scale(1);
+    opacity: 0;
+    color: rgba(224, 179, 77, 0.55);
+    transform: translateY(8px) scale(0.94);
     text-shadow: none;
+    filter: blur(4px);
   }
-  42% {
+  48% {
+    opacity: 1;
     color: #fff8e0;
-    transform: scale(1.1);
+    transform: translateY(-2px) scale(1.1);
     text-shadow: 0 0 22px rgba(239, 197, 106, 0.55);
+    filter: blur(0);
   }
   100% {
+    opacity: 1;
     color: #fff0b8;
-    transform: scale(1);
+    transform: none;
     text-shadow: 0 0 12px rgba(239, 197, 106, 0.28);
+    filter: none;
+  }
+}
+
+@keyframes readyIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+    filter: blur(4px);
+    letter-spacing: 0.32em;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    letter-spacing: 0.16em;
   }
 }
 
@@ -433,7 +454,7 @@ body::before {
   box-shadow: none;
   border-radius: 0;
   overflow: visible;
-  animation: homeBloom 1s cubic-bezier(.18,.9,.24,1) both;
+  animation: homeBloom 1s cubic-bezier(.18,.9,.24,1) 0.05s both;
 }
 
 .home-glow {
@@ -496,14 +517,14 @@ body::before {
   pointer-events: none;
   z-index: 1;
   opacity: 0;
-  animation: homeRipple 1.15s cubic-bezier(.18,.8,.3,1) 0.95s both;
+  animation: homeRipple 1.15s cubic-bezier(.18,.8,.3,1) 1.55s both;
 }
 
 .home-ripple--late {
   width: 210px;
   height: 52px;
   border-color: rgba(255, 246, 214, 0.22);
-  animation-delay: 1.18s;
+  animation-delay: 1.78s;
   animation-duration: 1.35s;
 }
 
@@ -532,7 +553,7 @@ body::before {
   filter: blur(5px);
   pointer-events: none;
   z-index: 1;
-  animation: fanShadowBreath 4.8s ease-in-out 1.5s infinite;
+  animation: fanShadowBreath 4.8s ease-in-out 2.1s infinite;
 }
 
 .home-visual.is-flourish .home-fan-shadow,
@@ -588,8 +609,8 @@ body::before {
   opacity: 0;
   --sway: 1.2deg;
   animation:
-    heroDeal 1.2s cubic-bezier(.12,.88,.2,1) calc(0.05s + var(--i, 0) * 0.12s) forwards,
-    floatSuit 4.8s ease-in-out calc(1.35s + var(--i, 0) * 0.12s) infinite;
+    heroDeal 1.2s cubic-bezier(.12,.88,.2,1) calc(0.55s + var(--i, 0) * 0.12s) forwards,
+    floatSuit 4.8s ease-in-out calc(1.9s + var(--i, 0) * 0.12s) infinite;
   padding: 0;
 }
 
@@ -617,8 +638,8 @@ body::before {
   );
   transform: translateX(-130%) skewX(-14deg);
   animation:
-    cardSheen 1.2s ease calc(1.15s + var(--i, 0) * 0.1s) both,
-    cardSheenLoop 5.8s ease-in-out calc(2.4s + var(--i, 0) * 0.28s) infinite;
+    cardSheen 1.2s ease calc(1.55s + var(--i, 0) * 0.1s) both,
+    cardSheenLoop 5.8s ease-in-out calc(2.9s + var(--i, 0) * 0.28s) infinite;
   pointer-events: none;
   z-index: 2;
 }
@@ -680,7 +701,7 @@ body::before {
   flex-wrap: wrap;
   justify-content: center;
   align-items: baseline;
-  gap: 0.38em;
+  gap: 0.38em 0.42em;
   position: relative;
   margin: 0 auto 12px;
   font-size: 0.24em;
@@ -691,6 +712,32 @@ body::before {
   color: rgba(224, 179, 77, 0.78);
   line-height: 1.2;
   max-width: 22em;
+}
+
+.brand-home .brand-eyebrow .ew-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.38em;
+}
+
+.brand-home .brand-eyebrow .ew-group-ready {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  gap: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+#screenHome.is-landed .brand-home .brand-eyebrow .ew-group-ready {
+  opacity: 1;
+  max-width: 12em;
+  overflow: visible;
+  gap: 0.38em;
+  pointer-events: auto;
+  transition: none;
 }
 
 .brand-home .brand-eyebrow::after {
@@ -707,7 +754,7 @@ body::before {
 }
 
 #screenHome.is-landed .brand-home .brand-eyebrow::after {
-  animation: eyebrowRule 0.7s cubic-bezier(.22,.8,.3,1) 0.08s forwards;
+  animation: eyebrowRule 0.7s cubic-bezier(.22,.8,.3,1) 0.12s forwards;
 }
 
 .brand-home .brand-eyebrow .ew {
@@ -721,7 +768,20 @@ body::before {
   text-transform: uppercase;
   color: rgba(224, 179, 77, 0.78);
   -webkit-text-fill-color: currentColor;
-  animation: ewIn 0.58s cubic-bezier(.18,.85,.25,1) calc(0.38s + var(--w, 0) * 0.13s) forwards;
+}
+
+/* Acto 1: «La mesa» con el felt */
+.brand-home .brand-eyebrow .ew-group-mesa .ew {
+  animation: ewIn 0.62s cubic-bezier(.18,.85,.25,1) calc(0.06s + var(--w, 0) * 0.12s) forwards;
+}
+
+/* Acto 3: «está lista» al aterrizar las cartas */
+.brand-home .brand-eyebrow .ew-group-ready .ew {
+  animation: none;
+}
+
+#screenHome.is-landed .brand-home .brand-eyebrow .ew-group-ready .ew:not(.ew-lista) {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) 0.02s forwards;
 }
 
 .brand-home .brand-eyebrow .ew-lista {
@@ -734,8 +794,8 @@ body::before {
 
 #screenHome.is-landed .brand-home .brand-eyebrow .ew-lista {
   animation:
-    listaReady 0.8s cubic-bezier(.18,.85,.25,1) both,
-    listaInk 0.55s cubic-bezier(.22,.8,.3,1) 0.12s forwards;
+    listaReady 0.78s cubic-bezier(.18,.85,.25,1) 0.1s both,
+    listaInk 0.55s cubic-bezier(.22,.8,.3,1) 0.28s forwards;
 }
 
 #screenHome.is-flourish .brand-home .brand-eyebrow .ew-lista {
@@ -759,8 +819,8 @@ body::before {
   color: transparent;
   -webkit-text-fill-color: transparent;
   animation:
-    brandIn 1.15s cubic-bezier(.14,.86,.2,1) 0.72s both,
-    brandShimmer 7.5s ease-in-out 2.5s infinite;
+    brandIn 1.15s cubic-bezier(.14,.86,.2,1) 1.95s both,
+    brandShimmer 7.5s ease-in-out 3.2s infinite;
   filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.2));
 }
 
@@ -773,8 +833,8 @@ body::before {
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, #fff6d6, #efc56a, transparent);
   animation:
-    brandRule 1s cubic-bezier(.22,.8,.3,1) 1.35s forwards,
-    brandRuleGlow 3.8s ease-in-out 2.5s 2;
+    brandRule 1s cubic-bezier(.22,.8,.3,1) 2.35s forwards,
+    brandRuleGlow 3.8s ease-in-out 3.4s 2;
 }
 
 .brand-home > span:not(.brand-eyebrow) {
