@@ -733,13 +733,9 @@ body::before {
 }
 
 #screenHome.is-landed .brand-home .brand-eyebrow .ew-lista {
-  background-size: 100% 1.5px;
-  animation: listaReady 0.8s cubic-bezier(.18,.85,.25,1) both;
-}
-
-#screenHome.is-landed .brand-home .brand-eyebrow .ew-lista.is-inking,
-#screenHome.is-landed:not(.is-flourish) .brand-home .brand-eyebrow .ew-lista {
-  /* keep underline after ready */
+  animation:
+    listaReady 0.8s cubic-bezier(.18,.85,.25,1) both,
+    listaInk 0.55s cubic-bezier(.22,.8,.3,1) 0.12s forwards;
 }
 
 #screenHome.is-flourish .brand-home .brand-eyebrow .ew-lista {
