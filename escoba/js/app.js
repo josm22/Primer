@@ -2538,21 +2538,26 @@ function startHeroIdle() {
   }, 2750);
   heroLater(() => {
     setHomeStage('is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
+    const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
+      const fromLeft = i / Math.max(1, n - 1);
       el.style.setProperty('--sweep-i', String(i));
+      el.style.setProperty('--sweep-dx', `${Math.round(18 + fromLeft * 72 + (i % 2) * 10)}px`);
+      el.style.setProperty('--sweep-dy', `${Math.round(-70 - (1 - fromLeft) * 70 - i * 8)}px`);
+      el.style.setProperty('--sweep-spin', `${Math.round(28 + fromLeft * 55 + (i % 2 ? 12 : -6))}deg`);
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
   }, 3600);
   heroLater(() => {
     setHomeStage('is-ready', 'is-landed', 'is-sweeping', 'is-brand');
-  }, 4450);
+  }, 4650);
   heroLater(() => {
     setHomeStage('is-ready', 'is-brand', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 5400);
+  }, 5600);
 }
 
 function stopHeroIdle() {
@@ -2573,7 +2578,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=69').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=70').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
