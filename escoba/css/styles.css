@@ -1740,21 +1740,23 @@ button.card {
 
 @media (max-height: 720px) {
   .brand { font-size: clamp(46px, 14vw, 68px); }
-  .brand-home { font-size: clamp(46px, 13vw, 64px); }
+  .brand-home { font-size: clamp(44px, 12.5vw, 60px); }
   .home-felt {
-    min-height: clamp(118px, 22vh, 160px);
-    padding: 14px 12px 18px;
+    min-height: clamp(100px, 18vh, 136px);
+    padding: 12px 10px 16px;
+    margin-top: 2px;
   }
-  .hero-art { margin-bottom: 0; min-height: 88px; }
+  .hero-art { margin-bottom: 0; min-height: 78px; }
   #screenHome .hero-art .mini-card {
-    width: clamp(46px, 13vw, 58px);
-    height: calc(clamp(46px, 13vw, 58px) * 1.52);
-    margin-left: -10px;
+    width: clamp(42px, 11.5vw, 52px);
+    height: calc(clamp(42px, 11.5vw, 52px) * 1.52);
+    margin-left: -9px;
   }
   .hero-art .mini-card { width: 44px; height: 68px; }
-  .home-copy { padding-top: 10px; }
-  #screenHome .tagline { font-size: 0.88rem; margin-bottom: 8px; }
+  .home-copy { padding-top: 8px; padding-bottom: 4px; }
+  #screenHome .tagline { font-size: 0.86rem; margin-bottom: 10px; }
   #screenHome .credit { display: none; }
+  #screenHome .name-field { margin-bottom: 12px; }
   .home-actions .btn-gold { padding: 12px 14px; }
   .home-actions .btn-primary,
   .home-actions .btn-ghost { padding: 11px 8px; font-size: 0.85rem; }
