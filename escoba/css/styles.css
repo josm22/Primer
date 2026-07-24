@@ -549,13 +549,13 @@ body::before {
   min-height: 0;
   pointer-events: none;
 }
-.spread-top { flex-grow: 1.25; }
+.spread-top { flex-grow: 1.55; }
 .spread-mid {
-  flex-grow: 0.28;
-  min-height: 10px;
-  max-height: 20px;
+  flex-grow: 0.3;
+  min-height: 12px;
+  max-height: 22px;
 }
-.spread-bot { flex-grow: 0.55; }
+.spread-bot { flex-grow: 0.28; }
 
 /* Mano + log como bloque, separados de la mesa por spread-mid */
 .player-dock {
@@ -1206,7 +1206,9 @@ button.card {
   .score-track { height: 2px; }
   .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
   .table-area { gap: 0; }
-  .spread-mid { min-height: 8px; max-height: 14px; }
+  .spread-top { flex-grow: 1.4; }
+  .spread-mid { min-height: 10px; max-height: 16px; }
+  .spread-bot { flex-grow: 0.22; }
   .player-dock { gap: 1px; padding-top: 0; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
