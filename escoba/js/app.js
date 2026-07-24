@@ -1067,8 +1067,6 @@ function render(opts = {}) {
   else if (nTable >= 3) tableScale = 1.42;
   felt.style.setProperty('--table-card-w', `calc(var(--card-w) * ${tableScale})`);
   felt.style.setProperty('--table-card-h', `calc(var(--card-h) * ${tableScale})`);
-
-  const wrap = felt.closest('.felt-wrap');
   wrap?.classList.toggle('felt-compact', nTable > 0 && nTable <= 5);
 
   if (!tableCards.length) {
