@@ -2297,15 +2297,22 @@ function startHeroIdle() {
     });
   };
   const markLanded = () => {
-    if (!visual) return;
-    visual.classList.add('is-landed');
+    const home = $('#screenHome');
+    home?.classList.add('is-landed');
+    visual?.classList.add('is-landed');
   };
   const pulseFlourish = () => {
-    if (!visual) return;
-    visual.classList.remove('is-flourish');
-    void visual.offsetWidth;
-    visual.classList.add('is-flourish');
-    setTimeout(() => visual.classList.remove('is-flourish'), 1000);
+    const home = $('#screenHome');
+    [home, visual].forEach((el) => {
+      if (!el) return;
+      el.classList.remove('is-flourish');
+      void el.offsetWidth;
+      el.classList.add('is-flourish');
+    });
+    setTimeout(() => {
+      home?.classList.remove('is-flourish');
+      visual?.classList.remove('is-flourish');
+    }, 1000);
   };
   clearTimeout(state.heroLandTimer);
   state.heroLandTimer = setTimeout(markLanded, 1350);
@@ -2406,11 +2413,12 @@ function stopHeroIdle() {
   state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
   document.querySelector('.home-visual')?.classList.remove('is-flourish');
+  $('#screenHome')?.classList.remove('is-flourish');
 }
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=64').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=65').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

@@ -266,6 +266,62 @@ body::before {
   to { opacity: 1; transform: none; letter-spacing: 0.22em; }
 }
 
+@keyframes ewIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+    filter: blur(5px);
+    letter-spacing: 0.38em;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    letter-spacing: 0.16em;
+  }
+}
+
+@keyframes listaReady {
+  0% {
+    color: rgba(224, 179, 77, 0.72);
+    transform: scale(1);
+    text-shadow: none;
+  }
+  42% {
+    color: #fff8e0;
+    transform: scale(1.1);
+    text-shadow: 0 0 22px rgba(239, 197, 106, 0.55);
+  }
+  100% {
+    color: #fff0b8;
+    transform: scale(1);
+    text-shadow: 0 0 12px rgba(239, 197, 106, 0.28);
+  }
+}
+
+@keyframes listaPulse {
+  0%, 100% {
+    color: #fff0b8;
+    text-shadow: 0 0 12px rgba(239, 197, 106, 0.28);
+    transform: scale(1);
+  }
+  45% {
+    color: #fff8e0;
+    text-shadow: 0 0 20px rgba(239, 197, 106, 0.5);
+    transform: scale(1.06);
+  }
+}
+
+@keyframes eyebrowRule {
+  from { width: 0; opacity: 0; }
+  to { width: min(220px, 64vw); opacity: 1; }
+}
+
+@keyframes listaInk {
+  from { background-size: 0% 1.5px; }
+  to { background-size: 100% 1.5px; }
+}
+
 @keyframes tagBitIn {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
   to { opacity: 1; transform: none; }
@@ -419,11 +475,13 @@ body::before {
   filter: blur(2px);
 }
 
-.home-visual.is-landed .home-felt-kiss {
+.home-visual.is-landed .home-felt-kiss,
+#screenHome.is-landed .home-felt-kiss {
   animation: feltKissIn 0.9s cubic-bezier(.18,.85,.25,1) both;
 }
 
-.home-visual.is-flourish .home-felt-kiss {
+.home-visual.is-flourish .home-felt-kiss,
+#screenHome.is-flourish .home-felt-kiss {
   animation: feltKissPulse 0.95s cubic-bezier(.18,.85,.25,1) both;
 }
 
@@ -477,7 +535,8 @@ body::before {
   animation: fanShadowBreath 4.8s ease-in-out 1.5s infinite;
 }
 
-.home-visual.is-flourish .home-fan-shadow {
+.home-visual.is-flourish .home-fan-shadow,
+#screenHome.is-flourish .home-fan-shadow {
   animation: feltKissPulse 0.95s cubic-bezier(.18,.85,.25,1) both;
   filter: blur(6px);
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.58), transparent 72%);
@@ -538,7 +597,8 @@ body::before {
 #screenHome .hero-art .mini-card:nth-child(5) { --sway: 1.6deg; }
 #screenHome .hero-art .mini-card:nth-child(3) { --sway: 0.6deg; }
 
-.home-visual.is-landed .hero-art .mini-card:nth-child(3) {
+.home-visual.is-landed .hero-art .mini-card:nth-child(3),
+#screenHome.is-landed .hero-art .mini-card:nth-child(3) {
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.45),
     0 0 0 1.5px rgba(239, 197, 106, 0.42),
@@ -609,10 +669,82 @@ body::before {
   font-size: clamp(54px, 15.5vw, 80px);
   margin: 0;
   text-align: center;
-  animation: brandIn 1.2s cubic-bezier(.14,.86,.2,1) 0.45s both;
+  animation: none;
   text-shadow:
     0 4px 0 rgba(0, 0, 0, 0.22),
     0 20px 44px rgba(0, 0, 0, 0.28);
+}
+
+.brand-home .brand-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.38em;
+  position: relative;
+  margin: 0 auto 12px;
+  font-size: 0.24em;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(224, 179, 77, 0.78);
+  line-height: 1.2;
+  max-width: 22em;
+}
+
+.brand-home .brand-eyebrow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  height: 1px;
+  width: 0;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgba(239, 197, 106, 0.85), transparent);
+  opacity: 0;
+}
+
+#screenHome.is-landed .brand-home .brand-eyebrow::after {
+  animation: eyebrowRule 0.7s cubic-bezier(.22,.8,.3,1) 0.08s forwards;
+}
+
+.brand-home .brand-eyebrow .ew {
+  display: inline-block;
+  opacity: 0;
+  margin: 0;
+  font-size: 1em;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(224, 179, 77, 0.78);
+  -webkit-text-fill-color: currentColor;
+  animation: ewIn 0.58s cubic-bezier(.18,.85,.25,1) calc(0.38s + var(--w, 0) * 0.13s) forwards;
+}
+
+.brand-home .brand-eyebrow .ew-lista {
+  position: relative;
+  color: rgba(224, 179, 77, 0.62);
+  -webkit-text-fill-color: currentColor;
+  background: linear-gradient(90deg, currentColor, currentColor) bottom / 0% 1.5px no-repeat;
+  padding-bottom: 2px;
+}
+
+#screenHome.is-landed .brand-home .brand-eyebrow .ew-lista {
+  background-size: 100% 1.5px;
+  animation: listaReady 0.8s cubic-bezier(.18,.85,.25,1) both;
+}
+
+#screenHome.is-landed .brand-home .brand-eyebrow .ew-lista.is-inking,
+#screenHome.is-landed:not(.is-flourish) .brand-home .brand-eyebrow .ew-lista {
+  /* keep underline after ready */
+}
+
+#screenHome.is-flourish .brand-home .brand-eyebrow .ew-lista {
+  background-size: 100% 1.5px;
+  animation: listaPulse 0.85s cubic-bezier(.18,.85,.25,1) both;
 }
 
 .brand-word {
@@ -630,7 +762,9 @@ body::before {
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: brandShimmer 7.5s ease-in-out 2.4s infinite;
+  animation:
+    brandIn 1.15s cubic-bezier(.14,.86,.2,1) 0.72s both,
+    brandShimmer 7.5s ease-in-out 2.5s infinite;
   filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.2));
 }
 
@@ -643,11 +777,11 @@ body::before {
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, #fff6d6, #efc56a, transparent);
   animation:
-    brandRule 1s cubic-bezier(.22,.8,.3,1) 1.15s forwards,
-    brandRuleGlow 3.8s ease-in-out 2.3s 2;
+    brandRule 1s cubic-bezier(.22,.8,.3,1) 1.35s forwards,
+    brandRuleGlow 3.8s ease-in-out 2.5s 2;
 }
 
-.brand-home span {
+.brand-home > span:not(.brand-eyebrow) {
   font-size: 0.24em;
   letter-spacing: 0.22em;
   margin-bottom: 8px;
@@ -2309,6 +2443,7 @@ button.card {
   .brand-home,
   .brand-home::after,
   .brand-home span,
+  .brand-home .brand-eyebrow .ew,
   .brand-word,
   .home-copy,
   #screenHome .name-field,
@@ -2325,6 +2460,21 @@ button.card {
     -webkit-text-fill-color: var(--cream);
     background: none;
     filter: none;
+  }
+  .brand-home .brand-eyebrow .ew,
+  .brand-home .brand-eyebrow .ew-lista {
+    opacity: 1;
+    color: #fff0b8;
+    -webkit-text-fill-color: #fff0b8;
+    letter-spacing: 0.16em;
+    background-size: 100% 1.5px;
+    filter: none;
+    transform: none;
+    text-shadow: none;
+  }
+  .brand-home .brand-eyebrow::after {
+    width: min(220px, 64vw);
+    opacity: 1;
   }
   .brand-home::after { width: min(190px, 50vw); opacity: 1; }
   #screenHome .name-field input {
