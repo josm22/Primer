@@ -343,6 +343,27 @@ body::before {
   100% { opacity: 1; transform: translate(-50%, -52%) scale(1); filter: none; }
 }
 
+@keyframes sum15Cinch {
+  0% {
+    transform:
+      rotate(var(--fan, 0deg))
+      translateY(var(--lift, 0px))
+      scale(var(--sc, 1));
+  }
+  55% {
+    transform:
+      rotate(calc(var(--fan, 0deg) * 0.55))
+      translateY(calc(var(--lift, 0px) - 6px))
+      scale(calc(var(--sc, 1) * 1.04));
+  }
+  100% {
+    transform:
+      rotate(calc(var(--fan, 0deg) * 0.72))
+      translateY(calc(var(--lift, 0px) - 2px))
+      scale(calc(var(--sc, 1) * 1.02));
+  }
+}
+
 @keyframes sum15Fade {
   to { opacity: 0; transform: translate(-50%, -70%) scale(0.85); }
 }
@@ -362,24 +383,24 @@ body::before {
   }
   /* barrido a la derecha (empuja cartas) */
   38% {
-    transform: translate(58%, 2%) rotate(10deg) scale(1.08);
+    transform: translate(62%, 0%) rotate(12deg) scale(1.1);
   }
   /* vuelve al medio */
   56% {
-    transform: translate(4%, -6%) rotate(-4deg) scale(1.02);
-    filter: brightness(1.15);
+    transform: translate(4%, -8%) rotate(-4deg) scale(1.04);
+    filter: brightness(1.18);
   }
   /* pausa en el medio y empieza a llevar ESCOBA */
   66% {
     opacity: 1;
-    transform: translate(-2%, -18%) rotate(-8deg) scale(0.92);
-    filter: brightness(1.35);
+    transform: translate(-2%, -22%) rotate(-10deg) scale(0.9);
+    filter: brightness(1.4);
   }
   /* desaparece por la izquierda trayendo la palabra */
   100% {
     opacity: 0;
-    transform: translate(-120%, -28%) rotate(-28deg) scale(0.55);
-    filter: brightness(1.8) blur(2px);
+    transform: translate(-128%, -34%) rotate(-32deg) scale(0.48);
+    filter: brightness(1.85) blur(2.5px);
   }
 }
 
@@ -393,16 +414,16 @@ body::before {
 
 @keyframes sweepTrail {
   0% { opacity: 0; transform: translate(-50%, 18%) scaleX(0.15) rotate(-12deg); }
-  20% { opacity: 0.45; }
-  38% { opacity: 0.75; transform: translate(35%, 2%) scaleX(1.25) rotate(6deg); }
-  56% { opacity: 0.5; transform: translate(0%, -4%) scaleX(0.9) rotate(-2deg); }
-  100% { opacity: 0; transform: translate(-55%, -12%) scaleX(1.1) rotate(-10deg); }
+  20% { opacity: 0.5; }
+  38% { opacity: 0.82; transform: translate(38%, 0%) scaleX(1.35) rotate(6deg); }
+  56% { opacity: 0.55; transform: translate(0%, -6%) scaleX(0.95) rotate(-2deg); }
+  100% { opacity: 0; transform: translate(-58%, -14%) scaleX(1.15) rotate(-10deg); }
 }
 
 @keyframes birthFlash {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.25); }
-  40% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.05); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  35% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.12); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); }
 }
 
 @keyframes brandBirth {
@@ -410,24 +431,31 @@ body::before {
   0% {
     opacity: 0;
     transform:
-      translate(calc(-110px + var(--bx, 0px)), calc(28px + var(--by, 0px)))
-      scale(0.18)
-      rotate(calc(-18deg + var(--br, 0deg)));
-    filter: blur(10px) brightness(2);
+      translate(calc(-150px + var(--bx, 0px)), calc(36px + var(--by, 0px)))
+      scale(0.12)
+      rotate(calc(-22deg + var(--br, 0deg)));
+    filter: blur(12px) brightness(2.2);
   }
-  55% {
+  48% {
     opacity: 1;
-    filter: blur(0) brightness(1.2);
-    transform: translate(4px, -8px) scale(1.08) rotate(0deg);
+    filter: blur(0) brightness(1.35);
+    transform: translate(6px, -10px) scale(1.12) rotate(0deg);
   }
-  78% {
-    transform: translate(-2px, 2px) scale(0.98);
+  72% {
+    transform: translate(-3px, 3px) scale(0.97);
+    filter: brightness(1.05);
   }
   100% {
     opacity: 1;
     transform: none;
     filter: none;
   }
+}
+
+@keyframes brandPlant {
+  0% { transform: scale(0.94); filter: brightness(1.25); }
+  55% { transform: scale(1.04); filter: brightness(1.1); }
+  100% { transform: none; filter: none; }
 }
 
 @keyframes cardSwept {
@@ -439,31 +467,31 @@ body::before {
       translateY(var(--lift, 0px))
       scale(var(--sc, 1));
   }
-  18% {
+  14% {
     opacity: 1;
     transform:
-      rotate(calc(var(--fan, 0deg) - 6deg))
-      translateY(calc(var(--lift, 0px) + 8px))
-      scale(calc(var(--sc, 1) * 0.98));
+      rotate(calc(var(--fan, 0deg) - 8deg))
+      translateY(calc(var(--lift, 0px) + 10px))
+      scale(calc(var(--sc, 1) * 0.97));
   }
-  42% {
+  40% {
     opacity: 1;
-    filter: brightness(1.15);
+    filter: brightness(1.2);
     transform:
-      rotate(calc(var(--fan, 0deg) + var(--sweep-spin, 40deg) * 0.35))
+      rotate(calc(var(--fan, 0deg) + var(--sweep-spin, 40deg) * 0.4))
       translate(
-        calc(var(--sweep-dx, 40px) * 0.35),
-        calc(var(--lift, 0px) - 28px)
+        calc(var(--sweep-dx, 40px) * 0.4),
+        calc(var(--lift, 0px) - 32px)
       )
-      scale(calc(var(--sc, 1) * 1.06));
+      scale(calc(var(--sc, 1) * 1.08));
   }
   100% {
     opacity: 0;
-    filter: brightness(1.3) blur(1.5px);
+    filter: brightness(1.35) blur(2px);
     transform:
       rotate(calc(var(--fan, 0deg) + var(--sweep-spin, 40deg)))
       translate(var(--sweep-dx, 48px), var(--sweep-dy, -130px))
-      scale(0.48);
+      scale(0.42);
   }
 }
 
@@ -546,6 +574,30 @@ body::before {
     radial-gradient(ellipse 50% 40% at 80% 10%, rgba(224, 179, 77, 0.12), transparent 65%);
   pointer-events: none;
   z-index: 0;
+  transition: filter 0.55s ease, opacity 0.55s ease;
+}
+
+#screenHome.is-dealing::before {
+  filter: brightness(1.08);
+}
+
+#screenHome.is-sum15::before {
+  filter: brightness(1.14) saturate(1.08);
+  opacity: 1;
+  background:
+    radial-gradient(ellipse 72% 58% at 50% 32%, rgba(48, 168, 108, 0.52), transparent 70%),
+    radial-gradient(ellipse 48% 42% at 50% 18%, rgba(239, 197, 106, 0.22), transparent 62%);
+}
+
+#screenHome.is-sweeping::before {
+  filter: brightness(1.05) saturate(0.95);
+}
+
+#screenHome.is-brand::before {
+  filter: brightness(1.12);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 28%, rgba(40, 150, 95, 0.48), transparent 70%),
+    radial-gradient(ellipse 46% 38% at 50% 8%, rgba(255, 230, 160, 0.16), transparent 65%);
 }
 
 .home-stage {
@@ -557,8 +609,8 @@ body::before {
   min-height: 0;
   justify-content: center;
   align-items: stretch;
-  padding: 16px 0 14px;
-  gap: clamp(14px, 3.2vh, 26px);
+  padding: 14px 0 12px;
+  gap: clamp(12px, 2.8vh, 22px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -569,11 +621,11 @@ body::before {
   flex: 0 0 auto;
   width: 100%;
   margin: 0 auto;
-  padding: 8px 8px 14px;
+  padding: 10px 8px 18px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: clamp(120px, 18vh, 156px);
+  min-height: clamp(148px, 24vh, 210px);
   background: none;
   box-shadow: none;
   border-radius: 0;
@@ -706,36 +758,52 @@ body::before {
 .home-sum15 span {
   display: grid;
   place-items: center;
-  min-width: 3.1rem;
-  height: 3.1rem;
+  min-width: 3.45rem;
+  height: 3.45rem;
   border-radius: 50%;
   font-family: var(--font-display);
-  font-size: 1.55rem;
+  font-size: 1.7rem;
   font-weight: 700;
   color: #2a1c0a;
   background: radial-gradient(circle at 35% 30%, #fff6d6, #efc56a 58%, #b8872a);
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.35),
-    0 0 0 2px rgba(255, 248, 231, 0.35) inset;
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 0 2px rgba(255, 248, 231, 0.4) inset,
+    0 0 28px rgba(239, 197, 106, 0.35);
 }
 
 #screenHome.is-sum15 .home-sum15 {
-  animation: sum15Pop 0.55s cubic-bezier(.18,.85,.25,1) both;
+  animation: sum15Pop 0.6s cubic-bezier(.18,.85,.25,1) both;
+}
+
+#screenHome.is-sum15 .home-felt-kiss {
+  animation: feltKissPulse 0.85s cubic-bezier(.18,.85,.25,1) both;
+}
+
+#screenHome.is-sum15 .home-fan-shadow {
+  animation: feltKissPulse 0.85s cubic-bezier(.18,.85,.25,1) both;
+  filter: blur(7px);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62), transparent 72%);
 }
 
 #screenHome.is-sweeping .home-sum15 {
   animation: sum15Fade 0.35s ease forwards;
 }
 
+#screenHome.is-sweeping .home-fan-shadow {
+  opacity: 0.25;
+  transition: opacity 0.35s ease;
+}
+
 .home-broom {
   position: absolute;
-  left: 6%;
-  bottom: 0;
+  left: 4%;
+  bottom: -2%;
   z-index: 5;
-  width: clamp(64px, 18vw, 86px);
+  width: clamp(72px, 20vw, 98px);
   opacity: 0;
   pointer-events: none;
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.45));
   transform-origin: 50% 12%;
 }
 
@@ -758,15 +826,15 @@ body::before {
   position: absolute;
   left: 50%;
   bottom: 18%;
-  width: min(280px, 88%);
-  height: 54px;
+  width: min(320px, 92%);
+  height: 62px;
   z-index: 3;
   opacity: 0;
   pointer-events: none;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at 30% 50%, rgba(255, 230, 160, 0.35), transparent 62%),
-    radial-gradient(ellipse at 60% 60%, rgba(212, 175, 55, 0.18), transparent 70%);
+    radial-gradient(ellipse at 30% 50%, rgba(255, 230, 160, 0.4), transparent 62%),
+    radial-gradient(ellipse at 60% 60%, rgba(212, 175, 55, 0.22), transparent 70%);
   filter: blur(4px);
   transform: translate(-50%, 0) scaleX(0.3);
 }
@@ -776,7 +844,7 @@ body::before {
 }
 
 #screenHome .hero-art .mini-card.is-swept {
-  animation: cardSwept 0.95s cubic-bezier(.18,.7,.22,1) calc(0.18s + var(--sweep-i, 0) * 0.09s) forwards !important;
+  animation: cardSwept 0.95s cubic-bezier(.18,.7,.22,1) calc(0.14s + var(--sweep-i, 0) * 0.08s) forwards !important;
   pointer-events: none;
   z-index: 4;
 }
@@ -803,9 +871,9 @@ body::before {
   justify-content: center;
   align-items: flex-end;
   gap: 0;
-  min-height: 112px;
+  min-height: 138px;
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
   margin: 0 auto;
   perspective: 920px;
   transform-style: preserve-3d;
@@ -818,15 +886,15 @@ body::before {
 
 #screenHome .hero-art .mini-card {
   position: relative;
-  width: clamp(56px, 15vw, 74px);
-  height: calc(clamp(56px, 15vw, 74px) * 1.52);
-  margin-left: -14px;
-  border-radius: 10px;
+  width: clamp(64px, 16.5vw, 86px);
+  height: calc(clamp(64px, 16.5vw, 86px) * 1.52);
+  margin-left: -16px;
+  border-radius: 11px;
   overflow: hidden;
   background: #1a100c;
   border: 1px solid rgba(28, 22, 18, 0.28);
   box-shadow:
-    0 18px 36px rgba(0, 0, 0, 0.45),
+    0 20px 40px rgba(0, 0, 0, 0.48),
     0 2px 0 rgba(255, 255, 255, 0.09) inset;
   transform-origin: 50% 110%;
   transform-style: preserve-3d;
@@ -835,6 +903,7 @@ body::before {
   --sway: 1.2deg;
   animation: none;
   padding: 0;
+  transition: box-shadow 0.35s ease, filter 0.35s ease;
 }
 
 #screenHome.is-dealing .hero-art .mini-card:not(.is-swept) {
@@ -853,12 +922,20 @@ body::before {
 #screenHome .hero-art .mini-card:nth-child(3) { --sway: 0.6deg; }
 
 #screenHome.is-sum15 .hero-art .mini-card:not(.is-swept) {
+  opacity: 1;
+  animation:
+    sum15Cinch 0.7s cubic-bezier(.18,.85,.25,1) both,
+    floatSuit 4.8s ease-in-out calc(0.75s + var(--i, 0) * 0.12s) infinite;
   box-shadow:
-    0 18px 36px rgba(0, 0, 0, 0.45),
-    0 0 0 2px rgba(239, 197, 106, 0.7),
-    0 0 22px rgba(239, 197, 106, 0.35),
+    0 20px 40px rgba(0, 0, 0, 0.48),
+    0 0 0 2.5px rgba(239, 197, 106, 0.78),
+    0 0 28px rgba(239, 197, 106, 0.42),
     0 2px 0 rgba(255, 255, 255, 0.09) inset;
-  filter: brightness(1.08);
+  filter: brightness(1.1);
+}
+
+#screenHome.is-landed .hero-art .mini-card:not(.is-swept) {
+  opacity: 1;
 }
 
 #screenHome .hero-art .mini-card::after {
@@ -915,7 +992,7 @@ body::before {
 
 #screenHome.is-playable .footer-links,
 #screenHome.is-playable .credit {
-  animation: stageReveal 0.6s ease 0.75s both;
+  animation: stageReveal 0.6s ease 1.05s both;
 }
 
 .home-copy {
@@ -958,11 +1035,11 @@ body::before {
 }
 
 #screenHome.is-playable .tagline span {
-  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.2s + var(--d, 0) * 0.12s) forwards;
+  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.45s + var(--d, 0) * 0.12s) forwards;
 }
 
 #screenHome.is-playable .tagline i {
-  animation: tagBitIn 0.45s ease calc(0.28s + 0.06s) forwards;
+  animation: tagBitIn 0.45s ease calc(0.52s + 0.06s) forwards;
 }
 
 #screenHome .name-field {
@@ -975,7 +1052,7 @@ body::before {
 }
 
 #screenHome.is-playable .name-field {
-  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 0.35s both;
+  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 0.62s both;
 }
 
 #screenHome .name-field input {
@@ -993,7 +1070,7 @@ body::before {
 }
 
 #screenHome.is-playable .name-field input {
-  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.5s both;
+  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.78s both;
 }
 
 .brand-home {
@@ -1001,33 +1078,37 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 0.12em;
-  font-size: clamp(54px, 15.5vw, 80px);
+  font-size: clamp(58px, 16.5vw, 88px);
   margin: 0;
   text-align: center;
   animation: none;
   text-shadow:
     0 4px 0 rgba(0, 0, 0, 0.22),
-    0 20px 44px rgba(0, 0, 0, 0.28);
+    0 22px 48px rgba(0, 0, 0, 0.3);
 }
 
 .home-birth-flash {
   position: absolute;
-  left: 42%;
-  top: 6%;
-  width: min(220px, 70%);
+  left: 50%;
+  top: -8%;
+  width: min(260px, 78%);
   aspect-ratio: 1;
   z-index: 6;
   opacity: 0;
   pointer-events: none;
   border-radius: 50%;
   background:
-    radial-gradient(circle, rgba(255, 246, 214, 0.75), rgba(239, 197, 106, 0.28) 42%, transparent 70%);
+    radial-gradient(circle, rgba(255, 246, 214, 0.8), rgba(239, 197, 106, 0.3) 42%, transparent 70%);
   filter: blur(2px);
   transform: translate(-50%, -50%) scale(0.3);
 }
 
 #screenHome.is-brand .home-birth-flash {
-  animation: birthFlash 0.7s cubic-bezier(.18,.85,.25,1) both;
+  animation: birthFlash 0.85s cubic-bezier(.18,.85,.25,1) both;
+}
+
+#screenHome.is-brand .brand-home {
+  animation: brandPlant 0.9s cubic-bezier(.18,.85,.25,1) 0.08s both;
 }
 
 .brand-home .brand-sub {
@@ -1087,7 +1168,8 @@ body::before {
 }
 
 #screenHome.is-flourish .brand-home .brand-sub .ew {
-  animation: listaPulse 0.85s ease both;
+  /* idle: no pulsar el subtítulo — deja ESCOBA como ancla */
+  animation: none;
 }
 
 .brand-word {
@@ -1132,8 +1214,8 @@ body::before {
 
 #screenHome.is-brand .brand-word .bl {
   animation:
-    brandBirth 0.95s cubic-bezier(.14,.86,.2,1) calc(0.02s + var(--l, 0) * 0.05s) both,
-    brandShimmer 7.5s ease-in-out calc(1.5s + var(--l, 0) * 0.08s) infinite;
+    brandBirth 1.05s cubic-bezier(.14,.86,.2,1) calc(0.02s + var(--l, 0) * 0.055s) both,
+    brandShimmer 7.5s ease-in-out calc(1.6s + var(--l, 0) * 0.08s) infinite;
 }
 
 .brand-home::after {
@@ -1142,7 +1224,7 @@ body::before {
   order: 2;
   height: 2px;
   width: 0;
-  margin: 10px auto 2px;
+  margin: 12px auto 2px;
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, #fff6d6, #efc56a, transparent);
   opacity: 0;
@@ -1150,8 +1232,8 @@ body::before {
 
 #screenHome.is-brand .brand-home::after {
   animation:
-    brandRule 0.85s cubic-bezier(.22,.8,.3,1) 0.45s forwards,
-    brandRuleGlow 3.8s ease-in-out 1.5s 2;
+    brandRule 0.9s cubic-bezier(.22,.8,.3,1) 0.55s forwards,
+    brandRuleGlow 3.8s ease-in-out 1.6s 2;
 }
 
 .brand-home > span:not(.brand-eyebrow) {
@@ -1203,8 +1285,8 @@ body::before {
 
 #screenHome.is-playable .home-actions .btn-gold {
   animation:
-    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.45s both,
-    ctaAura 3.6s ease-in-out 1.3s infinite;
+    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.78s both,
+    ctaAura 3.6s ease-in-out 1.7s infinite;
 }
 
 .home-actions .btn-gold::after {
@@ -1244,11 +1326,11 @@ body::before {
 }
 
 #screenHome.is-playable .home-actions .btn-primary {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.55s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.9s both;
 }
 
 #screenHome.is-playable .home-actions .btn-ghost {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.62s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.98s both;
 }
 
 .hero-art .mini-card {
@@ -2482,22 +2564,23 @@ button.card {
 
 @media (max-height: 720px) {
   .brand { font-size: clamp(46px, 14vw, 68px); }
-  .brand-home { font-size: clamp(42px, 12vw, 56px); }
+  .brand-home { font-size: clamp(46px, 13vw, 62px); }
   .home-stage {
-    padding: 12px 0 10px;
-    gap: clamp(10px, 2.5vh, 18px);
+    padding: 10px 0 8px;
+    gap: clamp(8px, 2.2vh, 16px);
   }
   .home-visual {
-    min-height: clamp(96px, 15vh, 128px);
-    padding: 4px 4px 8px;
+    min-height: clamp(112px, 18vh, 148px);
+    padding: 4px 4px 10px;
   }
-  .hero-art { margin-bottom: 0; min-height: 88px; }
+  .hero-art { margin-bottom: 0; min-height: 100px; max-width: 340px; }
   #screenHome .hero-art .mini-card {
-    width: clamp(46px, 12.5vw, 60px);
-    height: calc(clamp(46px, 12.5vw, 60px) * 1.52);
-    margin-left: -11px;
+    width: clamp(50px, 13.5vw, 66px);
+    height: calc(clamp(50px, 13.5vw, 66px) * 1.52);
+    margin-left: -12px;
   }
-  .hero-art .mini-card { width: 44px; height: 68px; }
+  .hero-art .mini-card { width: 48px; height: 74px; }
+  .home-broom { width: clamp(58px, 16vw, 74px); }
   #screenHome .tagline { font-size: 0.84rem; margin: 8px auto 12px; }
   #screenHome .credit { display: none; }
   #screenHome .name-field { margin-bottom: 12px; }

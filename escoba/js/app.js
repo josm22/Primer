@@ -2516,7 +2516,7 @@ function startHeroIdle() {
         art.classList.remove('restack');
         applyHeroFans(HERO_BASE_FANS);
       }, 980);
-    }, 6200);
+    }, 7800);
   };
 
   // Intro cinematográfica
@@ -2531,15 +2531,23 @@ function startHeroIdle() {
     return;
   }
 
-  // 1) La mesa → 2) cartas → 3) está lista → 4) ¡15! → 5) barre der→centro→izq + ESCOBA → 6) UI
+  // 1) La mesa → 2) cartas → 3) está lista → 4) ¡15! → 5) barre der→centro→izq + ESCOBA → 6) brand solo → 7) UI
   heroLater(() => setHomeStage('is-cue'), 80);
   heroLater(() => setHomeStage('is-cue', 'is-dealing'), 520);
-  heroLater(() => setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed'), 1950);
+  heroLater(() => {
+    setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed');
+    [...art.children].forEach((el) => el.classList.add('is-settled'));
+    if (audioCtx?.state === 'running') {
+      tone(220, 0.04, 'sine', 0.015);
+      setTimeout(() => tone(330, 0.05, 'triangle', 0.018), 60);
+    }
+  }, 1950);
   heroLater(() => {
     setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed', 'is-sum15');
     if (audioCtx?.state === 'running') {
       tone(440, 0.05, 'sine', 0.02);
       setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
+      setTimeout(() => tone(880, 0.1, 'sine', 0.02), 160);
     }
   }, 2750);
   heroLater(() => {
@@ -2547,11 +2555,11 @@ function startHeroIdle() {
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
-      // cartas salen hacia la DERECHA
+      // cartas salen hacia la DERECHA, con el barrido
       el.style.setProperty('--sweep-i', String(i));
-      el.style.setProperty('--sweep-dx', `${Math.round(90 + fromLeft * 70 + (i % 2) * 14)}px`);
-      el.style.setProperty('--sweep-dy', `${Math.round(-36 - fromLeft * 40 - i * 6)}px`);
-      el.style.setProperty('--sweep-spin', `${Math.round(18 + fromLeft * 42 + (i % 2 ? 10 : -8))}deg`);
+      el.style.setProperty('--sweep-dx', `${Math.round(110 + fromLeft * 90 + (i % 2) * 18)}px`);
+      el.style.setProperty('--sweep-dy', `${Math.round(-28 - fromLeft * 48 - i * 8)}px`);
+      el.style.setProperty('--sweep-spin', `${Math.round(22 + fromLeft * 48 + (i % 2 ? 12 : -10))}deg`);
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
@@ -2565,15 +2573,20 @@ function startHeroIdle() {
       setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
     }
   }, 4800);
+  // Mesa limpia + ESCOBA plantada (beat solo)
   heroLater(() => {
     setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-landed');
   }, 5600);
+  // CTAs / tagline; el abanico vuelve un instante después
+  heroLater(() => {
+    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed');
+  }, 6400);
   heroLater(() => {
     setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 6400);
+  }, 7200);
 }
 
 function stopHeroIdle() {
@@ -2594,7 +2607,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=74').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=75').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
