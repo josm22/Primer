@@ -33,6 +33,7 @@ const state = {
   names: ['Tú', 'Rival'],
   net: null,
   busy: false,
+  busySince: 0,
   skipNextPilePaint: false,
   animSeat: null,
   holdLeftoverIds: null,
@@ -353,6 +354,7 @@ function updatePlayButtons() {
 /** Actualiza selección sin reconstruir toda la mesa (más fluido en iPhone). */
 function releasePlayUi(opts = {}) {
   state.busy = false;
+  state.busySince = 0;
   state.moveGate = false;
   state.holdHandReveal = false;
   state.animSeat = null;
@@ -2614,7 +2616,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=77').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=78').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
