@@ -2291,6 +2291,13 @@ function startHeroIdle() {
     { rot: 10, lift: -2, sc: 1.02 },
     { rot: 22, lift: 10, sc: 1 },
   ];
+  const flourishFans = [
+    { rot: -28, lift: 16, sc: 0.98 },
+    { rot: -12, lift: -8, sc: 1.04 },
+    { rot: 2, lift: -22, sc: 1.14 },
+    { rot: 14, lift: -6, sc: 1.04 },
+    { rot: 28, lift: 16, sc: 0.98 },
+  ];
   const pool = [
     'oros-7', 'oros-1', 'oros-12',
     'copas-12', 'copas-7', 'copas-1',
@@ -2305,12 +2312,22 @@ function startHeroIdle() {
     }
     return bag.slice(0, 5);
   };
+  const applyFans = (fans) => {
+    [...art.children].forEach((el, i) => {
+      const f = fans[i];
+      if (!f) return;
+      el.style.setProperty('--fan', `${f.rot}deg`);
+      el.style.setProperty('--lift', `${f.lift}px`);
+      el.style.setProperty('--sc', String(f.sc));
+    });
+  };
   state.heroIdle = setInterval(() => {
     if (!$('#screenHome')?.classList.contains('active')) return;
     if (document.hidden) return;
     art.classList.remove('restack');
     void art.offsetWidth;
     art.classList.add('restack');
+    applyFans(flourishFans);
     const next = pickHand();
     [...art.children].forEach((el, i) => {
       const img = el.querySelector('img');
@@ -2319,20 +2336,14 @@ function startHeroIdle() {
       setTimeout(() => {
         img.src = `./cards/${next[i]}.png`;
         el.classList.remove('is-refreshing');
-      }, 180 + i * 40);
+      }, 160 + i * 55);
     });
     setTimeout(() => {
       if (!art.isConnected) return;
       art.classList.remove('restack');
-      [...art.children].forEach((el, i) => {
-        const f = baseFans[i];
-        if (!f) return;
-        el.style.setProperty('--fan', `${f.rot}deg`);
-        el.style.setProperty('--lift', `${f.lift}px`);
-        el.style.setProperty('--sc', String(f.sc));
-      });
-    }, 900);
-  }, 6500);
+      applyFans(baseFans);
+    }, 980);
+  }, 5800);
 }
 
 function stopHeroIdle() {
@@ -2343,7 +2354,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=60').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=61').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
