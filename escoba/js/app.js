@@ -2432,7 +2432,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=66').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=67').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

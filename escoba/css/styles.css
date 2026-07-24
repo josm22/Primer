@@ -2614,11 +2614,14 @@ button.card {
   .brand-home span,
   .brand-home .brand-eyebrow .ew,
   .brand-word,
+  .brand-word .bl,
   .home-copy,
   #screenHome .name-field,
   #screenHome .name-field input,
   #screenHome .tagline span,
   #screenHome .tagline i,
+  #screenHome .footer-links,
+  #screenHome .credit,
   .home-actions .btn-gold,
   .home-actions .btn-primary,
   .home-actions .btn-ghost {
@@ -2629,6 +2632,14 @@ button.card {
     -webkit-text-fill-color: var(--cream);
     background: none;
     filter: none;
+  }
+  .brand-word .bl {
+    opacity: 1;
+    color: var(--cream);
+    -webkit-text-fill-color: var(--cream);
+    background: none;
+    filter: none;
+    transform: none;
   }
   .brand-home .brand-eyebrow .ew,
   .brand-home .brand-eyebrow .ew-lista {
@@ -2652,6 +2663,14 @@ button.card {
     opacity: 1;
   }
   .brand-home::after { width: min(190px, 50vw); opacity: 1; }
+  #screenHome .name-field,
+  #screenHome .footer-links,
+  #screenHome .credit,
+  .home-actions .btn-gold,
+  .home-actions .btn-primary,
+  .home-actions .btn-ghost {
+    opacity: 1;
+  }
   #screenHome .name-field input {
     background-size: 100% 1.5px;
   }
