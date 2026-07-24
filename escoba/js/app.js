@@ -50,6 +50,7 @@ const state = {
   feltClearTimer: null,
   heroIdle: null,
   heroLandTimer: null,
+  heroDealTimer: null,
   heroTiltCleanup: null,
   guestPoll: null,
   netChain: Promise.resolve(),
@@ -2300,6 +2301,15 @@ function startHeroIdle() {
     const home = $('#screenHome');
     home?.classList.add('is-landed');
     visual?.classList.add('is-landed');
+    if (audioCtx?.state === 'running') {
+      tone(390, 0.05, 'sine', 0.018);
+      setTimeout(() => tone(520, 0.07, 'triangle', 0.022), 70);
+    }
+  };
+  const markDealing = () => {
+    const home = $('#screenHome');
+    home?.classList.add('is-dealing');
+    visual?.classList.add('is-dealing');
   };
   const pulseFlourish = () => {
     const home = $('#screenHome');
@@ -2315,6 +2325,8 @@ function startHeroIdle() {
     }, 1000);
   };
   clearTimeout(state.heroLandTimer);
+  clearTimeout(state.heroDealTimer);
+  state.heroDealTimer = setTimeout(markDealing, 520);
   state.heroLandTimer = setTimeout(markLanded, 1880);
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = window.matchMedia('(pointer: fine)').matches;
@@ -2409,11 +2421,13 @@ function stopHeroIdle() {
   state.heroIdle = null;
   clearTimeout(state.heroLandTimer);
   state.heroLandTimer = null;
+  clearTimeout(state.heroDealTimer);
+  state.heroDealTimer = null;
   state.heroTiltCleanup?.();
   state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
-  document.querySelector('.home-visual')?.classList.remove('is-flourish');
-  $('#screenHome')?.classList.remove('is-flourish');
+  document.querySelector('.home-visual')?.classList.remove('is-flourish', 'is-dealing');
+  $('#screenHome')?.classList.remove('is-flourish', 'is-dealing');
 }
 
 function registerSw() {
