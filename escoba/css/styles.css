@@ -720,6 +720,14 @@ body::before {
   justify-content: center;
   align-items: baseline;
   gap: 0.38em;
+  margin: 0;
+  font-size: 1em;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(224, 179, 77, 0.78);
+  -webkit-text-fill-color: currentColor;
 }
 
 .brand-home .brand-eyebrow .ew-group-ready {
@@ -727,17 +735,16 @@ body::before {
   max-width: 0;
   overflow: hidden;
   gap: 0;
-  margin: 0;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 #screenHome.is-landed .brand-home .brand-eyebrow .ew-group-ready {
   opacity: 1;
-  max-width: 12em;
+  max-width: 14em;
   overflow: visible;
   gap: 0.38em;
   pointer-events: auto;
-  transition: none;
 }
 
 .brand-home .brand-eyebrow::after {
@@ -2527,6 +2534,12 @@ button.card {
     filter: none;
     transform: none;
     text-shadow: none;
+  }
+  .brand-home .brand-eyebrow .ew-group-ready {
+    opacity: 1;
+    max-width: none;
+    overflow: visible;
+    gap: 0.38em;
   }
   .brand-home .brand-eyebrow::after {
     width: min(220px, 64vw);
