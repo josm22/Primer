@@ -344,11 +344,11 @@ body::before {
 
 #screenHome .footer-links {
   justify-content: center;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 #screenHome .credit {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 0.65rem;
 }
 
@@ -357,16 +357,18 @@ body::before {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 2px;
-  margin-top: 0;
-  padding: 4px 2px 4px;
+  gap: 0;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 2px;
   animation: copyIn 0.7s cubic-bezier(.22,.8,.3,1) 0.35s both;
   min-height: 0;
 }
 
 .brand-home {
-  font-size: clamp(50px, 14.5vw, 74px);
-  margin: 0 0 6px;
+  font-size: clamp(48px, 14vw, 70px);
+  margin: 0;
   text-align: center;
   animation: brandIn 0.85s cubic-bezier(.22,.8,.3,1) 0.2s both;
   text-shadow:
@@ -379,7 +381,7 @@ body::before {
   display: block;
   height: 2px;
   width: 0;
-  margin: 8px auto 0;
+  margin: 10px auto 0;
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, var(--gold), transparent);
   animation: brandRule 0.8s cubic-bezier(.22,.8,.3,1) 0.75s forwards;
@@ -388,7 +390,7 @@ body::before {
 .brand-home span {
   font-size: 0.26em;
   letter-spacing: 0.22em;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 #screenHome .tagline {
@@ -396,14 +398,14 @@ body::before {
   line-height: 1.4;
   color: rgba(244, 235, 224, 0.82);
   max-width: 20em;
-  margin: 0 auto 14px;
+  margin: 12px auto 18px;
   font-weight: 500;
   text-align: center;
 }
 
 #screenHome .name-field {
-  max-width: 220px;
-  margin: 0 auto 16px;
+  max-width: 200px;
+  margin: 0 auto 18px;
   width: 100%;
   text-align: center;
 }
@@ -459,8 +461,8 @@ body::before {
 }
 
 .home-actions .btn-ghost {
-  background: rgba(244, 235, 224, 0.12);
-  border-color: rgba(244, 235, 224, 0.42);
+  background: rgba(247, 240, 225, 0.16);
+  border-color: rgba(244, 235, 224, 0.5);
   color: var(--cream);
   animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.75s both;
 }
@@ -1696,10 +1698,13 @@ button.card {
 @media (max-height: 720px) {
   .brand { font-size: clamp(46px, 14vw, 68px); }
   .brand-home { font-size: clamp(42px, 12vw, 56px); }
-  .home-stage { padding: 12px 0 8px; gap: 8px; }
+  .home-stage {
+    padding: 12px 0 10px;
+    gap: clamp(10px, 2.5vh, 18px);
+  }
   .home-visual {
-    min-height: clamp(80px, 13vh, 110px);
-    padding: 6px 4px 2px;
+    min-height: clamp(84px, 13vh, 112px);
+    padding: 2px 4px 6px;
   }
   .hero-art { margin-bottom: 0; min-height: 72px; }
   #screenHome .hero-art .mini-card {
@@ -1708,10 +1713,10 @@ button.card {
     margin-left: -9px;
   }
   .hero-art .mini-card { width: 44px; height: 68px; }
-  .home-copy { padding-top: 0; padding-bottom: 2px; }
-  #screenHome .tagline { font-size: 0.84rem; margin-bottom: 8px; }
+  #screenHome .tagline { font-size: 0.84rem; margin: 8px auto 12px; }
   #screenHome .credit { display: none; }
-  #screenHome .name-field { margin-bottom: 10px; }
+  #screenHome .name-field { margin-bottom: 12px; }
+  #screenHome .footer-links { margin-top: 10px; }
   .home-actions .btn-gold { padding: 12px 14px; }
   .home-actions .btn-primary,
   .home-actions .btn-ghost { padding: 11px 8px; font-size: 0.85rem; }
