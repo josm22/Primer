@@ -2284,6 +2284,7 @@ function startHeroIdle() {
   stopHeroIdle();
   const art = $('#heroArt');
   if (!art) return;
+  const visual = art.closest('.home-visual');
   const ripples = [...document.querySelectorAll('.home-ripple')];
   const pulseRipples = () => {
     ripples.forEach((el) => {
@@ -2293,6 +2294,43 @@ function startHeroIdle() {
       el.classList.add('play');
     });
   };
+  const markLanded = () => {
+    if (!visual) return;
+    visual.classList.add('is-landed');
+  };
+  const pulseFlourish = () => {
+    if (!visual) return;
+    visual.classList.remove('is-flourish');
+    void visual.offsetWidth;
+    visual.classList.add('is-flourish');
+    setTimeout(() => visual.classList.remove('is-flourish'), 1000);
+  };
+  clearTimeout(state.heroLandTimer);
+  state.heroLandTimer = setTimeout(markLanded, 1350);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+  if (!reduceMotion && finePointer && visual) {
+    const onMove = (e) => {
+      if (!$('#screenHome')?.classList.contains('active')) return;
+      const rect = visual.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+      const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+      art.style.setProperty('--tilt-y', `${(nx * 5).toFixed(2)}deg`);
+      art.style.setProperty('--tilt-x', `${(-ny * 3.5).toFixed(2)}deg`);
+    };
+    const onLeave = () => {
+      art.style.setProperty('--tilt-y', '0deg');
+      art.style.setProperty('--tilt-x', '0deg');
+    };
+    visual.addEventListener('pointermove', onMove);
+    visual.addEventListener('pointerleave', onLeave);
+    state.heroTiltCleanup = () => {
+      visual.removeEventListener('pointermove', onMove);
+      visual.removeEventListener('pointerleave', onLeave);
+      art.style.removeProperty('--tilt-y');
+      art.style.removeProperty('--tilt-x');
+    };
+  }
   const baseFans = [
     { rot: -26, lift: 14, sc: 1 },
     { rot: -12, lift: 0, sc: 1.04 },
@@ -2337,6 +2375,7 @@ function startHeroIdle() {
     void art.offsetWidth;
     art.classList.add('restack');
     pulseRipples();
+    pulseFlourish();
     applyFans(flourishFans);
     const next = pickHand();
     [...art.children].forEach((el, i) => {
@@ -2359,12 +2398,17 @@ function startHeroIdle() {
 function stopHeroIdle() {
   clearInterval(state.heroIdle);
   state.heroIdle = null;
+  clearTimeout(state.heroLandTimer);
+  state.heroLandTimer = null;
+  state.heroTiltCleanup?.();
+  state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
+  document.querySelector('.home-visual')?.classList.remove('is-flourish');
 }
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=63').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=64').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

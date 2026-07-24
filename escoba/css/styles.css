@@ -158,8 +158,18 @@ body::before {
 }
 
 @keyframes floatSuit {
-  0%, 100% { transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
-  50% { transform: rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 11px)) scale(var(--sc, 1)); }
+  0%, 100% {
+    transform:
+      rotate(calc(var(--fan, 0deg) + var(--sway, 0deg)))
+      translateY(var(--lift, 0px))
+      scale(var(--sc, 1));
+  }
+  50% {
+    transform:
+      rotate(calc(var(--fan, 0deg) - var(--sway, 0deg)))
+      translateY(calc(var(--lift, 0px) - 12px))
+      scale(var(--sc, 1));
+  }
 }
 
 @keyframes heroDeal {
@@ -292,6 +302,33 @@ body::before {
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+@keyframes fanShadowBreath {
+  0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.9; }
+  50% { transform: translateX(-50%) scaleX(1.08); opacity: 1; }
+}
+
+@keyframes feltKissIn {
+  0% { opacity: 0; transform: translate(-50%, 20%) scale(0.45); }
+  45% { opacity: 0.85; transform: translate(-50%, 0) scale(1.08); }
+  100% { opacity: 0.55; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes feltKissPulse {
+  0% { opacity: 0.35; transform: translate(-50%, 0) scale(0.85); }
+  40% { opacity: 0.9; transform: translate(-50%, 0) scale(1.12); }
+  100% { opacity: 0.55; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes ctaAura {
+  0%, 100% { box-shadow: 0 8px 22px rgba(184, 135, 42, 0.35), 0 0 0 0 rgba(239, 197, 106, 0); }
+  50% { box-shadow: 0 10px 28px rgba(184, 135, 42, 0.42), 0 0 28px 2px rgba(239, 197, 106, 0.22); }
+}
+
+@keyframes brandRuleGlow {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.35); }
+}
+
 /* ---- Home ---- */
 #screenHome {
   position: relative;
@@ -365,6 +402,31 @@ body::before {
   opacity: 0.7;
 }
 
+.home-felt-kiss {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  width: min(280px, 82%);
+  height: 64px;
+  transform: translate(-50%, 0) scale(0.45);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 230, 160, 0.28), transparent 68%),
+    radial-gradient(ellipse at center, rgba(40, 150, 95, 0.22), transparent 78%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  filter: blur(2px);
+}
+
+.home-visual.is-landed .home-felt-kiss {
+  animation: feltKissIn 0.9s cubic-bezier(.18,.85,.25,1) both;
+}
+
+.home-visual.is-flourish .home-felt-kiss {
+  animation: feltKissPulse 0.95s cubic-bezier(.18,.85,.25,1) both;
+}
+
 .home-ripple {
   position: absolute;
   left: 50%;
@@ -412,6 +474,13 @@ body::before {
   filter: blur(5px);
   pointer-events: none;
   z-index: 1;
+  animation: fanShadowBreath 4.8s ease-in-out 1.5s infinite;
+}
+
+.home-visual.is-flourish .home-fan-shadow {
+  animation: feltKissPulse 0.95s cubic-bezier(.18,.85,.25,1) both;
+  filter: blur(6px);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.58), transparent 72%);
 }
 
 .hero {
@@ -435,6 +504,11 @@ body::before {
   margin: 0 auto;
   perspective: 920px;
   transform-style: preserve-3d;
+  transform:
+    rotateX(calc(var(--tilt-x, 0deg) * 0.55))
+    rotateY(calc(var(--tilt-y, 0deg) * 0.7));
+  transition: transform 0.35s cubic-bezier(.2,.8,.25,1);
+  will-change: transform;
 }
 
 #screenHome .hero-art .mini-card {
@@ -453,10 +527,22 @@ body::before {
   transform-style: preserve-3d;
   backface-visibility: hidden;
   opacity: 0;
+  --sway: 1.2deg;
   animation:
     heroDeal 1.2s cubic-bezier(.12,.88,.2,1) calc(0.05s + var(--i, 0) * 0.12s) forwards,
     floatSuit 4.8s ease-in-out calc(1.35s + var(--i, 0) * 0.12s) infinite;
   padding: 0;
+}
+
+#screenHome .hero-art .mini-card:nth-child(1),
+#screenHome .hero-art .mini-card:nth-child(5) { --sway: 1.6deg; }
+#screenHome .hero-art .mini-card:nth-child(3) { --sway: 0.6deg; }
+
+.home-visual.is-landed .hero-art .mini-card:nth-child(3) {
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.45),
+    0 0 0 1.5px rgba(239, 197, 106, 0.42),
+    0 2px 0 rgba(255, 255, 255, 0.09) inset;
 }
 
 #screenHome .hero-art .mini-card::after {
@@ -556,7 +642,9 @@ body::before {
   margin: 12px auto 0;
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, #fff6d6, #efc56a, transparent);
-  animation: brandRule 1s cubic-bezier(.22,.8,.3,1) 1.15s forwards;
+  animation:
+    brandRule 1s cubic-bezier(.22,.8,.3,1) 1.15s forwards,
+    brandRuleGlow 3.8s ease-in-out 2.3s 2;
 }
 
 .brand-home span {
@@ -649,7 +737,9 @@ body::before {
   overflow: hidden;
   font-size: 1.05rem;
   padding: 15px 16px;
-  animation: ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.72s both;
+  animation:
+    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.72s both,
+    ctaAura 3.6s ease-in-out 1.6s infinite;
 }
 
 .home-actions .btn-gold::after {
@@ -682,6 +772,8 @@ body::before {
 
 .home-actions .btn-primary {
   animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.82s both;
+  background: linear-gradient(180deg, #fff8e8 0%, var(--parchment) 100%);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
 .hero-art .mini-card {
@@ -2209,6 +2301,9 @@ button.card {
   .home-glow { animation: none; opacity: 0.7; }
   .home-visual { animation: none; }
   .home-ripple { animation: none; opacity: 0; }
+  .home-felt-kiss { animation: none; opacity: 0.45; transform: translate(-50%, 0) scale(1); }
+  .home-fan-shadow { animation: none; }
+  .hero-art { transition: none; transform: none; }
   #screenHome .hero-art .mini-card::after,
   .home-actions .btn-gold::after { animation: none; opacity: 0; }
   .brand-home,
