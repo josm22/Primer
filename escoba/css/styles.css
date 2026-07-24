@@ -823,11 +823,6 @@ body::before {
   filter: brightness(1.08);
 }
 
-#screenHome .hero-art .mini-card.is-swept {
-  animation: cardSwept 0.85s cubic-bezier(.2,.7,.2,1) calc(var(--sweep-i, 0) * 0.06s) forwards !important;
-  pointer-events: none;
-}
-
 #screenHome .hero-art .mini-card::after {
   content: '';
   position: absolute;
