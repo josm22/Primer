@@ -20,9 +20,9 @@
   --felt-pad-y: 10px;
   --felt-pad-x: 10px;
   --felt-gap: 8px;
-  /* Mesa: 1 fila compacta / 2 filas cuando hace falta */
-  --felt-h: calc(var(--card-h) * 2.05 + var(--felt-gap) + var(--felt-pad-y) * 2 + 4px);
-  --felt-h-compact: calc(var(--card-h) * 1.42 + var(--felt-pad-y) * 2 + 4px);
+  /* Mesa más grande; compacta con pocas cartas */
+  --felt-h: calc(var(--card-h) * 2.28 + var(--felt-gap) + var(--felt-pad-y) * 2 + 6px);
+  --felt-h-compact: calc(var(--card-h) * 1.62 + var(--felt-pad-y) * 2 + 6px);
   --font-display: 'Fraunces', Georgia, serif;
   --font-ui: 'Manrope', system-ui, sans-serif;
   --font-card: 'Fraunces', Georgia, serif;
@@ -544,12 +544,15 @@ body::before {
   overflow: visible;
 }
 
-/* Tres huecos idénticos: rival↔mesa, mesa↔mano, mano↔abajo */
+/* Huecos casi iguales; un poco más entre mesa y mano para bajar tus cartas */
 .spread {
   flex: 1 1 0;
   min-height: 4px;
   pointer-events: none;
 }
+.spread-top { flex-grow: 1; }
+.spread-mid { flex-grow: 1.2; }
+.spread-bot { flex-grow: 0.7; }
 
 .player-dock {
   margin-top: 0;
@@ -619,8 +622,8 @@ body::before {
 
 .felt > .card {
   transform: rotate(var(--table-rot, 0deg));
-  width: var(--table-card-w, calc(var(--card-w) * 1.4));
-  height: var(--table-card-h, calc(var(--card-h) * 1.4));
+  width: var(--table-card-w, calc(var(--card-w) * 1.48));
+  height: var(--table-card-h, calc(var(--card-h) * 1.48));
 }
 
 #screenGame.dealing .my-hand .card,
