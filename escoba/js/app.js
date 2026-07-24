@@ -1062,11 +1062,14 @@ function render(opts = {}) {
   if (nTable >= 9) tableScale = 0.74;
   else if (nTable >= 7) tableScale = 0.86;
   else if (nTable >= 6) tableScale = 0.96;
-  else if (nTable >= 5) tableScale = 1.1;
-  else if (nTable >= 4) tableScale = 1.26;
-  else if (nTable >= 3) tableScale = 1.4;
+  else if (nTable >= 5) tableScale = 1.12;
+  else if (nTable >= 4) tableScale = 1.34;
+  else if (nTable >= 3) tableScale = 1.42;
   felt.style.setProperty('--table-card-w', `calc(var(--card-w) * ${tableScale})`);
   felt.style.setProperty('--table-card-h', `calc(var(--card-h) * ${tableScale})`);
+
+  const wrap = felt.closest('.felt-wrap');
+  wrap?.classList.toggle('felt-compact', nTable > 0 && nTable <= 5);
 
   if (!tableCards.length) {
     const empty = document.createElement('div');
@@ -2300,7 +2303,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=49').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=50').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

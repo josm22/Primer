@@ -20,8 +20,9 @@
   --felt-pad-y: 10px;
   --felt-pad-x: 10px;
   --felt-gap: 8px;
-  /* Mesa fija: cabe cómoda en 2 filas; con pocas cartas se ven grandes */
-  --felt-h: calc(var(--card-h) * 2.15 + var(--felt-gap) + var(--felt-pad-y) * 2 + 6px);
+  /* Mesa: 1 fila compacta / 2 filas cuando hace falta */
+  --felt-h: calc(var(--card-h) * 2.05 + var(--felt-gap) + var(--felt-pad-y) * 2 + 4px);
+  --felt-h-compact: calc(var(--card-h) * 1.42 + var(--felt-pad-y) * 2 + 4px);
   --font-display: 'Fraunces', Georgia, serif;
   --font-ui: 'Manrope', system-ui, sans-serif;
   --font-card: 'Fraunces', Georgia, serif;
@@ -543,20 +544,11 @@ body::before {
   overflow: visible;
 }
 
-/* Mismo aire arriba y abajo del bloque mesa+mano */
+/* Tres huecos idénticos: rival↔mesa, mesa↔mano, mano↔abajo */
 .spread {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 4px;
   pointer-events: none;
-}
-
-/* Mesa y mano juntas: sin hueco raro entre medias */
-.play-cluster {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex-shrink: 0;
-  width: 100%;
 }
 
 .player-dock {
@@ -733,6 +725,13 @@ body::before {
   max-height: var(--felt-h);
   display: flex;
   width: 100%;
+}
+
+/* Pocas cartas: mesa más baja para no dejar vacío interno */
+.felt-wrap.felt-compact {
+  height: var(--felt-h-compact);
+  min-height: var(--felt-h-compact);
+  max-height: var(--felt-h-compact);
 }
 
 .felt-wrap > .felt {
@@ -1207,7 +1206,6 @@ button.card {
   .score-track { height: 2px; }
   .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
   .table-area { gap: 0; }
-  .play-cluster { gap: 10px; }
   .player-dock { gap: 1px; padding-top: 0; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
