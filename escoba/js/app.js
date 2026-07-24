@@ -2291,14 +2291,38 @@ function startHeroIdle() {
     { rot: 10, lift: -2, sc: 1.02 },
     { rot: 22, lift: 10, sc: 1 },
   ];
+  const pool = [
+    'oros-7', 'oros-1', 'oros-12',
+    'copas-12', 'copas-7', 'copas-1',
+    'espadas-10', 'espadas-12', 'espadas-1',
+    'bastos-1', 'bastos-7', 'bastos-12',
+  ];
+  const pickHand = () => {
+    const bag = pool.slice();
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    return bag.slice(0, 5);
+  };
   state.heroIdle = setInterval(() => {
     if (!$('#screenHome')?.classList.contains('active')) return;
     if (document.hidden) return;
     art.classList.remove('restack');
     void art.offsetWidth;
     art.classList.add('restack');
+    const next = pickHand();
+    [...art.children].forEach((el, i) => {
+      const img = el.querySelector('img');
+      if (!img || !next[i]) return;
+      el.classList.add('is-refreshing');
+      setTimeout(() => {
+        img.src = `./cards/${next[i]}.png`;
+        el.classList.remove('is-refreshing');
+      }, 180 + i * 40);
+    });
     setTimeout(() => {
-      if (!art.classList.contains('restack')) return;
+      if (!art.isConnected) return;
       art.classList.remove('restack');
       [...art.children].forEach((el, i) => {
         const f = baseFans[i];
@@ -2308,7 +2332,7 @@ function startHeroIdle() {
         el.style.setProperty('--sc', String(f.sc));
       });
     }, 900);
-  }, 7000);
+  }, 6500);
 }
 
 function stopHeroIdle() {
@@ -2319,7 +2343,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=54').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=55').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
