@@ -980,7 +980,7 @@ body::before {
 
 #screenHome.is-playable .footer-links,
 #screenHome.is-playable .credit {
-  animation: stageReveal 0.6s ease 1.05s both;
+  animation: stageReveal 0.6s ease 0.85s both;
 }
 
 .home-copy {
@@ -1023,11 +1023,11 @@ body::before {
 }
 
 #screenHome.is-playable .tagline span {
-  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.45s + var(--d, 0) * 0.12s) forwards;
+  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.2s + var(--d, 0) * 0.12s) forwards;
 }
 
 #screenHome.is-playable .tagline i {
-  animation: tagBitIn 0.45s ease calc(0.52s + 0.06s) forwards;
+  animation: tagBitIn 0.45s ease calc(0.28s + 0.06s) forwards;
 }
 
 #screenHome .name-field {
@@ -1040,7 +1040,7 @@ body::before {
 }
 
 #screenHome.is-playable .name-field {
-  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 0.62s both;
+  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 0.35s both;
 }
 
 #screenHome .name-field input {
@@ -1058,7 +1058,7 @@ body::before {
 }
 
 #screenHome.is-playable .name-field input {
-  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.78s both;
+  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.5s both;
 }
 
 .brand-home {
@@ -1264,8 +1264,8 @@ body::before {
 
 #screenHome.is-playable .home-actions .btn-gold {
   animation:
-    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.78s both,
-    ctaAura 3.6s ease-in-out 1.7s infinite;
+    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.5s both,
+    ctaAura 3.6s ease-in-out 1.4s infinite;
 }
 
 .home-actions .btn-gold::after {
@@ -1305,11 +1305,11 @@ body::before {
 }
 
 #screenHome.is-playable .home-actions .btn-primary {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.9s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.62s both;
 }
 
 #screenHome.is-playable .home-actions .btn-ghost {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.98s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.7s both;
 }
 
 .hero-art .mini-card {
