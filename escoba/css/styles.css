@@ -337,6 +337,37 @@ body::before {
   to { opacity: 1; transform: none; filter: none; }
 }
 
+@keyframes sum15Pop {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.4); filter: blur(6px); }
+  55% { opacity: 1; transform: translate(-50%, -58%) scale(1.12); filter: blur(0); }
+  100% { opacity: 1; transform: translate(-50%, -52%) scale(1); filter: none; }
+}
+
+@keyframes sum15Fade {
+  to { opacity: 0; transform: translate(-50%, -70%) scale(0.85); }
+}
+
+@keyframes broomSweep {
+  0% { opacity: 0; transform: translate(-120%, 18%) rotate(-38deg) scale(0.85); }
+  18% { opacity: 1; }
+  55% { transform: translate(10%, -6%) rotate(-12deg) scale(1); }
+  78% { opacity: 1; transform: translate(42%, -28%) rotate(8deg) scale(0.92); }
+  100% { opacity: 0; transform: translate(55%, -48%) rotate(18deg) scale(0.55); }
+}
+
+@keyframes cardSwept {
+  0% { opacity: 1; filter: brightness(1); }
+  35% { opacity: 1; transform: rotate(calc(var(--fan, 0deg) + 8deg)) translateY(calc(var(--lift, 0px) - 18px)) scale(calc(var(--sc, 1) * 1.05)); }
+  100% {
+    opacity: 0;
+    transform:
+      rotate(calc(var(--fan, 0deg) + 48deg))
+      translate(42px, -120px)
+      scale(0.55);
+    filter: brightness(1.25) blur(2px);
+  }
+}
+
 @keyframes tagBitIn {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
   to { opacity: 1; transform: none; }
@@ -563,6 +594,62 @@ body::before {
   animation: fanShadowBreath 4.8s ease-in-out 2.1s infinite;
 }
 
+.home-sum15 {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.home-sum15 span {
+  display: grid;
+  place-items: center;
+  min-width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #2a1c0a;
+  background: radial-gradient(circle at 35% 30%, #fff6d6, #efc56a 58%, #b8872a);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(255, 248, 231, 0.35) inset;
+}
+
+#screenHome.is-sum15 .home-sum15 {
+  animation: sum15Pop 0.55s cubic-bezier(.18,.85,.25,1) both;
+}
+
+#screenHome.is-sweeping .home-sum15 {
+  animation: sum15Fade 0.35s ease forwards;
+}
+
+.home-broom {
+  position: absolute;
+  left: 8%;
+  bottom: 4%;
+  z-index: 5;
+  width: clamp(52px, 14vw, 68px);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35));
+  transform-origin: 50% 10%;
+}
+
+.home-broom svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#screenHome.is-sweeping .home-broom {
+  animation: broomSweep 1.05s cubic-bezier(.18,.8,.25,1) both;
+}
+
 .home-visual.is-flourish .home-fan-shadow,
 #screenHome.is-flourish .home-fan-shadow {
   animation: feltKissPulse 0.95s cubic-bezier(.18,.85,.25,1) both;
@@ -615,22 +702,37 @@ body::before {
   backface-visibility: hidden;
   opacity: 0;
   --sway: 1.2deg;
-  animation:
-    heroDeal 1.2s cubic-bezier(.12,.88,.2,1) calc(0.55s + var(--i, 0) * 0.12s) forwards,
-    floatSuit 4.8s ease-in-out calc(1.9s + var(--i, 0) * 0.12s) infinite;
+  animation: none;
   padding: 0;
+}
+
+#screenHome.is-dealing .hero-art .mini-card:not(.is-swept) {
+  animation:
+    heroDeal 1.15s cubic-bezier(.12,.88,.2,1) calc(var(--i, 0) * 0.11s) forwards,
+    floatSuit 4.8s ease-in-out calc(1.25s + var(--i, 0) * 0.12s) infinite;
+}
+
+#screenHome .hero-art .mini-card.is-settled:not(.is-swept) {
+  opacity: 1;
+  animation: floatSuit 4.8s ease-in-out calc(var(--i, 0) * 0.12s) infinite;
 }
 
 #screenHome .hero-art .mini-card:nth-child(1),
 #screenHome .hero-art .mini-card:nth-child(5) { --sway: 1.6deg; }
 #screenHome .hero-art .mini-card:nth-child(3) { --sway: 0.6deg; }
 
-.home-visual.is-landed .hero-art .mini-card:nth-child(3),
-#screenHome.is-landed .hero-art .mini-card:nth-child(3) {
+#screenHome.is-sum15 .hero-art .mini-card:not(.is-swept) {
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.45),
-    0 0 0 1.5px rgba(239, 197, 106, 0.42),
+    0 0 0 2px rgba(239, 197, 106, 0.7),
+    0 0 22px rgba(239, 197, 106, 0.35),
     0 2px 0 rgba(255, 255, 255, 0.09) inset;
+  filter: brightness(1.08);
+}
+
+#screenHome .hero-art .mini-card.is-swept {
+  animation: cardSwept 0.85s cubic-bezier(.2,.7,.2,1) calc(var(--sweep-i, 0) * 0.06s) forwards !important;
+  pointer-events: none;
 }
 
 #screenHome .hero-art .mini-card::after {
@@ -644,11 +746,15 @@ body::before {
     transparent 66%
   );
   transform: translateX(-130%) skewX(-14deg);
-  animation:
-    cardSheen 1.2s ease calc(1.55s + var(--i, 0) * 0.1s) both,
-    cardSheenLoop 5.8s ease-in-out calc(2.9s + var(--i, 0) * 0.28s) infinite;
+  animation: none;
   pointer-events: none;
   z-index: 2;
+}
+
+#screenHome.is-dealing .hero-art .mini-card:not(.is-swept)::after {
+  animation:
+    cardSheen 1.1s ease calc(0.85s + var(--i, 0) * 0.1s) both,
+    cardSheenLoop 5.8s ease-in-out calc(2.2s + var(--i, 0) * 0.28s) infinite;
 }
 
 #screenHome .hero-art .mini-card.is-refreshing {
@@ -681,9 +787,9 @@ body::before {
   opacity: 0;
 }
 
-#screenHome.is-landed .footer-links,
-#screenHome.is-landed .credit {
-  animation: stageReveal 0.6s ease 1.55s both;
+#screenHome.is-playable .footer-links,
+#screenHome.is-playable .credit {
+  animation: stageReveal 0.6s ease 0.75s both;
 }
 
 .home-copy {
@@ -725,12 +831,12 @@ body::before {
   animation: none;
 }
 
-#screenHome.is-landed .tagline span {
-  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.85s + var(--d, 0) * 0.12s) forwards;
+#screenHome.is-playable .tagline span {
+  animation: tagBitIn 0.55s cubic-bezier(.22,.8,.3,1) calc(0.2s + var(--d, 0) * 0.12s) forwards;
 }
 
-#screenHome.is-landed .tagline i {
-  animation: tagBitIn 0.45s ease calc(0.92s + 0.06s) forwards;
+#screenHome.is-playable .tagline i {
+  animation: tagBitIn 0.45s ease calc(0.28s + 0.06s) forwards;
 }
 
 #screenHome .name-field {
@@ -742,8 +848,8 @@ body::before {
   animation: none;
 }
 
-#screenHome.is-landed .name-field {
-  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 1.05s both;
+#screenHome.is-playable .name-field {
+  animation: stageReveal 0.65s cubic-bezier(.22,.8,.3,1) 0.35s both;
 }
 
 #screenHome .name-field input {
@@ -760,8 +866,8 @@ body::before {
   animation: none;
 }
 
-#screenHome.is-landed .name-field input {
-  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 1.2s both;
+#screenHome.is-playable .name-field input {
+  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.5s both;
 }
 
 .brand-home {
@@ -805,7 +911,7 @@ body::before {
   opacity: 0;
 }
 
-#screenHome.is-landed .brand-home .brand-eyebrow::after {
+#screenHome.is-ready .brand-home .brand-eyebrow::after {
   animation: eyebrowRule 0.7s cubic-bezier(.22,.8,.3,1) 0.12s forwards;
 }
 
@@ -832,7 +938,7 @@ body::before {
   animation: none;
 }
 
-#screenHome.is-landed .brand-home .brand-eyebrow .ew-ready {
+#screenHome.is-ready .brand-home .brand-eyebrow .ew-ready {
   animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.07s) forwards;
 }
 
@@ -877,10 +983,10 @@ body::before {
   -webkit-text-fill-color: transparent;
 }
 
-#screenHome.is-landed .brand-word .bl {
+#screenHome.is-brand .brand-word .bl {
   animation:
-    brandLetterIn 0.72s cubic-bezier(.14,.86,.2,1) calc(0.18s + var(--l, 0) * 0.055s) both,
-    brandShimmer 7.5s ease-in-out calc(1.6s + var(--l, 0) * 0.08s) infinite;
+    brandLetterIn 0.72s cubic-bezier(.14,.86,.2,1) calc(0.05s + var(--l, 0) * 0.055s) both,
+    brandShimmer 7.5s ease-in-out calc(1.4s + var(--l, 0) * 0.08s) infinite;
 }
 
 .brand-home::after {
@@ -894,10 +1000,10 @@ body::before {
   opacity: 0;
 }
 
-#screenHome.is-landed .brand-home::after {
+#screenHome.is-brand .brand-home::after {
   animation:
-    brandRule 0.85s cubic-bezier(.22,.8,.3,1) 0.55s forwards,
-    brandRuleGlow 3.8s ease-in-out 1.6s 2;
+    brandRule 0.85s cubic-bezier(.22,.8,.3,1) 0.45s forwards,
+    brandRuleGlow 3.8s ease-in-out 1.5s 2;
 }
 
 .brand-home > span:not(.brand-eyebrow) {
@@ -947,10 +1053,10 @@ body::before {
   animation: none;
 }
 
-#screenHome.is-landed .home-actions .btn-gold {
+#screenHome.is-playable .home-actions .btn-gold {
   animation:
-    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 1.2s both,
-    ctaAura 3.6s ease-in-out 2.1s infinite;
+    ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.45s both,
+    ctaAura 3.6s ease-in-out 1.3s infinite;
 }
 
 .home-actions .btn-gold::after {
@@ -989,12 +1095,12 @@ body::before {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-#screenHome.is-landed .home-actions .btn-primary {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 1.32s both;
+#screenHome.is-playable .home-actions .btn-primary {
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.55s both;
 }
 
-#screenHome.is-landed .home-actions .btn-ghost {
-  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 1.4s both;
+#screenHome.is-playable .home-actions .btn-ghost {
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.62s both;
 }
 
 .hero-art .mini-card {
@@ -2524,6 +2630,8 @@ button.card {
   .home-ripple { animation: none; opacity: 0; }
   .home-felt-kiss { animation: none; opacity: 0.45; transform: translate(-50%, 0) scale(1); }
   .home-fan-shadow { animation: none; }
+  .home-broom,
+  .home-sum15 { animation: none; opacity: 0; }
   .hero-art { transition: none; transform: none; }
   #screenHome .hero-art .mini-card::after,
   .home-actions .btn-gold::after { animation: none; opacity: 0; }

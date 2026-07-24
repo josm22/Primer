@@ -5,6 +5,9 @@ import {
   chooseAiMove,
   serializeState,
   WIN_SCORE,
+  cardValue,
+  SUITS,
+  RANKS,
 } from './engine.js';
 import { EscobaNet, normalizeCode } from './net.js';
 import {
@@ -51,7 +54,9 @@ const state = {
   heroIdle: null,
   heroLandTimer: null,
   heroDealTimer: null,
+  heroIntroTimers: [],
   heroTiltCleanup: null,
+  heroIntroDone: false,
   guestPoll: null,
   netChain: Promise.resolve(),
   nameHelloSent: false,
@@ -2283,52 +2288,157 @@ function bindUi() {
   window.addEventListener('pointerdown', unlock);
 }
 
+function heroCardValue(id) {
+  const rank = Number(String(id).split('-')[1]);
+  return cardValue(rank);
+}
+
+function valueToRank(v) {
+  if (v >= 1 && v <= 7) return v;
+  if (v === 8) return 10;
+  if (v === 9) return 11;
+  if (v === 10) return 12;
+  return 1;
+}
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Mano inicial del hero: N cartas aleatorias que suman exactamente 15. */
+function pickSum15Hand(count = 5) {
+  for (let attempt = 0; attempt < 48; attempt++) {
+    const used = new Set();
+    const hand = [];
+    let left = 15;
+    const values = [];
+    let valid = true;
+    for (let i = 0; i < count - 1; i++) {
+      const remain = count - 1 - i;
+      const minV = Math.max(1, left - 10 * remain);
+      const maxV = Math.min(10, left - remain);
+      if (minV > maxV) {
+        valid = false;
+        break;
+      }
+      const v = minV + Math.floor(Math.random() * (maxV - minV + 1));
+      values.push(v);
+      left -= v;
+    }
+    if (!valid || left < 1 || left > 10) continue;
+    values.push(left);
+    shuffleInPlace(values);
+    const suitBag = shuffleInPlace(SUITS.slice());
+    values.forEach((v, i) => {
+      const rank = valueToRank(v);
+      let suit = suitBag[i % suitBag.length];
+      let id = `${suit}-${rank}`;
+      let guard = 0;
+      while (used.has(id) && guard < 16) {
+        suit = SUITS[(SUITS.indexOf(suit) + 1) % SUITS.length];
+        id = `${suit}-${rank}`;
+        guard += 1;
+      }
+      used.add(id);
+      hand.push(id);
+    });
+    if (hand.reduce((a, id) => a + heroCardValue(id), 0) === 15) return hand;
+  }
+  return ['oros-1', 'copas-2', 'espadas-3', 'bastos-4', 'oros-5'];
+}
+
+function pickDecorHand(count = 5) {
+  const pool = [];
+  for (const suit of SUITS) {
+    for (const rank of RANKS) pool.push(`${suit}-${rank}`);
+  }
+  shuffleInPlace(pool);
+  return pool.slice(0, count);
+}
+
+const HERO_BASE_FANS = [
+  { rot: -26, lift: 14, sc: 1 },
+  { rot: -12, lift: 0, sc: 1.04 },
+  { rot: 0, lift: -18, sc: 1.14 },
+  { rot: 12, lift: 0, sc: 1.04 },
+  { rot: 26, lift: 14, sc: 1 },
+];
+
+const HERO_FLOURISH_FANS = [
+  { rot: -36, lift: 22, sc: 0.95 },
+  { rot: -17, lift: -12, sc: 1.07 },
+  { rot: 0, lift: -32, sc: 1.2 },
+  { rot: 17, lift: -12, sc: 1.07 },
+  { rot: 36, lift: 22, sc: 0.95 },
+];
+
+function buildHeroFan(ids, { animateDeal = true } = {}) {
+  const art = $('#heroArt');
+  if (!art) return;
+  art.innerHTML = '';
+  ids.forEach((id, i) => {
+    const f = HERO_BASE_FANS[i] || HERO_BASE_FANS[HERO_BASE_FANS.length - 1];
+    const d = document.createElement('div');
+    d.className = 'mini-card';
+    if (!animateDeal) d.classList.add('is-settled');
+    d.style.setProperty('--i', String(i));
+    d.style.setProperty('--fan', `${f.rot}deg`);
+    d.style.setProperty('--lift', `${f.lift}px`);
+    d.style.setProperty('--sc', String(f.sc));
+    d.innerHTML = `<img src="./cards/${id}.png" alt="" draggable="false">`;
+    art.appendChild(d);
+  });
+}
+
+function applyHeroFans(fans) {
+  const art = $('#heroArt');
+  if (!art) return;
+  [...art.children].forEach((el, i) => {
+    const f = fans[i];
+    if (!f) return;
+    el.style.setProperty('--fan', `${f.rot}deg`);
+    el.style.setProperty('--lift', `${f.lift}px`);
+    el.style.setProperty('--sc', String(f.sc));
+  });
+}
+
+function clearHeroIntroTimers() {
+  (state.heroIntroTimers || []).forEach((t) => clearTimeout(t));
+  state.heroIntroTimers = [];
+  clearTimeout(state.heroLandTimer);
+  state.heroLandTimer = null;
+  clearTimeout(state.heroDealTimer);
+  state.heroDealTimer = null;
+}
+
+function heroLater(fn, ms) {
+  const t = setTimeout(fn, ms);
+  state.heroIntroTimers.push(t);
+  return t;
+}
+
+function setHomeStage(...flags) {
+  const home = $('#screenHome');
+  const visual = $('#heroArt')?.closest('.home-visual');
+  const all = ['is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed', 'is-flourish'];
+  [home, visual].forEach((el) => {
+    if (!el) return;
+    all.forEach((c) => el.classList.remove(c));
+    flags.forEach((c) => el.classList.add(c));
+  });
+}
+
 function startHeroIdle() {
   stopHeroIdle();
   const art = $('#heroArt');
   if (!art) return;
   const visual = art.closest('.home-visual');
-  const ripples = [...document.querySelectorAll('.home-ripple')];
-  const pulseRipples = () => {
-    ripples.forEach((el) => {
-      el.classList.add('is-pulse');
-      el.classList.remove('play');
-      void el.offsetWidth;
-      el.classList.add('play');
-    });
-  };
-  const markLanded = () => {
-    const home = $('#screenHome');
-    home?.classList.add('is-landed');
-    visual?.classList.add('is-landed');
-    if (audioCtx?.state === 'running') {
-      tone(390, 0.05, 'sine', 0.018);
-      setTimeout(() => tone(520, 0.07, 'triangle', 0.022), 70);
-    }
-  };
-  const markDealing = () => {
-    const home = $('#screenHome');
-    home?.classList.add('is-dealing');
-    visual?.classList.add('is-dealing');
-  };
-  const pulseFlourish = () => {
-    const home = $('#screenHome');
-    [home, visual].forEach((el) => {
-      if (!el) return;
-      el.classList.remove('is-flourish');
-      void el.offsetWidth;
-      el.classList.add('is-flourish');
-    });
-    setTimeout(() => {
-      home?.classList.remove('is-flourish');
-      visual?.classList.remove('is-flourish');
-    }, 1000);
-  };
-  clearTimeout(state.heroLandTimer);
-  clearTimeout(state.heroDealTimer);
-  state.heroDealTimer = setTimeout(markDealing, 520);
-  state.heroLandTimer = setTimeout(markLanded, 1880);
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const finePointer = window.matchMedia('(pointer: fine)').matches;
   if (!reduceMotion && finePointer && visual) {
     const onMove = (e) => {
@@ -2352,87 +2462,117 @@ function startHeroIdle() {
       art.style.removeProperty('--tilt-x');
     };
   }
-  const baseFans = [
-    { rot: -26, lift: 14, sc: 1 },
-    { rot: -12, lift: 0, sc: 1.04 },
-    { rot: 0, lift: -18, sc: 1.14 },
-    { rot: 12, lift: 0, sc: 1.04 },
-    { rot: 26, lift: 14, sc: 1 },
-  ];
-  const flourishFans = [
-    { rot: -36, lift: 22, sc: 0.95 },
-    { rot: -17, lift: -12, sc: 1.07 },
-    { rot: 0, lift: -32, sc: 1.2 },
-    { rot: 17, lift: -12, sc: 1.07 },
-    { rot: 36, lift: 22, sc: 0.95 },
-  ];
-  const pool = [
-    'oros-7', 'oros-1', 'oros-12',
-    'copas-12', 'copas-7', 'copas-1',
-    'espadas-10', 'espadas-12', 'espadas-1',
-    'bastos-1', 'bastos-7', 'bastos-12',
-  ];
-  const pickHand = () => {
-    const bag = pool.slice();
-    for (let i = bag.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [bag[i], bag[j]] = [bag[j], bag[i]];
-    }
-    return bag.slice(0, 5);
-  };
-  const applyFans = (fans) => {
-    [...art.children].forEach((el, i) => {
-      const f = fans[i];
-      if (!f) return;
-      el.style.setProperty('--fan', `${f.rot}deg`);
-      el.style.setProperty('--lift', `${f.lift}px`);
-      el.style.setProperty('--sc', String(f.sc));
-    });
-  };
-  state.heroIdle = setInterval(() => {
-    if (!$('#screenHome')?.classList.contains('active')) return;
-    if (document.hidden) return;
-    art.classList.remove('restack');
-    void art.offsetWidth;
-    art.classList.add('restack');
-    pulseRipples();
-    pulseFlourish();
-    applyFans(flourishFans);
-    const next = pickHand();
-    [...art.children].forEach((el, i) => {
-      const img = el.querySelector('img');
-      if (!img || !next[i]) return;
-      el.classList.add('is-refreshing');
+
+  const startIdleLoop = () => {
+    const ripples = [...document.querySelectorAll('.home-ripple')];
+    const pulseRipples = () => {
+      ripples.forEach((el) => {
+        el.classList.add('is-pulse');
+        el.classList.remove('play');
+        void el.offsetWidth;
+        el.classList.add('play');
+      });
+    };
+    const pulseFlourish = () => {
+      const home = $('#screenHome');
+      [home, visual].forEach((el) => {
+        if (!el) return;
+        el.classList.remove('is-flourish');
+        void el.offsetWidth;
+        el.classList.add('is-flourish');
+      });
       setTimeout(() => {
-        img.src = `./cards/${next[i]}.png`;
-        el.classList.remove('is-refreshing');
-      }, 160 + i * 55);
-    });
-    setTimeout(() => {
-      if (!art.isConnected) return;
+        home?.classList.remove('is-flourish');
+        visual?.classList.remove('is-flourish');
+      }, 1000);
+    };
+    state.heroIdle = setInterval(() => {
+      if (!$('#screenHome')?.classList.contains('active')) return;
+      if (document.hidden) return;
+      if (!state.heroIntroDone) return;
       art.classList.remove('restack');
-      applyFans(baseFans);
-    }, 980);
-  }, 5600);
+      void art.offsetWidth;
+      art.classList.add('restack');
+      pulseRipples();
+      pulseFlourish();
+      applyHeroFans(HERO_FLOURISH_FANS);
+      const next = pickDecorHand(5);
+      [...art.children].forEach((el, i) => {
+        const img = el.querySelector('img');
+        if (!img || !next[i]) return;
+        el.classList.add('is-refreshing');
+        setTimeout(() => {
+          img.src = `./cards/${next[i]}.png`;
+          el.classList.remove('is-refreshing');
+        }, 160 + i * 55);
+      });
+      setTimeout(() => {
+        if (!art.isConnected) return;
+        art.classList.remove('restack');
+        applyHeroFans(HERO_BASE_FANS);
+      }, 980);
+    }, 6200);
+  };
+
+  // Intro cinematográfica
+  const hand15 = pickSum15Hand(5);
+  buildHeroFan(hand15, { animateDeal: !reduceMotion });
+
+  if (reduceMotion) {
+    setHomeStage('is-ready', 'is-brand', 'is-playable', 'is-landed');
+    state.heroIntroDone = true;
+    buildHeroFan(pickDecorHand(5), { animateDeal: false });
+    startIdleLoop();
+    return;
+  }
+
+  // 1) La mesa (CSS) → 2) cartas → 3) está lista → 4) ¡15! → 5) barrido → 6) Escoba → 7) UI
+  heroLater(() => setHomeStage('is-dealing'), 480);
+  heroLater(() => setHomeStage('is-dealing', 'is-ready', 'is-landed'), 1950);
+  heroLater(() => {
+    setHomeStage('is-dealing', 'is-ready', 'is-landed', 'is-sum15');
+    if (audioCtx?.state === 'running') {
+      tone(440, 0.05, 'sine', 0.02);
+      setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
+    }
+  }, 2750);
+  heroLater(() => {
+    setHomeStage('is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
+    [...art.children].forEach((el, i) => {
+      el.style.setProperty('--sweep-i', String(i));
+      el.classList.add('is-swept');
+    });
+    if (audioCtx?.state === 'running') playSfx('escoba');
+  }, 3600);
+  heroLater(() => {
+    setHomeStage('is-ready', 'is-landed', 'is-sweeping', 'is-brand');
+  }, 4450);
+  heroLater(() => {
+    setHomeStage('is-ready', 'is-brand', 'is-playable', 'is-landed', 'is-dealing');
+    buildHeroFan(pickDecorHand(5), { animateDeal: true });
+    state.heroIntroDone = true;
+    startIdleLoop();
+  }, 5400);
 }
 
 function stopHeroIdle() {
   clearInterval(state.heroIdle);
   state.heroIdle = null;
-  clearTimeout(state.heroLandTimer);
-  state.heroLandTimer = null;
-  clearTimeout(state.heroDealTimer);
-  state.heroDealTimer = null;
+  clearHeroIntroTimers();
   state.heroTiltCleanup?.();
   state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
-  document.querySelector('.home-visual')?.classList.remove('is-flourish', 'is-dealing');
-  $('#screenHome')?.classList.remove('is-flourish', 'is-dealing');
+  document.querySelector('.home-visual')?.classList.remove(
+    'is-flourish', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
+  );
+  $('#screenHome')?.classList.remove(
+    'is-flourish', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
+  );
 }
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=68').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=69').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
