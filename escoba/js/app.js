@@ -2559,6 +2559,7 @@ function stopHeroIdle() {
   clearInterval(state.heroIdle);
   state.heroIdle = null;
   clearHeroIntroTimers();
+  state.heroIntroDone = false;
   state.heroTiltCleanup?.();
   state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
