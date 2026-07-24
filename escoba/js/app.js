@@ -1746,6 +1746,8 @@ async function startJoin() {
     state.net.playerName = myDisplayName();
     wireNet(state.net);
     showScreen('screenJoinWait');
+    const title = $('#joinWaitTitle');
+    if (title) title.textContent = 'Conectando';
     $('#joinWaitStatus').textContent = 'Conectando…';
     $('#joinWaitStatus')?.classList.add('waiting-pulse');
     stopHeroIdle();
@@ -1756,9 +1758,12 @@ async function startJoin() {
     state.names = ['Anfitrión', myDisplayName()];
     state.nameHelloSent = false;
     startGuestIdlePoll();
+    if (title) title.textContent = 'En sala';
     $('#joinWaitStatus').textContent = 'Conectado. Esperando al anfitrión…';
     setNetChip('Enlace…', 'warn');
   } catch (err) {
+    const title = $('#joinWaitTitle');
+    if (title) title.textContent = 'Sin conexión';
     $('#joinWaitStatus').textContent = err.message || 'No se pudo unir';
     setNetChip('Sin red', 'bad');
   }
@@ -2589,7 +2594,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=73').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=74').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
