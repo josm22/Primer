@@ -238,9 +238,10 @@ body::before {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  justify-content: space-between;
-  padding: 18px 0 12px;
-  gap: 12px;
+  justify-content: center;
+  align-items: stretch;
+  padding: 16px 0 14px;
+  gap: clamp(14px, 3.2vh, 26px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -250,12 +251,12 @@ body::before {
   position: relative;
   flex: 0 0 auto;
   width: 100%;
-  margin: 4px auto 0;
-  padding: 10px 8px 6px;
+  margin: 0 auto;
+  padding: 4px 8px 10px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: clamp(96px, 16vh, 132px);
+  min-height: clamp(100px, 15vh, 128px);
   background: none;
   box-shadow: none;
   border-radius: 0;
