@@ -2531,31 +2531,29 @@ function startHeroIdle() {
     return;
   }
 
-  // 1) La mesa → 2) cartas → 3) está lista → 4) ¡15! → 5) barre der→centro→izq + ESCOBA → 6) brand solo → 7) UI
-  heroLater(() => setHomeStage('is-cue'), 80);
-  heroLater(() => setHomeStage('is-cue', 'is-dealing'), 520);
+  // 1) Cartas + «La mesa está lista» juntos → 2) ¡15! → 3) escoba barre + ESCOBA → 4) UI
+  heroLater(() => setHomeStage('is-cue', 'is-ready', 'is-dealing'), 60);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed');
+    setHomeStage('is-cue', 'is-ready', 'is-dealing', 'is-landed');
     [...art.children].forEach((el) => el.classList.add('is-settled'));
     if (audioCtx?.state === 'running') {
       tone(220, 0.04, 'sine', 0.015);
       setTimeout(() => tone(330, 0.05, 'triangle', 0.018), 60);
     }
-  }, 1950);
+  }, 1400);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed', 'is-sum15');
+    setHomeStage('is-cue', 'is-ready', 'is-dealing', 'is-landed', 'is-sum15');
     if (audioCtx?.state === 'running') {
       tone(440, 0.05, 'sine', 0.02);
       setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
       setTimeout(() => tone(880, 0.1, 'sine', 0.02), 160);
     }
-  }, 2750);
+  }, 2000);
   heroLater(() => {
     setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
-      // cartas salen hacia la DERECHA, con el barrido
       el.style.setProperty('--sweep-i', String(i));
       el.style.setProperty('--sweep-dx', `${Math.round(110 + fromLeft * 90 + (i % 2) * 18)}px`);
       el.style.setProperty('--sweep-dy', `${Math.round(-28 - fromLeft * 48 - i * 8)}px`);
@@ -2563,8 +2561,8 @@ function startHeroIdle() {
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
-  }, 3600);
-  // ~66% del barrido (1.85s): vuelve al medio y trae ESCOBA hacia la izquierda
+  }, 2750);
+  // ~66% del barrido: trae ESCOBA
   heroLater(() => {
     setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sweeping', 'is-brand');
     if (audioCtx?.state === 'running') {
@@ -2572,21 +2570,19 @@ function startHeroIdle() {
       setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
       setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
     }
-  }, 4800);
-  // Mesa limpia + ESCOBA plantada (beat solo)
+  }, 3950);
   heroLater(() => {
     setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-landed');
-  }, 5600);
-  // CTAs / tagline; el abanico vuelve un instante después
+  }, 4750);
   heroLater(() => {
     setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed');
-  }, 6400);
+  }, 5450);
   heroLater(() => {
     setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 7200);
+  }, 6200);
 }
 
 function stopHeroIdle() {
@@ -2607,7 +2603,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=75').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=76').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

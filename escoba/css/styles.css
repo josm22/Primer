@@ -1143,25 +1143,16 @@ body::before {
   -webkit-text-fill-color: currentColor;
 }
 
-/* Misma posición fija del subtítulo: primero «La mesa», luego «está lista» */
-#screenHome.is-cue .brand-home .brand-sub .ew-mesa {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.05s + var(--w, 0) * 0.1s) forwards;
+/* Frase completa a la vez (con las cartas): staggered corto, una sola unidad */
+#screenHome.is-cue .brand-home .brand-sub .ew {
+  animation: readyIn 0.5s cubic-bezier(.18,.85,.25,1) calc(0.06s + var(--w, 0) * 0.07s) forwards;
 }
 
-#screenHome.is-ready .brand-home .brand-sub .ew-ready {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
-}
-
-/* Permanecen visibles en su sitio (sin moverse ni recrearse) */
-#screenHome.is-ready .brand-home .brand-sub .ew-mesa,
-#screenHome.is-sum15 .brand-home .brand-sub .ew-mesa,
-#screenHome.is-sweeping .brand-home .brand-sub .ew-mesa,
-#screenHome.is-brand .brand-home .brand-sub .ew-mesa,
-#screenHome.is-playable .brand-home .brand-sub .ew-mesa,
-#screenHome.is-sum15 .brand-home .brand-sub .ew-ready,
-#screenHome.is-sweeping .brand-home .brand-sub .ew-ready,
-#screenHome.is-brand .brand-home .brand-sub .ew-ready,
-#screenHome.is-playable .brand-home .brand-sub .ew-ready {
+/* Permanecen visibles si is-cue se cae en algún stage */
+#screenHome.is-sum15 .brand-home .brand-sub .ew,
+#screenHome.is-sweeping .brand-home .brand-sub .ew,
+#screenHome.is-brand .brand-home .brand-sub .ew,
+#screenHome.is-playable .brand-home .brand-sub .ew {
   opacity: 1;
   transform: none;
   filter: none;
