@@ -2424,7 +2424,7 @@ function heroLater(fn, ms) {
 function setHomeStage(...flags) {
   const home = $('#screenHome');
   const visual = $('#heroArt')?.closest('.home-visual');
-  const all = ['is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed', 'is-flourish'];
+  const all = ['is-cue', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed', 'is-flourish'];
   [home, visual].forEach((el) => {
     if (!el) return;
     all.forEach((c) => el.classList.remove(c));
@@ -2519,25 +2519,25 @@ function startHeroIdle() {
   buildHeroFan(hand15, { animateDeal: !reduceMotion });
 
   if (reduceMotion) {
-    setHomeStage('is-ready', 'is-brand', 'is-playable', 'is-landed');
+    setHomeStage('is-brand', 'is-ready', 'is-playable', 'is-landed');
     state.heroIntroDone = true;
     buildHeroFan(pickDecorHand(5), { animateDeal: false });
     startIdleLoop();
     return;
   }
 
-  // 1) La mesa (CSS) → 2) cartas → 3) está lista → 4) ¡15! → 5) barrido → 6) Escoba → 7) UI
-  heroLater(() => setHomeStage('is-dealing'), 480);
-  heroLater(() => setHomeStage('is-dealing', 'is-ready', 'is-landed'), 1950);
+  // 1) La mesa (cue) → 2) cartas → 3) ¡15! → 4) barrido → 5) nace Escoba → 6) subtítulo → 7) UI
+  heroLater(() => setHomeStage('is-cue'), 80);
+  heroLater(() => setHomeStage('is-cue', 'is-dealing'), 520);
   heroLater(() => {
-    setHomeStage('is-dealing', 'is-ready', 'is-landed', 'is-sum15');
+    setHomeStage('is-cue', 'is-dealing', 'is-landed', 'is-sum15');
     if (audioCtx?.state === 'running') {
       tone(440, 0.05, 'sine', 0.02);
       setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
     }
-  }, 2750);
+  }, 2300);
   heroLater(() => {
-    setHomeStage('is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
+    setHomeStage('is-landed', 'is-sum15', 'is-sweeping');
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
@@ -2548,16 +2548,24 @@ function startHeroIdle() {
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
-  }, 3600);
+  }, 3200);
   heroLater(() => {
-    setHomeStage('is-ready', 'is-landed', 'is-sweeping', 'is-brand');
-  }, 4650);
+    setHomeStage('is-landed', 'is-sweeping', 'is-brand');
+    if (audioCtx?.state === 'running') {
+      tone(392, 0.07, 'sine', 0.03);
+      setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
+      setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
+    }
+  }, 4300);
   heroLater(() => {
-    setHomeStage('is-ready', 'is-brand', 'is-playable', 'is-landed', 'is-dealing');
+    setHomeStage('is-brand', 'is-ready', 'is-landed');
+  }, 5100);
+  heroLater(() => {
+    setHomeStage('is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 5600);
+  }, 5900);
 }
 
 function stopHeroIdle() {
@@ -2569,16 +2577,16 @@ function stopHeroIdle() {
   state.heroTiltCleanup = null;
   $('#heroArt')?.classList.remove('restack');
   document.querySelector('.home-visual')?.classList.remove(
-    'is-flourish', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
+    'is-flourish', 'is-cue', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
   );
   $('#screenHome')?.classList.remove(
-    'is-flourish', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
+    'is-flourish', 'is-cue', 'is-dealing', 'is-ready', 'is-sum15', 'is-sweeping', 'is-brand', 'is-playable', 'is-landed',
   );
 }
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=70').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=71').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

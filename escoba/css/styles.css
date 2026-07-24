@@ -350,46 +350,90 @@ body::before {
 @keyframes broomSweep {
   0% {
     opacity: 0;
-    transform: translate(-130%, 28%) rotate(-52deg) scale(0.78);
+    transform: translate(-130%, 30%) rotate(-54deg) scale(0.78);
   }
-  10% {
+  12% {
     opacity: 1;
-    transform: translate(-78%, 16%) rotate(-42deg) scale(0.92);
+    transform: translate(-72%, 18%) rotate(-44deg) scale(0.94);
   }
-  /* wind-up */
-  18% {
-    transform: translate(-70%, 12%) rotate(-48deg) scale(0.95);
+  20% {
+    transform: translate(-64%, 14%) rotate(-50deg) scale(0.96);
   }
-  /* golpe / barrido principal */
-  42% {
-    transform: translate(-8%, 2%) rotate(-18deg) scale(1.05);
+  40% {
+    transform: translate(-6%, 4%) rotate(-16deg) scale(1.08);
   }
-  58% {
-    transform: translate(28%, -4%) rotate(4deg) scale(1.02);
+  55% {
+    transform: translate(18%, -2%) rotate(2deg) scale(1.02);
   }
-  /* sube hacia el título */
-  78% {
+  72% {
     opacity: 1;
-    transform: translate(48%, -34%) rotate(16deg) scale(0.88);
+    transform: translate(6%, -38%) rotate(-2deg) scale(0.78);
+    filter: brightness(1.25);
+  }
+  86% {
+    opacity: 0.85;
+    transform: translate(6%, -52%) rotate(0deg) scale(0.42);
+    filter: brightness(1.8) blur(1px);
   }
   100% {
     opacity: 0;
-    transform: translate(62%, -58%) rotate(28deg) scale(0.42);
+    transform: translate(6%, -58%) rotate(0deg) scale(0.12);
+    filter: brightness(2.4) blur(4px);
   }
 }
 
 @keyframes broomBristle {
   0%, 100% { transform: scaleY(1) scaleX(1); }
-  20% { transform: scaleY(0.92) scaleX(1.08); }
-  45% { transform: scaleY(1.06) scaleX(0.94); }
-  70% { transform: scaleY(0.96) scaleX(1.04); }
+  22% { transform: scaleY(0.9) scaleX(1.1); }
+  48% { transform: scaleY(1.08) scaleX(0.92); }
+  70% { transform: scaleY(0.95) scaleX(1.06); }
+  85% { transform: scaleY(1.2) scaleX(1.25); }
 }
 
 @keyframes sweepTrail {
   0% { opacity: 0; transform: translate(-60%, 20%) scaleX(0.2) rotate(-18deg); }
   25% { opacity: 0.55; }
   55% { opacity: 0.7; transform: translate(5%, 0%) scaleX(1.15) rotate(-6deg); }
-  100% { opacity: 0; transform: translate(55%, -18%) scaleX(1.4) rotate(8deg); }
+  100% { opacity: 0; transform: translate(40%, -28%) scaleX(1.25) rotate(4deg); }
+}
+
+@keyframes birthFlash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  35% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); }
+}
+
+@keyframes brandBirth {
+  0% {
+    opacity: 0;
+    transform:
+      translate(var(--bx, 0px), var(--by, 100px))
+      scale(0.08)
+      rotate(var(--br, 0deg));
+    filter: blur(12px) brightness(2.2);
+  }
+  48% {
+    opacity: 1;
+    filter: blur(0) brightness(1.25);
+    transform: translate(0, -10px) scale(1.1) rotate(0deg);
+  }
+  72% {
+    transform: translate(0, 3px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes cueIn {
+  from { opacity: 0; transform: translateY(10px); letter-spacing: 0.4em; filter: blur(4px); }
+  to { opacity: 1; transform: none; letter-spacing: 0.18em; filter: none; }
+}
+
+@keyframes cueOut {
+  to { opacity: 0; transform: translateY(-8px) scale(0.96); filter: blur(3px); }
 }
 
 @keyframes cardSwept {
@@ -709,11 +753,11 @@ body::before {
 }
 
 #screenHome.is-sweeping .home-broom {
-  animation: broomSweep 1.35s cubic-bezier(.18,.78,.22,1) both;
+  animation: broomSweep 1.55s cubic-bezier(.18,.78,.22,1) both;
 }
 
 #screenHome.is-sweeping .home-broom .broom-svg {
-  animation: broomBristle 1.35s ease-in-out both;
+  animation: broomBristle 1.55s ease-in-out both;
 }
 
 .home-sweep-trail {
@@ -959,6 +1003,10 @@ body::before {
 }
 
 .brand-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12em;
   font-size: clamp(54px, 15.5vw, 80px);
   margin: 0;
   text-align: center;
@@ -968,42 +1016,78 @@ body::before {
     0 20px 44px rgba(0, 0, 0, 0.28);
 }
 
-.brand-home .brand-eyebrow {
+.home-cue {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  z-index: 3;
+  display: flex;
+  gap: 0.42em;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(0.78rem, 3.4vw, 1rem);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(239, 197, 106, 0.88);
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.home-cue span {
+  display: inline-block;
+  opacity: 0;
+}
+
+#screenHome.is-cue .home-cue span {
+  animation: cueIn 0.6s cubic-bezier(.18,.85,.25,1) calc(0.05s + var(--w, 0) * 0.12s) forwards;
+}
+
+#screenHome.is-sweeping .home-cue {
+  animation: cueOut 0.35s ease forwards;
+}
+
+.home-birth-flash {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: min(220px, 70%);
+  aspect-ratio: 1;
+  z-index: 6;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 246, 214, 0.75), rgba(239, 197, 106, 0.28) 42%, transparent 70%);
+  filter: blur(2px);
+  transform: translate(-50%, -50%) scale(0.3);
+}
+
+#screenHome.is-brand .home-birth-flash {
+  animation: birthFlash 0.7s cubic-bezier(.18,.85,.25,1) both;
+}
+
+.brand-home .brand-sub {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: baseline;
   gap: 0.4em;
   position: relative;
-  margin: 0 auto 12px;
+  margin: 0.15em auto 0;
   font-size: 0.24em;
   font-style: italic;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(224, 179, 77, 0.82);
-  line-height: 1.2;
+  color: rgba(224, 179, 77, 0.86);
+  line-height: 1.25;
   max-width: 22em;
 }
 
-.brand-home .brand-eyebrow::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  height: 1px;
-  width: 0;
-  transform: translateX(-50%);
-  border-radius: 1px;
-  background: linear-gradient(90deg, transparent, rgba(239, 197, 106, 0.85), transparent);
-  opacity: 0;
-}
-
-#screenHome.is-ready .brand-home .brand-eyebrow::after {
-  animation: eyebrowRule 0.7s cubic-bezier(.22,.8,.3,1) 0.12s forwards;
-}
-
-.brand-home .brand-eyebrow .ew {
+.brand-home .brand-sub .ew {
   display: inline-block;
   opacity: 0;
   margin: 0;
@@ -1012,25 +1096,15 @@ body::before {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(224, 179, 77, 0.82);
+  color: rgba(224, 179, 77, 0.86);
   -webkit-text-fill-color: currentColor;
 }
 
-/* Acto 1: «La mesa» con el felt */
-.brand-home .brand-eyebrow .ew-mesa {
-  animation: ewIn 0.62s cubic-bezier(.18,.85,.25,1) calc(0.06s + var(--w, 0) * 0.12s) forwards;
+#screenHome.is-ready .brand-home .brand-sub .ew {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
 }
 
-/* Acto 3: «está lista» juntas, mismo gesto */
-.brand-home .brand-eyebrow .ew-ready {
-  animation: none;
-}
-
-#screenHome.is-ready .brand-home .brand-eyebrow .ew-ready {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.07s) forwards;
-}
-
-#screenHome.is-flourish .brand-home .brand-eyebrow .ew-ready {
+#screenHome.is-flourish .brand-home .brand-sub .ew {
   animation: listaPulse 0.85s ease both;
 }
 
@@ -1045,6 +1119,8 @@ body::before {
   line-height: 0.88;
   letter-spacing: -0.03em;
   filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.2));
+  position: relative;
+  z-index: 2;
 }
 
 .brand-word .bl {
@@ -1073,8 +1149,8 @@ body::before {
 
 #screenHome.is-brand .brand-word .bl {
   animation:
-    brandLetterIn 0.72s cubic-bezier(.14,.86,.2,1) calc(0.05s + var(--l, 0) * 0.055s) both,
-    brandShimmer 7.5s ease-in-out calc(1.4s + var(--l, 0) * 0.08s) infinite;
+    brandBirth 0.95s cubic-bezier(.14,.86,.2,1) calc(0.02s + var(--l, 0) * 0.05s) both,
+    brandShimmer 7.5s ease-in-out calc(1.5s + var(--l, 0) * 0.08s) infinite;
 }
 
 .brand-home::after {
@@ -2721,14 +2797,18 @@ button.card {
   .home-broom,
   .home-broom .broom-svg,
   .home-sweep-trail,
+  .home-birth-flash,
+  .home-cue,
   .home-sum15 { animation: none; opacity: 0; }
+  .home-cue span,
+  .brand-home .brand-sub .ew { opacity: 1; }
   .hero-art { transition: none; transform: none; }
   #screenHome .hero-art .mini-card::after,
   .home-actions .btn-gold::after { animation: none; opacity: 0; }
   .brand-home,
   .brand-home::after,
   .brand-home span,
-  .brand-home .brand-eyebrow .ew,
+  .brand-home .brand-sub .ew,
   .brand-word,
   .brand-word .bl,
   .home-copy,
@@ -2757,8 +2837,8 @@ button.card {
     filter: none;
     transform: none;
   }
-  .brand-home .brand-eyebrow .ew,
-  .brand-home .brand-eyebrow .ew-ready {
+  .brand-home .brand-sub .ew,
+  .brand-home .brand-sub .ew {
     opacity: 1;
     color: rgba(224, 179, 77, 0.82);
     -webkit-text-fill-color: currentColor;
@@ -2766,10 +2846,6 @@ button.card {
     filter: none;
     transform: none;
     text-shadow: none;
-  }
-  .brand-home .brand-eyebrow::after {
-    width: min(220px, 64vw);
-    opacity: 1;
   }
   .brand-home::after { width: min(190px, 50vw); opacity: 1; }
   #screenHome .name-field,
