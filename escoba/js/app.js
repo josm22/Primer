@@ -2531,7 +2531,9 @@ function startHeroIdle() {
     return;
   }
 
-  // 1) Cartas + «La mesa está lista» juntos → 2) ¡15! → 3) escoba barre + ESCOBA → 4) UI
+  // 1) Cartas + «La mesa está lista»
+  // 2) ESCOBA + empezar juego
+  // 3) Te das cuenta del 15 → la escoba barre
   heroLater(() => setHomeStage('is-cue', 'is-ready', 'is-dealing'), 60);
   heroLater(() => {
     setHomeStage('is-cue', 'is-ready', 'is-dealing', 'is-landed');
@@ -2540,17 +2542,28 @@ function startHeroIdle() {
       tone(220, 0.04, 'sine', 0.015);
       setTimeout(() => tone(330, 0.05, 'triangle', 0.018), 60);
     }
-  }, 1400);
+  }, 1350);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-ready', 'is-dealing', 'is-landed', 'is-sum15');
+    setHomeStage('is-cue', 'is-ready', 'is-dealing', 'is-landed', 'is-brand');
+    if (audioCtx?.state === 'running') {
+      tone(392, 0.07, 'sine', 0.03);
+      setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
+      setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
+    }
+  }, 1750);
+  heroLater(() => {
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-brand', 'is-playable');
+  }, 2450);
+  heroLater(() => {
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-brand', 'is-playable', 'is-sum15');
     if (audioCtx?.state === 'running') {
       tone(440, 0.05, 'sine', 0.02);
       setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
       setTimeout(() => tone(880, 0.1, 'sine', 0.02), 160);
     }
-  }, 2000);
+  }, 3400);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-brand', 'is-playable', 'is-sum15', 'is-sweeping');
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
@@ -2561,28 +2574,13 @@ function startHeroIdle() {
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
-  }, 2750);
-  // ~66% del barrido: trae ESCOBA
+  }, 4100);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-sweeping', 'is-brand');
-    if (audioCtx?.state === 'running') {
-      tone(392, 0.07, 'sine', 0.03);
-      setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
-      setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
-    }
-  }, 3950);
-  heroLater(() => {
-    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-landed');
-  }, 4750);
-  heroLater(() => {
-    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed');
-  }, 5450);
-  heroLater(() => {
-    setHomeStage('is-cue', 'is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
+    setHomeStage('is-cue', 'is-ready', 'is-landed', 'is-brand', 'is-playable', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 6200);
+  }, 5800);
 }
 
 function stopHeroIdle() {
@@ -2603,7 +2601,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=76').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=77').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

@@ -369,38 +369,27 @@ body::before {
 }
 
 @keyframes broomSweep {
-  /* entra izq → barre a la DERECHA → vuelve al MEDIO → sale por la IZQUIERDA */
+  /* entra izq → barre a la DERECHA y se lleva las cartas */
   0% {
     opacity: 0;
     transform: translate(-140%, 22%) rotate(-56deg) scale(0.82);
   }
-  10% {
+  12% {
     opacity: 1;
-    transform: translate(-70%, 14%) rotate(-46deg) scale(0.95);
+    transform: translate(-55%, 12%) rotate(-42deg) scale(0.96);
   }
-  16% {
-    transform: translate(-62%, 12%) rotate(-50deg) scale(0.97);
+  28% {
+    transform: translate(-8%, 4%) rotate(-12deg) scale(1.02);
   }
-  /* barrido a la derecha (empuja cartas) */
-  38% {
-    transform: translate(62%, 0%) rotate(12deg) scale(1.1);
-  }
-  /* vuelve al medio */
-  56% {
-    transform: translate(4%, -8%) rotate(-4deg) scale(1.04);
-    filter: brightness(1.18);
-  }
-  /* pausa en el medio y empieza a llevar ESCOBA */
-  66% {
+  58% {
     opacity: 1;
-    transform: translate(-2%, -22%) rotate(-10deg) scale(0.9);
-    filter: brightness(1.4);
+    transform: translate(72%, -6%) rotate(16deg) scale(1.1);
+    filter: brightness(1.2);
   }
-  /* desaparece por la izquierda trayendo la palabra */
   100% {
     opacity: 0;
-    transform: translate(-128%, -34%) rotate(-32deg) scale(0.48);
-    filter: brightness(1.85) blur(2.5px);
+    transform: translate(135%, -20%) rotate(28deg) scale(0.65);
+    filter: brightness(1.5) blur(2px);
   }
 }
 
@@ -414,10 +403,9 @@ body::before {
 
 @keyframes sweepTrail {
   0% { opacity: 0; transform: translate(-50%, 18%) scaleX(0.15) rotate(-12deg); }
-  20% { opacity: 0.5; }
-  38% { opacity: 0.82; transform: translate(38%, 0%) scaleX(1.35) rotate(6deg); }
-  56% { opacity: 0.55; transform: translate(0%, -6%) scaleX(0.95) rotate(-2deg); }
-  100% { opacity: 0; transform: translate(-58%, -14%) scaleX(1.15) rotate(-10deg); }
+  22% { opacity: 0.55; }
+  58% { opacity: 0.85; transform: translate(42%, -2%) scaleX(1.4) rotate(8deg); }
+  100% { opacity: 0; transform: translate(70%, -10%) scaleX(1.1) rotate(14deg); }
 }
 
 @keyframes birthFlash {
@@ -427,22 +415,22 @@ body::before {
 }
 
 @keyframes brandBirth {
-  /* llega desde la izquierda con la escoba y se planta en el centro */
+  /* nace en su sitio, encima de la mesa ya lista */
   0% {
     opacity: 0;
     transform:
-      translate(calc(-150px + var(--bx, 0px)), calc(36px + var(--by, 0px)))
-      scale(0.12)
-      rotate(calc(-22deg + var(--br, 0deg)));
-    filter: blur(12px) brightness(2.2);
+      translateY(calc(22px + var(--by, 0px)))
+      scale(0.72)
+      rotate(calc(var(--br, 0deg) * 0.35));
+    filter: blur(8px) brightness(1.6);
   }
-  48% {
+  55% {
     opacity: 1;
-    filter: blur(0) brightness(1.35);
-    transform: translate(6px, -10px) scale(1.12) rotate(0deg);
+    filter: blur(0) brightness(1.2);
+    transform: translateY(-6px) scale(1.06) rotate(0deg);
   }
-  72% {
-    transform: translate(-3px, 3px) scale(0.97);
+  78% {
+    transform: translateY(2px) scale(0.98);
     filter: brightness(1.05);
   }
   100% {
