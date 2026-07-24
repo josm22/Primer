@@ -2284,6 +2284,15 @@ function startHeroIdle() {
   stopHeroIdle();
   const art = $('#heroArt');
   if (!art) return;
+  const ripples = [...document.querySelectorAll('.home-ripple')];
+  const pulseRipples = () => {
+    ripples.forEach((el) => {
+      el.classList.add('is-pulse');
+      el.classList.remove('play');
+      void el.offsetWidth;
+      el.classList.add('play');
+    });
+  };
   const baseFans = [
     { rot: -26, lift: 14, sc: 1 },
     { rot: -12, lift: 0, sc: 1.04 },
@@ -2292,11 +2301,11 @@ function startHeroIdle() {
     { rot: 26, lift: 14, sc: 1 },
   ];
   const flourishFans = [
-    { rot: -34, lift: 20, sc: 0.96 },
-    { rot: -16, lift: -10, sc: 1.06 },
-    { rot: 0, lift: -28, sc: 1.18 },
-    { rot: 16, lift: -10, sc: 1.06 },
-    { rot: 34, lift: 20, sc: 0.96 },
+    { rot: -36, lift: 22, sc: 0.95 },
+    { rot: -17, lift: -12, sc: 1.07 },
+    { rot: 0, lift: -32, sc: 1.2 },
+    { rot: 17, lift: -12, sc: 1.07 },
+    { rot: 36, lift: 22, sc: 0.95 },
   ];
   const pool = [
     'oros-7', 'oros-1', 'oros-12',
@@ -2327,6 +2336,7 @@ function startHeroIdle() {
     art.classList.remove('restack');
     void art.offsetWidth;
     art.classList.add('restack');
+    pulseRipples();
     applyFans(flourishFans);
     const next = pickHand();
     [...art.children].forEach((el, i) => {
@@ -2343,7 +2353,7 @@ function startHeroIdle() {
       art.classList.remove('restack');
       applyFans(baseFans);
     }, 980);
-  }, 5800);
+  }, 5600);
 }
 
 function stopHeroIdle() {
@@ -2354,7 +2364,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=62').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=63').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

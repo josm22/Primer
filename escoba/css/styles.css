@@ -159,76 +159,90 @@ body::before {
 
 @keyframes floatSuit {
   0%, 100% { transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
-  50% { transform: rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 10px)) scale(var(--sc, 1)); }
+  50% { transform: rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 11px)) scale(var(--sc, 1)); }
 }
 
 @keyframes heroDeal {
   0% {
     opacity: 0;
     transform:
-      translateX(calc((var(--i, 2) - 2) * 36px))
-      translateY(-110px)
-      rotate(calc(var(--fan, 0deg) * 0.08))
-      scale(0.4);
-    filter: brightness(1.35) blur(4px);
+      translateX(calc((var(--i, 2) - 2) * 42px))
+      translateY(-130px)
+      rotateY(78deg)
+      rotate(calc(var(--fan, 0deg) * 0.04))
+      scale(0.36);
+    filter: brightness(1.45) blur(5px);
   }
-  58% {
+  55% {
     opacity: 1;
     transform:
-      rotate(calc(var(--fan, 0deg) * 1.12))
-      translateY(calc(var(--lift, 0px) + 10px))
-      scale(calc(var(--sc, 1) * 1.07));
-    filter: brightness(1.1) blur(0);
+      rotateY(-8deg)
+      rotate(calc(var(--fan, 0deg) * 1.14))
+      translateY(calc(var(--lift, 0px) + 12px))
+      scale(calc(var(--sc, 1) * 1.08));
+    filter: brightness(1.12) blur(0);
   }
-  82% {
+  78% {
     transform:
-      rotate(calc(var(--fan, 0deg) * 0.96))
-      translateY(calc(var(--lift, 0px) - 4px))
-      scale(calc(var(--sc, 1) * 0.99));
+      rotateY(3deg)
+      rotate(calc(var(--fan, 0deg) * 0.95))
+      translateY(calc(var(--lift, 0px) - 5px))
+      scale(calc(var(--sc, 1) * 0.985));
   }
   100% {
     opacity: 1;
-    transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1));
+    transform: rotateY(0deg) rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1));
     filter: none;
   }
 }
 
 @keyframes cardSheen {
   0% { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
-  20% { opacity: 1; }
+  18% { opacity: 1; }
   100% { transform: translateX(130%) skewX(-14deg); opacity: 0; }
+}
+
+@keyframes cardSheenLoop {
+  0%, 78%, 100% { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
+  86% { opacity: 0.75; }
+  92% { transform: translateX(130%) skewX(-14deg); opacity: 0; }
 }
 
 @keyframes homeGlowDrift {
   0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.4; }
-  50% { transform: translate(calc(-50% + 10%), 8%) scale(1.16); opacity: 0.9; }
+  50% { transform: translate(calc(-50% + 10%), 8%) scale(1.18); opacity: 0.95; }
 }
 
 @keyframes homeRipple {
-  0% { opacity: 0.55; transform: translate(-50%, 0) scaleX(0.35) scaleY(0.45); }
-  100% { opacity: 0; transform: translate(-50%, 0) scaleX(1.85) scaleY(1.4); }
+  0% { opacity: 0.6; transform: translate(-50%, 0) scaleX(0.3) scaleY(0.4); }
+  100% { opacity: 0; transform: translate(-50%, 0) scaleX(2) scaleY(1.55); }
 }
 
 @keyframes brandRule {
   from { width: 0; opacity: 0; }
-  to { width: min(180px, 48vw); opacity: 1; }
+  to { width: min(190px, 50vw); opacity: 1; }
+}
+
+@keyframes brandShimmer {
+  0%, 100% { background-position: 120% center; }
+  50% { background-position: 0% center; }
 }
 
 @keyframes cardFlipSoft {
-  0% { filter: brightness(1); transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
-  40% { filter: brightness(1.28); transform: rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 18px)) scale(calc(var(--sc, 1) * 1.06)); }
-  100% { filter: brightness(1); transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
+  0% { filter: brightness(1); transform: rotateY(0deg) rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
+  35% { filter: brightness(1.3); transform: rotateY(-18deg) rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 22px)) scale(calc(var(--sc, 1) * 1.07)); }
+  100% { filter: brightness(1); transform: rotateY(0deg) rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
 }
 
 @keyframes brandIn {
   0% {
     opacity: 0;
-    transform: translateY(34px) scale(0.86);
-    filter: blur(10px);
-    letter-spacing: -0.1em;
+    transform: translateY(38px) scale(0.84);
+    filter: blur(12px);
+    letter-spacing: -0.12em;
   }
-  45% { filter: blur(0); }
-  72% { transform: translateY(-4px) scale(1.02); }
+  42% { filter: blur(0); }
+  70% { transform: translateY(-6px) scale(1.035); }
   100% {
     opacity: 1;
     transform: none;
@@ -238,12 +252,12 @@ body::before {
 }
 
 @keyframes eyebrowIn {
-  from { opacity: 0; transform: translateY(8px); letter-spacing: 0.35em; }
+  from { opacity: 0; transform: translateY(10px); letter-spacing: 0.4em; }
   to { opacity: 1; transform: none; letter-spacing: 0.22em; }
 }
 
 @keyframes tagBitIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
 
@@ -252,9 +266,20 @@ body::before {
   to { opacity: 1; transform: none; filter: none; }
 }
 
+@keyframes ctaPop {
+  0% { opacity: 0; transform: translateY(18px) scale(0.92); }
+  68% { opacity: 1; transform: translateY(-3px) scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes nameLineIn {
+  from { background-size: 0% 1.5px; }
+  to { background-size: 100% 1.5px; }
+}
+
 @keyframes btnSheen {
-  0%, 62%, 100% { transform: translateX(-120%); }
-  78% { transform: translateX(120%); }
+  0%, 58%, 100% { transform: translateX(-120%); }
+  74% { transform: translateX(120%); }
 }
 
 @keyframes pulseGold {
@@ -263,7 +288,7 @@ body::before {
 }
 
 @keyframes homeBloom {
-  0% { opacity: 0; transform: scale(0.88) translateY(12px); }
+  0% { opacity: 0; transform: scale(0.86) translateY(16px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
@@ -350,7 +375,30 @@ body::before {
   border-radius: 50%;
   pointer-events: none;
   z-index: 1;
+  opacity: 0;
   animation: homeRipple 1.15s cubic-bezier(.18,.8,.3,1) 0.95s both;
+}
+
+.home-ripple--late {
+  width: 210px;
+  height: 52px;
+  border-color: rgba(255, 246, 214, 0.22);
+  animation-delay: 1.18s;
+  animation-duration: 1.35s;
+}
+
+.home-ripple.is-pulse {
+  animation: none;
+  opacity: 0;
+}
+
+.home-ripple.is-pulse.play {
+  animation: homeRipple 1.05s cubic-bezier(.18,.8,.3,1) both;
+}
+
+.home-ripple--late.is-pulse.play {
+  animation-delay: 0.12s;
+  animation-duration: 1.2s;
 }
 
 .home-fan-shadow {
@@ -385,6 +433,8 @@ body::before {
   width: 100%;
   max-width: 360px;
   margin: 0 auto;
+  perspective: 920px;
+  transform-style: preserve-3d;
 }
 
 #screenHome .hero-art .mini-card {
@@ -400,6 +450,8 @@ body::before {
     0 18px 36px rgba(0, 0, 0, 0.45),
     0 2px 0 rgba(255, 255, 255, 0.09) inset;
   transform-origin: 50% 110%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
   opacity: 0;
   animation:
     heroDeal 1.2s cubic-bezier(.12,.88,.2,1) calc(0.05s + var(--i, 0) * 0.12s) forwards,
@@ -418,8 +470,11 @@ body::before {
     transparent 66%
   );
   transform: translateX(-130%) skewX(-14deg);
-  animation: cardSheen 1.2s ease calc(1.15s + var(--i, 0) * 0.1s) both;
+  animation:
+    cardSheen 1.2s ease calc(1.15s + var(--i, 0) * 0.1s) both,
+    cardSheenLoop 5.8s ease-in-out calc(2.4s + var(--i, 0) * 0.28s) infinite;
   pointer-events: none;
+  z-index: 2;
 }
 
 #screenHome .hero-art .mini-card.is-refreshing {
@@ -474,6 +529,25 @@ body::before {
     0 20px 44px rgba(0, 0, 0, 0.28);
 }
 
+.brand-word {
+  display: inline-block;
+  background: linear-gradient(
+    105deg,
+    var(--cream) 0%,
+    var(--cream) 36%,
+    #fff0b8 48%,
+    var(--cream) 60%,
+    var(--cream) 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: brandShimmer 7.5s ease-in-out 2.4s infinite;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.2));
+}
+
 .brand-home::after {
   content: '';
   display: block;
@@ -490,6 +564,8 @@ body::before {
   letter-spacing: 0.22em;
   margin-bottom: 8px;
   animation: eyebrowIn 0.8s cubic-bezier(.22,.8,.3,1) 0.55s both;
+  -webkit-text-fill-color: var(--gold);
+  color: var(--gold);
 }
 
 #screenHome .tagline {
@@ -522,6 +598,7 @@ body::before {
   margin: 0 auto 18px;
   width: 100%;
   text-align: center;
+  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.55s both;
 }
 
 #screenHome .name-field label {
@@ -530,14 +607,17 @@ body::before {
 }
 
 #screenHome .name-field input {
-  background: transparent;
+  background:
+    linear-gradient(90deg, transparent, rgba(239, 197, 106, 0.95), transparent) bottom / 0% 1.5px no-repeat,
+    transparent;
   border: none;
-  border-bottom: 1.5px solid rgba(244, 235, 224, 0.38);
+  border-bottom: 1.5px solid rgba(244, 235, 224, 0.28);
   border-radius: 0;
   padding: 6px 4px 10px;
   font-size: 1.2rem;
   box-shadow: none;
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, background-size 0.35s ease;
+  animation: nameLineIn 0.85s cubic-bezier(.22,.8,.3,1) 0.85s both;
 }
 
 #screenHome .field {
@@ -567,7 +647,7 @@ body::before {
   overflow: hidden;
   font-size: 1.05rem;
   padding: 15px 16px;
-  animation: copyIn 0.7s cubic-bezier(.22,.8,.3,1) 0.7s both;
+  animation: ctaPop 0.75s cubic-bezier(.22,.8,.3,1) 0.72s both;
 }
 
 .home-actions .btn-gold::after {
@@ -595,11 +675,11 @@ body::before {
   background: rgba(247, 240, 225, 0.16);
   border-color: rgba(244, 235, 224, 0.5);
   color: var(--cream);
-  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.75s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.9s both;
 }
 
 .home-actions .btn-primary {
-  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.65s both;
+  animation: ctaPop 0.7s cubic-bezier(.22,.8,.3,1) 0.82s both;
 }
 
 .hero-art .mini-card {
@@ -787,33 +867,34 @@ body::before {
 }
 
 .hero-art.restack .mini-card {
-  transition: transform 0.75s cubic-bezier(.22,.8,.3,1);
+  transition: transform 0.75s cubic-bezier(.22,.8,.3,1), filter 0.45s ease;
+  filter: brightness(1.08);
 }
 
 #screenHome .hero-art.restack .mini-card:nth-child(1) {
-  --fan: -34deg;
-  --lift: 20px;
-  --sc: 0.96;
+  --fan: -36deg;
+  --lift: 22px;
+  --sc: 0.95;
 }
 #screenHome .hero-art.restack .mini-card:nth-child(2) {
-  --fan: -16deg;
-  --lift: -10px;
-  --sc: 1.06;
+  --fan: -17deg;
+  --lift: -12px;
+  --sc: 1.07;
 }
 #screenHome .hero-art.restack .mini-card:nth-child(3) {
   --fan: 0deg;
-  --lift: -28px;
-  --sc: 1.18;
+  --lift: -32px;
+  --sc: 1.2;
 }
 #screenHome .hero-art.restack .mini-card:nth-child(4) {
-  --fan: 16deg;
-  --lift: -10px;
-  --sc: 1.06;
+  --fan: 17deg;
+  --lift: -12px;
+  --sc: 1.07;
 }
 #screenHome .hero-art.restack .mini-card:nth-child(5) {
-  --fan: 34deg;
-  --lift: 20px;
-  --sc: 0.96;
+  --fan: 36deg;
+  --lift: 22px;
+  --sc: 0.95;
 }
 
 .hint {
@@ -2131,7 +2212,10 @@ button.card {
   .brand-home,
   .brand-home::after,
   .brand-home span,
+  .brand-word,
   .home-copy,
+  #screenHome .name-field,
+  #screenHome .name-field input,
   #screenHome .tagline span,
   #screenHome .tagline i,
   .home-actions .btn-gold,
@@ -2139,7 +2223,16 @@ button.card {
   .home-actions .btn-ghost {
     animation: none;
   }
-  .brand-home::after { width: min(180px, 48vw); opacity: 1; }
+  .brand-word {
+    color: var(--cream);
+    -webkit-text-fill-color: var(--cream);
+    background: none;
+    filter: none;
+  }
+  .brand-home::after { width: min(190px, 50vw); opacity: 1; }
+  #screenHome .name-field input {
+    background-size: 100% 1.5px;
+  }
   #screenHome .tagline span,
   #screenHome .tagline i { opacity: 1; }
   .wait-dots span { animation: none; opacity: 0.6; }
