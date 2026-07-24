@@ -557,7 +557,7 @@ body::before {
   margin-top: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
   flex-shrink: 0;
   width: 100%;
   padding-top: 0;
@@ -1201,7 +1201,7 @@ button.card {
   .score-track { height: 2px; }
   .top-bar .btn-small { padding: 3px 6px; font-size: 0.62rem; }
   .table-area { gap: 0; }
-  .player-dock { gap: 1px; padding-top: 0; }
+  .player-dock { gap: 6px; padding-top: 0; }
   .play-bar { margin-top: 4px; }
   .play-bar .btn { padding: 11px 8px; font-size: 0.88rem; }
   .score-tip { display: none; }
