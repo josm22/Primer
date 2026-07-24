@@ -2526,46 +2526,49 @@ function startHeroIdle() {
     return;
   }
 
-  // 1) La mesa (cue) → 2) cartas → 3) ¡15! → 4) barrido → 5) nace Escoba → 6) subtítulo → 7) UI
+  // 1) La mesa → 2) cartas → 3) está lista → 4) ¡15! → 5) barre der→centro→izq + ESCOBA → 6) UI
   heroLater(() => setHomeStage('is-cue'), 80);
   heroLater(() => setHomeStage('is-cue', 'is-dealing'), 520);
+  heroLater(() => setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed'), 1950);
   heroLater(() => {
-    setHomeStage('is-cue', 'is-dealing', 'is-landed', 'is-sum15');
+    setHomeStage('is-cue', 'is-dealing', 'is-ready', 'is-landed', 'is-sum15');
     if (audioCtx?.state === 'running') {
       tone(440, 0.05, 'sine', 0.02);
       setTimeout(() => tone(660, 0.08, 'triangle', 0.025), 80);
     }
-  }, 2300);
+  }, 2750);
   heroLater(() => {
-    setHomeStage('is-landed', 'is-sum15', 'is-sweeping');
+    setHomeStage('is-ready', 'is-landed', 'is-sum15', 'is-sweeping');
     const n = art.children.length || 5;
     [...art.children].forEach((el, i) => {
       const fromLeft = i / Math.max(1, n - 1);
+      // cartas salen hacia la DERECHA
       el.style.setProperty('--sweep-i', String(i));
-      el.style.setProperty('--sweep-dx', `${Math.round(18 + fromLeft * 72 + (i % 2) * 10)}px`);
-      el.style.setProperty('--sweep-dy', `${Math.round(-70 - (1 - fromLeft) * 70 - i * 8)}px`);
-      el.style.setProperty('--sweep-spin', `${Math.round(28 + fromLeft * 55 + (i % 2 ? 12 : -6))}deg`);
+      el.style.setProperty('--sweep-dx', `${Math.round(90 + fromLeft * 70 + (i % 2) * 14)}px`);
+      el.style.setProperty('--sweep-dy', `${Math.round(-36 - fromLeft * 40 - i * 6)}px`);
+      el.style.setProperty('--sweep-spin', `${Math.round(18 + fromLeft * 42 + (i % 2 ? 10 : -8))}deg`);
       el.classList.add('is-swept');
     });
     if (audioCtx?.state === 'running') playSfx('escoba');
-  }, 3200);
+  }, 3600);
+  // ~66% del barrido (1.85s): vuelve al medio y trae ESCOBA hacia la izquierda
   heroLater(() => {
-    setHomeStage('is-landed', 'is-sweeping', 'is-brand');
+    setHomeStage('is-ready', 'is-landed', 'is-sweeping', 'is-brand');
     if (audioCtx?.state === 'running') {
       tone(392, 0.07, 'sine', 0.03);
       setTimeout(() => tone(523, 0.1, 'triangle', 0.035), 90);
       setTimeout(() => tone(659, 0.14, 'sine', 0.03), 180);
     }
-  }, 4300);
+  }, 4800);
   heroLater(() => {
     setHomeStage('is-brand', 'is-ready', 'is-landed');
-  }, 5100);
+  }, 5600);
   heroLater(() => {
     setHomeStage('is-brand', 'is-ready', 'is-playable', 'is-landed', 'is-dealing');
     buildHeroFan(pickDecorHand(5), { animateDeal: true });
     state.heroIntroDone = true;
     startIdleLoop();
-  }, 5900);
+  }, 6400);
 }
 
 function stopHeroIdle() {
@@ -2586,7 +2589,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=71').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=72').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
