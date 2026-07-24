@@ -2560,21 +2560,14 @@ button.card {
     transform: none;
   }
   .brand-home .brand-eyebrow .ew,
-  .brand-home .brand-eyebrow .ew-lista {
+  .brand-home .brand-eyebrow .ew-ready {
     opacity: 1;
-    color: #fff0b8;
-    -webkit-text-fill-color: #fff0b8;
-    letter-spacing: 0.16em;
-    background-size: 100% 1.5px;
+    color: rgba(224, 179, 77, 0.82);
+    -webkit-text-fill-color: currentColor;
+    letter-spacing: 0.14em;
     filter: none;
     transform: none;
     text-shadow: none;
-  }
-  .brand-home .brand-eyebrow .ew-group-ready {
-    opacity: 1;
-    max-width: none;
-    overflow: visible;
-    gap: 0.38em;
   }
   .brand-home .brand-eyebrow::after {
     width: min(220px, 64vw);
