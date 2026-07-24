@@ -25,16 +25,21 @@
       <div class="home-stage">
         <div class="home-visual" aria-hidden="true">
           <div class="home-glow"></div>
-          <div class="home-motes">
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
+          <div class="home-glow home-glow--wide"></div>
+          <div class="home-ripple"></div>
           <div class="home-fan-shadow"></div>
           <div class="hero-art" id="heroArt"></div>
         </div>
 
         <div class="home-copy">
           <h1 class="brand brand-home"><span>La mesa está lista</span>Escoba</h1>
-          <p class="tagline">Suma quince · Barre limpio · Gana con estilo</p>
+          <p class="tagline">
+            <span style="--d:0">Suma quince</span>
+            <i aria-hidden="true">·</i>
+            <span style="--d:1">Barre limpio</span>
+            <i aria-hidden="true">·</i>
+            <span style="--d:2">Gana con estilo</span>
+          </p>
 
           <div class="field name-field">
             <label for="playerName">Tu nombre</label>
@@ -203,11 +208,11 @@
     if (art) {
       const ids = ['oros-7', 'copas-12', 'espadas-10', 'bastos-1', 'oros-1'];
       const fans = [
-        { rot: -22, lift: 10, sc: 1 },
-        { rot: -10, lift: -2, sc: 1.02 },
-        { rot: 0, lift: -14, sc: 1.1 },
-        { rot: 10, lift: -2, sc: 1.02 },
-        { rot: 22, lift: 10, sc: 1 },
+        { rot: -26, lift: 14, sc: 1 },
+        { rot: -12, lift: 0, sc: 1.04 },
+        { rot: 0, lift: -18, sc: 1.14 },
+        { rot: 12, lift: 0, sc: 1.04 },
+        { rot: 26, lift: 14, sc: 1 },
       ];
       ids.forEach((id, i) => {
         const d = document.createElement('div');

@@ -2285,18 +2285,18 @@ function startHeroIdle() {
   const art = $('#heroArt');
   if (!art) return;
   const baseFans = [
-    { rot: -22, lift: 10, sc: 1 },
-    { rot: -10, lift: -2, sc: 1.02 },
-    { rot: 0, lift: -14, sc: 1.1 },
-    { rot: 10, lift: -2, sc: 1.02 },
-    { rot: 22, lift: 10, sc: 1 },
+    { rot: -26, lift: 14, sc: 1 },
+    { rot: -12, lift: 0, sc: 1.04 },
+    { rot: 0, lift: -18, sc: 1.14 },
+    { rot: 12, lift: 0, sc: 1.04 },
+    { rot: 26, lift: 14, sc: 1 },
   ];
   const flourishFans = [
-    { rot: -28, lift: 16, sc: 0.98 },
-    { rot: -12, lift: -8, sc: 1.04 },
-    { rot: 2, lift: -22, sc: 1.14 },
-    { rot: 14, lift: -6, sc: 1.04 },
-    { rot: 28, lift: 16, sc: 0.98 },
+    { rot: -34, lift: 20, sc: 0.96 },
+    { rot: -16, lift: -10, sc: 1.06 },
+    { rot: 0, lift: -28, sc: 1.18 },
+    { rot: 16, lift: -10, sc: 1.06 },
+    { rot: 34, lift: 20, sc: 0.96 },
   ];
   const pool = [
     'oros-7', 'oros-1', 'oros-12',
@@ -2354,7 +2354,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=61').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=62').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;
