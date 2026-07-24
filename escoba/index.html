@@ -22,23 +22,33 @@
   <div id="app">
     <!-- HOME -->
     <section id="screenHome" class="screen active">
-      <div class="hero">
-        <div class="hero-art" id="heroArt" aria-hidden="true"></div>
-        <h1 class="brand"><span>La mesa está lista</span>Escoba</h1>
-        <p class="tagline">Baraja española de verdad. Ves cada captura, llevas la cuenta de oros y sietes, y barres la mesa con estilo.</p>
-        <div class="field name-field">
-          <label for="playerName">Tu nombre</label>
-          <input id="playerName" maxlength="14" autocomplete="nickname" placeholder="Tú" spellcheck="false">
+      <div class="home-stage">
+        <div class="home-felt" aria-hidden="true">
+          <div class="home-glow"></div>
+          <div class="home-rim"></div>
+          <div class="hero-art" id="heroArt"></div>
         </div>
-        <div class="actions">
-          <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
-          <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
-          <button type="button" class="btn btn-ghost" id="btnCpu">Practicar vs CPU</button>
+
+        <div class="home-copy">
+          <h1 class="brand brand-home"><span>La mesa está lista</span>Escoba</h1>
+          <p class="tagline">Suma quince. Barre limpio. Gana con estilo.</p>
+
+          <div class="field name-field">
+            <label for="playerName">Tu nombre</label>
+            <input id="playerName" maxlength="14" autocomplete="nickname" placeholder="Tú" spellcheck="false">
+          </div>
+
+          <div class="actions home-actions">
+            <button type="button" class="btn btn-gold" id="btnHost">Invitar amigo</button>
+            <button type="button" class="btn btn-primary" id="btnShowJoin">Unirme con código</button>
+            <button type="button" class="btn btn-ghost" id="btnCpu">Practicar vs CPU</button>
+          </div>
+
+          <div class="footer-links">
+            <button type="button" id="btnRulesHome">Cómo se juega</button>
+          </div>
+          <p class="credit">Naipes: Basquetteur (Wikimedia) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>
         </div>
-        <div class="footer-links">
-          <button type="button" id="btnRulesHome">Cómo se juega</button>
-        </div>
-        <p class="credit">Naipes: Basquetteur (Wikimedia) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>
       </div>
     </section>
 
@@ -188,12 +198,24 @@
   <script type="module">
     const art = document.getElementById('heroArt');
     if (art) {
-      for (const id of ['oros-7', 'copas-12', 'espadas-10', 'bastos-1', 'oros-1']) {
+      const ids = ['oros-7', 'copas-12', 'espadas-10', 'bastos-1', 'oros-1'];
+      const fans = [
+        { rot: -22, lift: 10, sc: 1 },
+        { rot: -10, lift: -2, sc: 1.02 },
+        { rot: 0, lift: -14, sc: 1.1 },
+        { rot: 10, lift: -2, sc: 1.02 },
+        { rot: 22, lift: 10, sc: 1 },
+      ];
+      ids.forEach((id, i) => {
         const d = document.createElement('div');
         d.className = 'mini-card';
+        d.style.setProperty('--i', String(i));
+        d.style.setProperty('--fan', `${fans[i].rot}deg`);
+        d.style.setProperty('--lift', `${fans[i].lift}px`);
+        d.style.setProperty('--sc', String(fans[i].sc));
         d.innerHTML = `<img src="./cards/${id}.png" alt="" draggable="false">`;
         art.appendChild(d);
-      }
+      });
     }
   </script>
   <script type="module" src="js/app.js"></script>

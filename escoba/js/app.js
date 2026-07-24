@@ -2284,13 +2284,31 @@ function startHeroIdle() {
   stopHeroIdle();
   const art = $('#heroArt');
   if (!art) return;
+  const baseFans = [
+    { rot: -22, lift: 10, sc: 1 },
+    { rot: -10, lift: -2, sc: 1.02 },
+    { rot: 0, lift: -14, sc: 1.1 },
+    { rot: 10, lift: -2, sc: 1.02 },
+    { rot: 22, lift: 10, sc: 1 },
+  ];
   state.heroIdle = setInterval(() => {
     if (!$('#screenHome')?.classList.contains('active')) return;
     if (document.hidden) return;
     art.classList.remove('restack');
     void art.offsetWidth;
     art.classList.add('restack');
-  }, 8000);
+    setTimeout(() => {
+      if (!art.classList.contains('restack')) return;
+      art.classList.remove('restack');
+      [...art.children].forEach((el, i) => {
+        const f = baseFans[i];
+        if (!f) return;
+        el.style.setProperty('--fan', `${f.rot}deg`);
+        el.style.setProperty('--lift', `${f.lift}px`);
+        el.style.setProperty('--sc', String(f.sc));
+      });
+    }, 900);
+  }, 7000);
 }
 
 function stopHeroIdle() {
@@ -2301,7 +2319,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=53').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=54').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

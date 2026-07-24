@@ -158,8 +158,36 @@ body::before {
 }
 
 @keyframes floatSuit {
-  0%, 100% { transform: translateY(0) rotate(-6deg); }
-  50% { transform: translateY(-8px) rotate(4deg); }
+  0%, 100% { transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1)); }
+  50% { transform: rotate(var(--fan, 0deg)) translateY(calc(var(--lift, 0px) - 7px)) scale(var(--sc, 1)); }
+}
+
+@keyframes heroDeal {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) translateY(56px) scale(0.55);
+    filter: brightness(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1));
+    filter: none;
+  }
+}
+
+@keyframes homeGlowDrift {
+  0%, 100% { transform: translate(-8%, -6%) scale(1); opacity: 0.55; }
+  50% { transform: translate(10%, 8%) scale(1.12); opacity: 0.85; }
+}
+
+@keyframes brandIn {
+  from { opacity: 0; transform: translateY(18px); letter-spacing: -0.06em; }
+  to { opacity: 1; transform: none; letter-spacing: -0.03em; }
+}
+
+@keyframes copyIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes pulseGold {
@@ -168,6 +196,80 @@ body::before {
 }
 
 /* ---- Home ---- */
+#screenHome {
+  position: relative;
+  overflow: hidden;
+}
+
+#screenHome::before {
+  content: '';
+  position: absolute;
+  inset: -20% -30% auto;
+  height: 70%;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 30%, rgba(40, 150, 95, 0.45), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 10%, rgba(224, 179, 77, 0.12), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 4px 0 0;
+}
+
+.home-felt {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(100% + 24px + var(--safe-l) + var(--safe-r));
+  margin-left: calc(-12px - var(--safe-l));
+  margin-right: calc(-12px - var(--safe-r));
+  min-height: clamp(168px, 34vh, 240px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px 36px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(36, 140, 92, 0.5) 0%, transparent 58%),
+    radial-gradient(ellipse at 50% 45%, #1a7a52 0%, #0e4a33 70%, #0a3526 100%);
+  box-shadow:
+    0 0 0 2px rgba(224, 179, 77, 0.16),
+    0 0 0 4px var(--wood-lite),
+    0 0 0 9px var(--wood),
+    0 0 0 12px var(--wood-dark),
+    inset 0 0 48px rgba(0, 0, 0, 0.35),
+    0 18px 36px rgba(0, 0, 0, 0.28);
+  border-radius: 0 0 28px 28px;
+  overflow: hidden;
+}
+
+.home-glow {
+  position: absolute;
+  width: 70%;
+  height: 70%;
+  left: 15%;
+  top: 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 230, 160, 0.22), transparent 68%);
+  pointer-events: none;
+  animation: homeGlowDrift 9s ease-in-out infinite;
+}
+
+.home-rim {
+  position: absolute;
+  inset: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
 .hero {
   flex: 1;
   display: flex;
@@ -177,11 +279,52 @@ body::before {
 }
 
 .hero-art {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 22px;
-  min-height: 72px;
+  align-items: flex-end;
+  gap: 0;
+  min-height: 118px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+#screenHome .hero-art .mini-card {
+  width: clamp(58px, 16vw, 78px);
+  height: calc(clamp(58px, 16vw, 78px) * 1.52);
+  margin-left: -14px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1a100c;
+  border: 1px solid rgba(28, 22, 18, 0.28);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.38),
+    0 2px 0 rgba(255, 255, 255, 0.06) inset;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation:
+    heroDeal 0.85s cubic-bezier(.18,.9,.28,1) calc(0.12s + var(--i, 0) * 0.09s) forwards,
+    floatSuit 5.2s ease-in-out calc(1.05s + var(--i, 0) * 0.09s) infinite;
+  padding: 0;
+}
+
+#screenHome .hero-art .mini-card:first-child {
+  margin-left: 0;
+}
+
+#screenHome .hero-art .mini-card:nth-child(2),
+#screenHome .hero-art .mini-card:nth-child(4) { z-index: 2; }
+#screenHome .hero-art .mini-card:nth-child(3) { z-index: 3; }
+
+#screenHome .footer-links {
+  justify-content: center;
+  margin-top: 14px;
+}
+
+#screenHome .credit {
+  margin-top: 10px;
 }
 
 .hero-art .mini-card {
@@ -192,15 +335,17 @@ body::before {
   background: #1a100c;
   border: 1px solid rgba(28, 22, 18, 0.25);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  animation: floatSuit 4.5s ease-in-out infinite;
   padding: 0;
 }
 
-.hero-art .mini-card:nth-child(1) { transform: rotate(-18deg); animation-delay: 0s; }
-.hero-art .mini-card:nth-child(2) { transform: rotate(-8deg); animation-delay: 0.15s; margin-top: -10px; }
-.hero-art .mini-card:nth-child(3) { transform: rotate(0deg) scale(1.08); animation-delay: 0.3s; margin-top: -18px; z-index: 2; }
-.hero-art .mini-card:nth-child(4) { transform: rotate(8deg); animation-delay: 0.45s; margin-top: -10px; }
-.hero-art .mini-card:nth-child(5) { transform: rotate(18deg); animation-delay: 0.6s; }
+.home-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px 2px 8px;
+  animation: copyIn 0.7s cubic-bezier(.22,.8,.3,1) 0.35s both;
+}
 
 .brand {
   font-family: var(--font-display);
@@ -213,6 +358,16 @@ body::before {
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
 }
 
+.brand-home {
+  font-size: clamp(64px, 20vw, 96px);
+  margin: 0 0 12px;
+  text-align: center;
+  animation: brandIn 0.85s cubic-bezier(.22,.8,.3,1) 0.2s both;
+  text-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.22),
+    0 18px 40px rgba(0, 0, 0, 0.25);
+}
+
 .brand span {
   display: block;
   font-style: italic;
@@ -222,6 +377,22 @@ body::before {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   margin-bottom: 8px;
+}
+
+.brand-home span {
+  font-size: 0.28em;
+  letter-spacing: 0.22em;
+  margin-bottom: 10px;
+}
+
+#screenHome .tagline {
+  font-size: 1.08rem;
+  line-height: 1.45;
+  color: rgba(244, 235, 224, 0.82);
+  max-width: 18em;
+  margin: 0 auto 22px;
+  font-weight: 500;
+  text-align: center;
 }
 
 .tagline {
@@ -237,6 +408,33 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 11px;
+}
+
+.home-actions {
+  gap: 10px;
+}
+
+.home-actions .btn-gold {
+  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.55s both;
+}
+
+.home-actions .btn-primary {
+  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.65s both;
+}
+
+.home-actions .btn-ghost {
+  animation: copyIn 0.65s cubic-bezier(.22,.8,.3,1) 0.75s both;
+}
+
+#screenHome .name-field {
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+#screenHome .name-field input:focus {
+  box-shadow: 0 0 0 3px rgba(224, 179, 77, 0.22);
 }
 
 .btn {
@@ -376,14 +574,30 @@ body::before {
 }
 
 .hero-art.restack .mini-card {
-  transition: transform 0.7s cubic-bezier(.22,.8,.3,1), margin 0.7s ease;
+  transition: transform 0.75s cubic-bezier(.22,.8,.3,1);
 }
 
-.hero-art.restack .mini-card:nth-child(1) { transform: rotate(-12deg) translateY(4px); }
-.hero-art.restack .mini-card:nth-child(2) { transform: rotate(-4deg) translateY(-6px); }
-.hero-art.restack .mini-card:nth-child(3) { transform: rotate(2deg) scale(1.06) translateY(-14px); }
-.hero-art.restack .mini-card:nth-child(4) { transform: rotate(10deg) translateY(-4px); }
-.hero-art.restack .mini-card:nth-child(5) { transform: rotate(16deg) translateY(6px); }
+#screenHome .hero-art.restack .mini-card:nth-child(1) {
+  --fan: -14deg;
+  --lift: 6px;
+}
+#screenHome .hero-art.restack .mini-card:nth-child(2) {
+  --fan: -5deg;
+  --lift: -10px;
+}
+#screenHome .hero-art.restack .mini-card:nth-child(3) {
+  --fan: 3deg;
+  --lift: -20px;
+  --sc: 1.12;
+}
+#screenHome .hero-art.restack .mini-card:nth-child(4) {
+  --fan: 12deg;
+  --lift: -8px;
+}
+#screenHome .hero-art.restack .mini-card:nth-child(5) {
+  --fan: 20deg;
+  --lift: 8px;
+}
 
 .hint {
   font-size: 0.82rem;
@@ -1401,8 +1615,19 @@ button.card {
 
 @media (max-height: 720px) {
   .brand { font-size: clamp(46px, 14vw, 68px); }
-  .hero-art { margin-bottom: 12px; }
+  .brand-home { font-size: clamp(52px, 16vw, 76px); }
+  .home-felt {
+    min-height: clamp(140px, 28vh, 190px);
+    padding: 20px 14px 28px;
+  }
+  .hero-art { margin-bottom: 0; min-height: 96px; }
+  #screenHome .hero-art .mini-card {
+    width: clamp(48px, 14vw, 62px);
+    height: calc(clamp(48px, 14vw, 62px) * 1.52);
+  }
   .hero-art .mini-card { width: 44px; height: 68px; }
+  .home-copy { padding-top: 14px; }
+  #screenHome .tagline { font-size: 0.98rem; margin-bottom: 16px; }
   :root {
     --card-w: clamp(46px, 12vw, 60px);
   }
@@ -1666,6 +1891,19 @@ button.card {
     transition-duration: 0.01ms !important;
   }
   .hero-art .mini-card { animation: none; }
+  #screenHome .hero-art .mini-card {
+    opacity: 1;
+    animation: none;
+    transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0px)) scale(var(--sc, 1));
+  }
+  .home-glow { animation: none; opacity: 0.7; }
+  .brand-home,
+  .home-copy,
+  .home-actions .btn-gold,
+  .home-actions .btn-primary,
+  .home-actions .btn-ghost {
+    animation: none;
+  }
   .wait-dots span { animation: none; opacity: 0.6; }
   .status-line.waiting-pulse { animation: none; opacity: 1; }
   #screenGame.my-turn .felt:not(.felt-cleared),
