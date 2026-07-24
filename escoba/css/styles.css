@@ -1722,20 +1722,24 @@ button.card {
 
 @media (max-height: 720px) {
   .brand { font-size: clamp(46px, 14vw, 68px); }
-  .brand-home { font-size: clamp(52px, 16vw, 76px); }
+  .brand-home { font-size: clamp(46px, 13vw, 64px); }
   .home-felt {
-    min-height: clamp(150px, 30vh, 200px);
-    padding: 22px 14px 30px;
+    min-height: clamp(118px, 22vh, 160px);
+    padding: 14px 12px 18px;
   }
-  .hero-art { margin-bottom: 0; min-height: 104px; }
+  .hero-art { margin-bottom: 0; min-height: 88px; }
   #screenHome .hero-art .mini-card {
-    width: clamp(52px, 15vw, 68px);
-    height: calc(clamp(52px, 15vw, 68px) * 1.52);
-    margin-left: -12px;
+    width: clamp(46px, 13vw, 58px);
+    height: calc(clamp(46px, 13vw, 58px) * 1.52);
+    margin-left: -10px;
   }
   .hero-art .mini-card { width: 44px; height: 68px; }
-  .home-copy { padding-top: 14px; }
-  #screenHome .tagline { font-size: 0.98rem; margin-bottom: 16px; }
+  .home-copy { padding-top: 10px; }
+  #screenHome .tagline { font-size: 0.88rem; margin-bottom: 8px; }
+  #screenHome .credit { display: none; }
+  .home-actions .btn-gold { padding: 12px 14px; }
+  .home-actions .btn-primary,
+  .home-actions .btn-ghost { padding: 11px 8px; font-size: 0.85rem; }
   :root {
     --card-w: clamp(46px, 12vw, 60px);
   }
