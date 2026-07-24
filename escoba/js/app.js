@@ -1067,7 +1067,7 @@ function render(opts = {}) {
   else if (nTable >= 3) tableScale = 1.48;
   felt.style.setProperty('--table-card-w', `calc(var(--card-w) * ${tableScale})`);
   felt.style.setProperty('--table-card-h', `calc(var(--card-h) * ${tableScale})`);
-  wrap?.classList.toggle('felt-compact', nTable > 0 && nTable <= 5);
+  wrap?.classList.remove('felt-compact');
 
   if (!tableCards.length) {
     const empty = document.createElement('div');
@@ -2301,7 +2301,7 @@ function stopHeroIdle() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=51').then((reg) => {
+  navigator.serviceWorker.register('./sw.js?v=52').then((reg) => {
     reg.update?.();
   }).catch(() => {});
   let refreshing = false;

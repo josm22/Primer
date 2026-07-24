@@ -20,9 +20,8 @@
   --felt-pad-y: 10px;
   --felt-pad-x: 10px;
   --felt-gap: 8px;
-  /* Mesa más grande; compacta con pocas cartas */
+  /* Mesa: tamaño fijo (el de mesa limpia); las cartas escalan dentro */
   --felt-h: calc(var(--card-h) * 2.28 + var(--felt-gap) + var(--felt-pad-y) * 2 + 6px);
-  --felt-h-compact: calc(var(--card-h) * 1.62 + var(--felt-pad-y) * 2 + 6px);
   --font-display: 'Fraunces', Georgia, serif;
   --font-ui: 'Manrope', system-ui, sans-serif;
   --font-card: 'Fraunces', Georgia, serif;
@@ -728,13 +727,6 @@ body::before {
   max-height: var(--felt-h);
   display: flex;
   width: 100%;
-}
-
-/* Pocas cartas: mesa más baja para no dejar vacío interno */
-.felt-wrap.felt-compact {
-  height: var(--felt-h-compact);
-  min-height: var(--felt-h-compact);
-  max-height: var(--felt-h-compact);
 }
 
 .felt-wrap > .felt {
