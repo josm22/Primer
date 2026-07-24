@@ -348,77 +348,80 @@ body::before {
 }
 
 @keyframes broomSweep {
+  /* entra izq → barre a la DERECHA → vuelve al MEDIO → sale por la IZQUIERDA */
   0% {
     opacity: 0;
-    transform: translate(-130%, 30%) rotate(-54deg) scale(0.78);
+    transform: translate(-140%, 22%) rotate(-56deg) scale(0.82);
   }
-  12% {
+  10% {
     opacity: 1;
-    transform: translate(-72%, 18%) rotate(-44deg) scale(0.94);
+    transform: translate(-70%, 14%) rotate(-46deg) scale(0.95);
   }
-  20% {
-    transform: translate(-64%, 14%) rotate(-50deg) scale(0.96);
+  16% {
+    transform: translate(-62%, 12%) rotate(-50deg) scale(0.97);
   }
-  40% {
-    transform: translate(-6%, 4%) rotate(-16deg) scale(1.08);
+  /* barrido a la derecha (empuja cartas) */
+  38% {
+    transform: translate(58%, 2%) rotate(10deg) scale(1.08);
   }
-  55% {
-    transform: translate(18%, -2%) rotate(2deg) scale(1.02);
+  /* vuelve al medio */
+  56% {
+    transform: translate(4%, -6%) rotate(-4deg) scale(1.02);
+    filter: brightness(1.15);
   }
-  72% {
+  /* pausa en el medio y empieza a llevar ESCOBA */
+  66% {
     opacity: 1;
-    transform: translate(6%, -38%) rotate(-2deg) scale(0.78);
-    filter: brightness(1.25);
+    transform: translate(-2%, -18%) rotate(-8deg) scale(0.92);
+    filter: brightness(1.35);
   }
-  86% {
-    opacity: 0.85;
-    transform: translate(6%, -52%) rotate(0deg) scale(0.42);
-    filter: brightness(1.8) blur(1px);
-  }
+  /* desaparece por la izquierda trayendo la palabra */
   100% {
     opacity: 0;
-    transform: translate(6%, -58%) rotate(0deg) scale(0.12);
-    filter: brightness(2.4) blur(4px);
+    transform: translate(-120%, -28%) rotate(-28deg) scale(0.55);
+    filter: brightness(1.8) blur(2px);
   }
 }
 
 @keyframes broomBristle {
   0%, 100% { transform: scaleY(1) scaleX(1); }
-  22% { transform: scaleY(0.9) scaleX(1.1); }
-  48% { transform: scaleY(1.08) scaleX(0.92); }
-  70% { transform: scaleY(0.95) scaleX(1.06); }
-  85% { transform: scaleY(1.2) scaleX(1.25); }
+  18% { transform: scaleY(0.9) scaleX(1.12); }
+  38% { transform: scaleY(1.1) scaleX(0.9); }
+  56% { transform: scaleY(0.96) scaleX(1.05); }
+  72% { transform: scaleY(1.08) scaleX(1.1); }
 }
 
 @keyframes sweepTrail {
-  0% { opacity: 0; transform: translate(-60%, 20%) scaleX(0.2) rotate(-18deg); }
-  25% { opacity: 0.55; }
-  55% { opacity: 0.7; transform: translate(5%, 0%) scaleX(1.15) rotate(-6deg); }
-  100% { opacity: 0; transform: translate(40%, -28%) scaleX(1.25) rotate(4deg); }
+  0% { opacity: 0; transform: translate(-50%, 18%) scaleX(0.15) rotate(-12deg); }
+  20% { opacity: 0.45; }
+  38% { opacity: 0.75; transform: translate(35%, 2%) scaleX(1.25) rotate(6deg); }
+  56% { opacity: 0.5; transform: translate(0%, -4%) scaleX(0.9) rotate(-2deg); }
+  100% { opacity: 0; transform: translate(-55%, -12%) scaleX(1.1) rotate(-10deg); }
 }
 
 @keyframes birthFlash {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
-  35% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.25); }
+  40% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); }
 }
 
 @keyframes brandBirth {
+  /* llega desde la izquierda con la escoba y se planta en el centro */
   0% {
     opacity: 0;
     transform:
-      translate(var(--bx, 0px), var(--by, 100px))
-      scale(0.08)
-      rotate(var(--br, 0deg));
-    filter: blur(12px) brightness(2.2);
+      translate(calc(-110px + var(--bx, 0px)), calc(28px + var(--by, 0px)))
+      scale(0.18)
+      rotate(calc(-18deg + var(--br, 0deg)));
+    filter: blur(10px) brightness(2);
   }
-  48% {
+  55% {
     opacity: 1;
-    filter: blur(0) brightness(1.25);
-    transform: translate(0, -10px) scale(1.1) rotate(0deg);
+    filter: blur(0) brightness(1.2);
+    transform: translate(4px, -8px) scale(1.08) rotate(0deg);
   }
-  72% {
-    transform: translate(0, 3px) scale(0.97);
+  78% {
+    transform: translate(-2px, 2px) scale(0.98);
   }
   100% {
     opacity: 1;
@@ -753,11 +756,11 @@ body::before {
 }
 
 #screenHome.is-sweeping .home-broom {
-  animation: broomSweep 1.55s cubic-bezier(.18,.78,.22,1) both;
+  animation: broomSweep 1.85s cubic-bezier(.18,.78,.22,1) both;
 }
 
 #screenHome.is-sweeping .home-broom .broom-svg {
-  animation: broomBristle 1.55s ease-in-out both;
+  animation: broomBristle 1.85s ease-in-out both;
 }
 
 .home-sweep-trail {
@@ -778,7 +781,7 @@ body::before {
 }
 
 #screenHome.is-sweeping .home-sweep-trail {
-  animation: sweepTrail 1.15s cubic-bezier(.18,.8,.25,1) 0.08s both;
+  animation: sweepTrail 1.7s cubic-bezier(.18,.8,.25,1) 0.06s both;
 }
 
 #screenHome .hero-art .mini-card.is-swept {
@@ -1022,6 +1025,8 @@ body::before {
   top: 2%;
   z-index: 3;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.42em;
   transform: translateX(-50%);
   font-family: var(--font-display);
@@ -1031,9 +1036,10 @@ body::before {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(239, 197, 106, 0.88);
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  max-width: 92%;
 }
 
 .home-cue span {
@@ -1041,18 +1047,23 @@ body::before {
   opacity: 0;
 }
 
-#screenHome.is-cue .home-cue span {
+#screenHome.is-cue .home-cue .ew-mesa {
   animation: cueIn 0.6s cubic-bezier(.18,.85,.25,1) calc(0.05s + var(--w, 0) * 0.12s) forwards;
 }
 
-#screenHome.is-sweeping .home-cue {
-  animation: cueOut 0.35s ease forwards;
+#screenHome.is-ready .home-cue .ew-ready {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
+}
+
+#screenHome.is-sweeping .home-cue,
+#screenHome.is-brand .home-cue {
+  animation: cueOut 0.4s ease forwards;
 }
 
 .home-birth-flash {
   position: absolute;
-  left: 50%;
-  top: 8%;
+  left: 42%;
+  top: 6%;
   width: min(220px, 70%);
   aspect-ratio: 1;
   z-index: 6;
@@ -1101,8 +1112,9 @@ body::before {
   -webkit-text-fill-color: currentColor;
 }
 
-#screenHome.is-ready .brand-home .brand-sub .ew {
-  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.04s + var(--w, 0) * 0.08s) forwards;
+#screenHome.is-brand.is-ready .brand-home .brand-sub .ew,
+#screenHome.is-playable .brand-home .brand-sub .ew {
+  animation: readyIn 0.55s cubic-bezier(.18,.85,.25,1) calc(0.06s + var(--w, 0) * 0.08s) forwards;
 }
 
 #screenHome.is-flourish .brand-home .brand-sub .ew {
@@ -2804,6 +2816,8 @@ button.card {
   .home-cue,
   .home-sum15 { animation: none; opacity: 0; }
   .home-cue span,
+  .home-cue .ew-mesa,
+  .home-cue .ew-ready,
   .brand-home .brand-sub .ew { opacity: 1; }
   .hero-art { transition: none; transform: none; }
   #screenHome .hero-art .mini-card::after,
