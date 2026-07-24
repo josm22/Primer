@@ -626,8 +626,10 @@ body::before {
 }
 
 #screenHome .name-field input:focus {
-  background: transparent;
-  border-bottom-color: var(--gold);
+  background:
+    linear-gradient(90deg, transparent, rgba(239, 197, 106, 0.95), transparent) bottom / 100% 1.5px no-repeat,
+    transparent;
+  border-bottom-color: transparent;
   box-shadow: none;
   outline: none;
 }
